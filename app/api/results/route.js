@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-const admin = supabaseUrl && serviceRoleKey
-  ? createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
-  : null;
+function getClient(sessionKey) {
+  if (!supabaseUrl || !publishableKey) return null;
+  return createClient(supabaseUrl, publishableKey, { auth: { autoRefreshToken: false, persistSession: false }, global: { headers: { "x-session-key": sessionKey } } });
+}
 
 const fields = "id, test_name, score, total_questions, correct, wrong, unanswered, accuracy, answers, review_ids, language, created_at";
 
@@ -33,21 +34,23 @@ function cleanResult(body) {
 }
 
 export async function GET(request) {
-  if (!admin) return NextResponse.json({ error: "Cloud storage is not configured" }, { status: 503 });
   const key = new URL(request.url).searchParams.get("session_key");
   if (!validSessionKey(key)) return NextResponse.json({ error: "Invalid session key" }, { status: 400 });
-  const { data, error } = await admin.from("test_results").select(fields).eq("session_key", key).order("created_at", { ascending: false }).limit(50);
+  const client = getClient(key);
+  if (!client) return NextResponse.json({ error: "Cloud storage is not configured" }, { status: 503 });
+  const { data, error } = await client.from("test_results").select(fields).eq("session_key", key).order("created_at", { ascending: false }).limit(50);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ data: data || [] });
 }
 
 export async function POST(request) {
-  if (!admin) return NextResponse.json({ error: "Cloud storage is not configured" }, { status: 503 });
   try {
     const body = await request.json();
     if (!validSessionKey(body?.session_key)) return NextResponse.json({ error: "Invalid session key" }, { status: 400 });
+    const client = getClient(body.session_key);
+    if (!client) return NextResponse.json({ error: "Cloud storage is not configured" }, { status: 503 });
     const payload = cleanResult(body);
-    const { data, error } = await admin.from("test_results").insert(payload).select(fields).single();
+    const { data, error } = await client.from("test_results").insert(payload).select(fields).single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ data }, { status: 201 });
   } catch (error) {
