@@ -2,6 +2,8 @@
 
 A bilingual Hindi/English mock-test practice app built with Next.js, React, and Lucide icons.
 
+Deployed with Vercel using the Next.js framework preset.
+
 ## Features
 - Responsive dark dashboard with a premium visual design
 - Hindi/English interface toggle
