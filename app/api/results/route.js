@@ -125,6 +125,8 @@ export async function POST(request) {
       authUserId = data?.user?.id || null;
     }
 
+    if (!authUserId) return NextResponse.json({ error: "Login required to save results" }, { status: 401 });
+
     const cleaned = await cleanResult(body, client, authUserId);
     if (authUserId) {
       const deviceKey = body.device_key;
@@ -133,8 +135,6 @@ export async function POST(request) {
       if (deviceError) return NextResponse.json({ error: deviceError.message }, { status: 500 });
       if (!device || device.device_key !== deviceKey) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
     }
-    if (!authUserId && body.user_id) return NextResponse.json({ error: "Login required for account results" }, { status: 401 });
-
     const { data, error } = await client.from("test_results").insert(cleaned).select(fields).single();
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ data }, { status: 201 });
