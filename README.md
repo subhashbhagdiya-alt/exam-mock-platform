@@ -23,3 +23,7 @@ Open http://localhost:3000.
 
 ## Notes
 This is a front-end demo using sample general-knowledge questions. It does not yet include accounts, a database, official exam-specific question banks, or server-side result persistence. Verify all questions against official sources before using them for exam preparation.
+
+
+## Automation
+ExamPrep includes offline PWA support, scheduled official-source monitoring, exam analysis storage, and CI verification.
