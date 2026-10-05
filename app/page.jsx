@@ -7,22 +7,16 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
-let sessionPromise = null;
-async function ensureAuthSession() {
+let sessionKeyPromise = null;
+async function ensureSessionKey() {
   if (!supabase) throw new Error("Cloud storage is not configured");
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError) throw sessionError;
-  if (session) return session;
-  if (!sessionPromise) {
-    sessionPromise = supabase.auth.signInAnonymously()
-      .then(({ data, error }) => {
-        if (error) throw error;
-        if (!data.session) throw new Error("Anonymous sign-in did not create a session. Enable Anonymous Sign-Ins in Supabase Auth settings.");
-        return data.session;
-      })
-      .finally(() => { sessionPromise = null; });
+  if (typeof window === "undefined") throw new Error("Browser session is not available");
+  let key = window.localStorage.getItem("exam_prep_session_key");
+  if (!key) {
+    key = crypto.randomUUID();
+    window.localStorage.setItem("exam_prep_session_key", key);
   }
-  return sessionPromise;
+  return key;
 }
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, ShieldCheck, Target, Trophy, X } from "lucide-react";
 
@@ -66,10 +60,10 @@ export default function HomePage() {
     async function loadHistory() {
       if (!supabase) { setStorageMessage("Cloud storage is not configured"); return; }
       try {
-        await ensureAuthSession();
+        const key = await ensureSessionKey();
         const { data, error } = await supabase.from("test_results")
           .select("id, test_name, score, total_questions, correct, wrong, unanswered, accuracy, answers, review_ids, language, created_at")
-          .order("created_at", { ascending: false }).limit(50);
+          .eq("session_key", key).order("created_at", { ascending: false }).limit(50);
         if (error) throw error;
         if (active) { setHistory(data || []); setStorageMessage(""); }
       } catch (error) {
@@ -97,11 +91,9 @@ export default function HomePage() {
     setResult(summary); setView("result"); setShowSubmit(false);
     try {
       if (!supabase) throw new Error("Cloud storage is not configured");
-      const session = await ensureAuthSession();
-      const user = session.user;
-      if (!user) throw new Error("Sign-in session not available");
+      const sessionKey = await ensureSessionKey();
       const { data, error } = await supabase.from("test_results").insert({
-        user_id: user.id, session_key: user.id, test_name: summary.test_name,
+        session_key: sessionKey, test_name: summary.test_name,
         score: summary.score, total_questions: summary.total_questions, correct: summary.correct,
         wrong: summary.wrong, unanswered: summary.unanswered, accuracy: summary.accuracy,
         answers: summary.answers, review_ids: summary.review_ids, language: summary.language
