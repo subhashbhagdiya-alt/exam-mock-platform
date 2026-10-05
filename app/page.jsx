@@ -59,7 +59,7 @@ export default function HomePage() {
   const [selectedJobTrack, setSelectedJobTrack] = useState("mpesb-common");
   const [examFilter, setExamFilter] = useState("all");
   const [examQuery, setExamQuery] = useState("");
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
   const [user, setUser] = useState(null);
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -107,7 +107,6 @@ export default function HomePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setIsOnline(navigator.onLine);
     const onOnline = () => setIsOnline(true);
     const onOffline = () => setIsOnline(false);
     window.addEventListener("online", onOnline);
@@ -176,24 +175,6 @@ export default function HomePage() {
     loadQuestionAvailability();
     return () => { active = false; };
   }, [selectedExam]);
-
-  useEffect(() => {
-    if (!availableQuestionCount) return;
-    if (practiceQuestionCount > availableQuestionCount) {
-      const next = [50,40,30,20,10].find(n => n <= availableQuestionCount) || availableQuestionCount;
-      setPracticeQuestionCount(next);
-    }
-  }, [availableQuestionCount, practiceQuestionCount]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const bridge = window.ExamPrepNative;
-    if (!bridge) { setNativeSimStatus("web"); return; }
-    setNativeSimStatus("native");
-    if (typeof bridge.getSimState === "function") {
-      Promise.resolve(bridge.getSimState()).then(state => setNativeSimStatus(state === "ready" ? "sim-ready" : "native")).catch(() => {});
-    }
-  }, []);
 
   async function requestNativeSimPermission() {
     const bridge = typeof window !== "undefined" ? window.ExamPrepNative : null;
