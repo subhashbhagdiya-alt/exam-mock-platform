@@ -18,6 +18,10 @@ function validSessionKey(value) {
   return typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value);
 }
 
+function validDeviceKey(value) {
+  return typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value);
+}
+
 async function cleanResult(body, client, authUserId = null) {
   const required = ["test_name","total_questions","answers","review_ids","language","exam_id","question_ids"];
   if (!body || required.some(k => body[k] === undefined)) throw new Error("Invalid result payload");
@@ -122,6 +126,13 @@ export async function POST(request) {
     }
 
     const cleaned = await cleanResult(body, client, authUserId);
+    if (authUserId) {
+      const deviceKey = body.device_key;
+      if (!validDeviceKey(deviceKey)) return NextResponse.json({ error: "Trusted device required" }, { status: 403 });
+      const { data: device, error: deviceError } = await client.from("user_devices").select("device_key").eq("user_id", authUserId).maybeSingle();
+      if (deviceError) return NextResponse.json({ error: deviceError.message }, { status: 500 });
+      if (!device || device.device_key !== deviceKey) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
+    }
     if (!authUserId && body.user_id) return NextResponse.json({ error: "Login required for account results" }, { status: 401 });
 
     const { data, error } = await client.from("test_results").insert(cleaned).select(fields).single();
