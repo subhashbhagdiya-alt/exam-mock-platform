@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Target, Trophy, X } from "lucide-react";
+
+const supabaseBrowser = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ""
+);
 
 async function ensureSessionKey() {
   if (typeof window === "undefined") throw new Error("Browser session is not available");
@@ -54,6 +60,13 @@ export default function HomePage() {
   const [examFilter, setExamFilter] = useState("all");
   const [examQuery, setExamQuery] = useState("");
   const [isOnline, setIsOnline] = useState(true);
+  const [user, setUser] = useState(null);
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [authStep, setAuthStep] = useState("phone");
+  const [authMessage, setAuthMessage] = useState("");
+  const [practiceQuestionCount, setPracticeQuestionCount] = useState(10);
+  const [practiceDuration, setPracticeDuration] = useState(10);
   const hi = language === "hi";
   const t = (h, e) => hi ? h : e;
   const q = testQuestions[current];
@@ -64,6 +77,31 @@ export default function HomePage() {
     const text = `${track.name_hi || ""} ${track.name_en || ""} ${track.description_hi || ""} ${track.description_en || ""}`.toLowerCase();
     return categoryMatch && (!needle || text.includes(needle));
   });
+
+  useEffect(() => {
+    let mounted = true;
+    supabaseBrowser.auth.getSession().then(({ data }) => { if (mounted) setUser(data.session?.user || null); });
+    const { data: listener } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
+      if (mounted) setUser(session?.user || null);
+    });
+    return () => { mounted = false; listener?.subscription?.unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    if (!user || typeof window === "undefined") return;
+    const existing = localStorage.getItem("exam_prep_device_key") || crypto.randomUUID();
+    localStorage.setItem("exam_prep_device_key", existing);
+    (async () => {
+      const { data: device, error } = await supabaseBrowser.from("user_devices").select("device_key").eq("user_id", user.id).maybeSingle();
+      if (error) return;
+      if (device && device.device_key !== existing) {
+        setAuthMessage(t("यह अकाउंट दूसरे डिवाइस से बंधा है। उसी डिवाइस पर लॉगिन करें।","This account is already bound to another device. Use the original device."));
+        await supabaseBrowser.auth.signOut();
+        return;
+      }
+      await supabaseBrowser.from("user_devices").upsert({ user_id: user.id, device_key: existing, phone: user.phone || null, last_seen_at: new Date().toISOString() }, { onConflict: "user_id" });
+    })();
+  }, [user]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -162,12 +200,36 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, [view, seconds, result]);
 
+  async function sendOtp() {
+    const normalized = phone.replace(/\s+/g, "");
+    if (!/^\+[1-9]\d{7,14}$/.test(normalized)) {
+      setAuthMessage(t("मोबाइल नंबर +91XXXXXXXXXX जैसे लिखें।","Enter the number in international format, e.g. +91XXXXXXXXXX."));
+      return;
+    }
+    const { error } = await supabaseBrowser.auth.signInWithOtp({ phone: normalized, options: { channel: "sms" } });
+    if (error) setAuthMessage(error.message);
+    else { setAuthStep("otp"); setAuthMessage(t("OTP भेज दिया गया है।","OTP sent.")); }
+  }
+
+  async function verifyOtp() {
+    const normalized = phone.replace(/\s+/g, "");
+    const { error } = await supabaseBrowser.auth.verifyOtp({ phone: normalized, token: otp.trim(), type: "sms" });
+    if (error) setAuthMessage(error.message);
+    else { setAuthStep("phone"); setAuthMessage(t("लॉगिन सफल। यह डिवाइस आपका trusted device है।","Login successful. This device is now trusted.")); }
+  }
+
+  async function logout() {
+    await supabaseBrowser.auth.signOut();
+    setUser(null);
+  }
+
   async function startTest() {
+    if (!user) { setAuthMessage(t("पहले मोबाइल नंबर से लॉगिन करें।","Please sign in with your mobile number first.")); return; }
     setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setShowSubmit(false);
     try {
-      const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}`, { cache: "no-store" });
+      const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${practiceQuestionCount}`, { cache: "no-store" });
       const payload = await response.json();
-      if (response.ok && payload.exam) { const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(config.duration_minutes * 60); } else { setSeconds(Number(examConfig.duration_minutes || 10) * 60); }
+      if (response.ok && payload.exam) { const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(practiceDuration * 60); } else { setSeconds(Number(examConfig.duration_minutes || 10) * 60); }
       if (response.ok && Array.isArray(payload.data) && payload.data.length) {
         const mapped = payload.data.map((item, index) => ({
           id: index + 1,
@@ -207,7 +269,7 @@ export default function HomePage() {
     setResult(summary); setView("result"); setShowSubmit(false);
     try {
       const sessionKey = await ensureSessionKey();
-      const body = { session_key: sessionKey, ...summary };
+      const body = { session_key: sessionKey, practice_mode: true, requested_total_questions: practiceQuestionCount, requested_duration_minutes: practiceDuration, user_id: user?.id || null, ...summary };
       if (!navigator.onLine) {
         const pending = JSON.parse(localStorage.getItem("exam_prep_offline_results") || "[]");
         localStorage.setItem("exam_prep_offline_results", JSON.stringify([...pending, body].slice(-20)));
@@ -246,7 +308,12 @@ export default function HomePage() {
         <header className="topbar"><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button></div></header>
 
         {view === "home" && <div className="content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
-          <div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("आपके लक्ष्य, आपकी मेहनत","YOUR GOALS. YOUR GRIT.")}</div><h1>{t("नमस्ते, सुभाष","Hello, Subhash")} <span className="wave">✦</span><br/><span className="muted-heading">{t("आज कुछ नया सीखें।","Ready to level up today?")}</span></h1><p className="intro">{t("अपनी तैयारी को परखें, कमज़ोर विषय पहचानें और हर टेस्ट के साथ बेहतर बनें।","Test your knowledge, spot weak areas, and get better with every attempt.")}</p></div><div className="hero-emblem"><div className="emblem-ring"><GraduationCap size={47}/><span>EXAM<br/>READY</span></div><div className="orbit-dot dot-one"/><div className="orbit-dot dot-two"/></div></div>
+          <div className="auth-panel">
+  <div><b>{user ? t("मोबाइल अकाउंट सक्रिय","Mobile account active") : t("मोबाइल से लॉगिन करें","Sign in with mobile")}</b><span>{user ? (user.phone || "") : t("आपके रिज़ल्ट आपके अकाउंट से जुड़े रहेंगे।","Your results stay linked to your account.")}</span></div>
+  {user ? <button onClick={logout}>{t("लॉगआउट","Sign out")}</button> : <div className="auth-actions">{authStep === "phone" ? <><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+91XXXXXXXXXX"/><button onClick={sendOtp}>{t("OTP भेजें","Send OTP")}</button></> : <><input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" placeholder={t("OTP","OTP")}/><button onClick={verifyOtp}>{t("Verify","Verify")}</button></>}</div>}
+  {authMessage && <small>{authMessage}</small>}
+</div>
+<div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("आपके लक्ष्य, आपकी मेहनत","YOUR GOALS. YOUR GRIT.")}</div><h1>{t("नमस्ते, सुभाष","Hello, Subhash")} <span className="wave">✦</span><br/><span className="muted-heading">{t("आज कुछ नया सीखें।","Ready to level up today?")}</span></h1><p className="intro">{t("अपनी तैयारी को परखें, कमज़ोर विषय पहचानें और हर टेस्ट के साथ बेहतर बनें।","Test your knowledge, spot weak areas, and get better with every attempt.")}</p></div><div className="hero-emblem"><div className="emblem-ring"><GraduationCap size={47}/><span>EXAM<br/>READY</span></div><div className="orbit-dot dot-one"/><div className="orbit-dot dot-two"/></div></div>
           <div className="stats-grid"><div className="stat-card"><div className="stat-top"><span>{t("कुल मॉक टेस्ट","MOCK TESTS")}</span><div className="stat-icon purple"><BookOpen size={18}/></div></div><div className="stat-value">{history.length.toString().padStart(2,"0")}<small> / 50</small></div><div className="stat-foot">{t("हर प्रयास मायने रखता है","Every attempt counts")}</div></div><div className="stat-card"><div className="stat-top"><span>{t("सर्वश्रेष्ठ स्कोर","BEST SCORE")}</span><div className="stat-icon gold"><Trophy size={18}/></div></div><div className="stat-value">{history.length ? (() => { const best = history.reduce((a, h) => Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1)) > Number(a.score || 0) / Math.max(1, Number(a.total_questions || 10) * Number(a.marks_per_question || 1)) ? h : a, history[0]); return best.score; })() : "—"}<small> / {history.length ? (() => { const best = history.reduce((a, h) => Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1)) > Number(a.score || 0) / Math.max(1, Number(a.total_questions || 10) * Number(a.marks_per_question || 1)) ? h : a, history[0]); return Number(best.total_questions || 10) * Number(best.marks_per_question || 1); })() : 0}</small></div><div className="stat-foot">{t("अपना रिकॉर्ड तोड़ें","Beat your personal best")}</div></div><div className="stat-card"><div className="stat-top"><span>{t("औसत सटीकता","AVG. ACCURACY")}</span><div className="stat-icon green"><Target size={18}/></div></div><div className="stat-value">{history.length ? Math.round(history.reduce((a,h)=>a+h.accuracy,0)/history.length) : 0}<small>%</small></div><div className="stat-foot">{t("सही जवाबों का प्रतिशत","Correct answer rate")}</div></div></div>
           <div className="section-heading"><div><h2>{t("अपनी तैयारी शुरू करें","Pick up where you want to grow")}</h2><p>{t("छोटे कदम, बड़ी सफलता।","Focused practice makes progress.")}</p></div><span className="section-count">01 — 03</span></div>
           <div className="job-section">
@@ -263,7 +330,11 @@ export default function HomePage() {
               </button>)}</div>
             {!filteredJobTracks.length && <div className="exam-empty">{t("कोई परीक्षा नहीं मिली।","No exam found.")}</div>}
           </div>
-          <div className="feature-grid"><article className="feature-card featured"><div className="feature-top"><div className="feature-icon"><ListChecks size={22}/></div><span className="tag">POPULAR</span></div><h3>{t("चयनित भर्ती का मॉक टेस्ट","Mock test for selected recruitment")}</h3><div className="selected-track"><span>{t("ट्रैक","TRACK")}</span><b>{jobTracks.find(item => item.slug === selectedJobTrack)?.name_hi || examName}</b></div><p>{t(`${examConfig.total_questions} सवाल · ${examConfig.duration_minutes} मिनट · तुरंत रिज़ल्ट`,`${examConfig.total_questions} questions · ${examConfig.duration_minutes} minutes · instant results`)}</p><div className="feature-meta"><span><Clock3 size={14}/> {examConfig.duration_minutes} min</span><span><Target size={14}/> {Number(examConfig.total_questions) * Number(examConfig.marks_per_question)} marks</span></div><button className="primary-button" onClick={startTest}>{t("टेस्ट शुरू करें","Start mock test")}<ArrowRight size={17}/></button><div className="card-decoration">01</div></article><article className="feature-card"><div className="feature-top"><div className="feature-icon green-icon"><Target size={22}/></div><span className="tag tag-green">PRACTICE</span></div><h3>{t("स्मार्ट रिविज़न","Smart revision")}</h3><p>{t("गलत जवाबों की समीक्षा करें और कॉन्सेप्ट मज़बूत करें।","Review explanations and strengthen concepts.")}</p><div className="mini-progress"><span style={{width: history.length ? "65%" : "8%"}}/></div><div className="feature-meta"><span>{t("आपकी प्रगति","Your progress")}</span><span>{history.length ? "65%" : "0%"}</span></div><button className="secondary-button" onClick={() => setView("history")}>{t("रिज़ल्ट देखें","View results")}<ArrowRight size={16}/></button></article><article className="feature-card"><div className="feature-top"><div className="feature-icon blue-icon"><Globe2 size={22}/></div><span className="tag tag-blue">BILINGUAL</span></div><h3>{t("हिंदी + English","Hindi + English")}</h3><p>{t("अपनी सुविधा के अनुसार भाषा बदलें।","Switch between Hindi and English anytime.")}</p><div className="language-pills"><span>अ आ इ</span><span>ABC</span></div><div className="feature-meta"><span>{t("दोनों भाषाओं में सवाल","Questions in both languages")}</span></div><button className="secondary-button" onClick={() => setLanguage(hi ? "en" : "hi")}>{t("English में बदलें","Switch to हिंदी")}<Languages size={16}/></button></article></div>
+          <div className="practice-config">
+  <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{[10,30,50].map(n=><button key={n} className={practiceQuestionCount===n?"active":""} disabled={n > (selectedExam === "mpesb" ? 19 : 0)} onClick={()=>setPracticeQuestionCount(n)}>{n}</button>)}</div><small>{t("30/50 तभी उपलब्ध होंगे जब उस परीक्षा का question bank पर्याप्त हो।","30/50 unlock when that exam has enough verified questions.")}</small></div>
+  <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60].map(n=><button key={n} className={practiceDuration===n?"active":""} onClick={()=>setPracticeDuration(n)}>{n}m</button>)}</div></div>
+</div>
+<div className="feature-grid"><article className="feature-card featured"><div className="feature-top"><div className="feature-icon"><ListChecks size={22}/></div><span className="tag">POPULAR</span></div><h3>{t("चयनित भर्ती का मॉक टेस्ट","Mock test for selected recruitment")}</h3><div className="selected-track"><span>{t("ट्रैक","TRACK")}</span><b>{jobTracks.find(item => item.slug === selectedJobTrack)?.name_hi || examName}</b></div><p>{t(`${examConfig.total_questions} सवाल · ${examConfig.duration_minutes} मिनट · तुरंत रिज़ल्ट`,`${examConfig.total_questions} questions · ${examConfig.duration_minutes} minutes · instant results`)}</p><div className="feature-meta"><span><Clock3 size={14}/> {examConfig.duration_minutes} min</span><span><Target size={14}/> {Number(examConfig.total_questions) * Number(examConfig.marks_per_question)} marks</span></div><button className="primary-button" onClick={startTest}>{t("टेस्ट शुरू करें","Start mock test")}<ArrowRight size={17}/></button><div className="card-decoration">01</div></article><article className="feature-card"><div className="feature-top"><div className="feature-icon green-icon"><Target size={22}/></div><span className="tag tag-green">PRACTICE</span></div><h3>{t("स्मार्ट रिविज़न","Smart revision")}</h3><p>{t("गलत जवाबों की समीक्षा करें और कॉन्सेप्ट मज़बूत करें।","Review explanations and strengthen concepts.")}</p><div className="mini-progress"><span style={{width: history.length ? "65%" : "8%"}}/></div><div className="feature-meta"><span>{t("आपकी प्रगति","Your progress")}</span><span>{history.length ? "65%" : "0%"}</span></div><button className="secondary-button" onClick={() => setView("history")}>{t("रिज़ल्ट देखें","View results")}<ArrowRight size={16}/></button></article><article className="feature-card"><div className="feature-top"><div className="feature-icon blue-icon"><Globe2 size={22}/></div><span className="tag tag-blue">BILINGUAL</span></div><h3>{t("हिंदी + English","Hindi + English")}</h3><p>{t("अपनी सुविधा के अनुसार भाषा बदलें।","Switch between Hindi and English anytime.")}</p><div className="language-pills"><span>अ आ इ</span><span>ABC</span></div><div className="feature-meta"><span>{t("दोनों भाषाओं में सवाल","Questions in both languages")}</span></div><button className="secondary-button" onClick={() => setLanguage(hi ? "en" : "hi")}>{t("English में बदलें","Switch to हिंदी")}<Languages size={16}/></button></article></div>
           <div className="bottom-note"><div className="note-icon"><ShieldCheck size={18}/></div><div><b>{t("आपकी तैयारी, आपकी रफ़्तार","Your preparation, your pace")}</b><p>{t("यह डेमो प्लेटफॉर्म है। अभ्यास के लिए प्रश्न दिए गए हैं; आधिकारिक परीक्षा के लिए नवीनतम सिलेबस देखें।","This is a demo practice platform. Check the latest official syllabus for your target exam.")}</p></div></div>
         </div>}
 
