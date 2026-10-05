@@ -305,7 +305,7 @@ export default function HomePage() {
     const negativeMarks = wrongCount * Number(examConfig.negative_marks || 0);
     const netScore = Math.max(0, grossMarks - negativeMarks);
     const accuracy = Math.round(correctCount / Math.max(1, testQuestions.length) * 100);
-    const summary = { exam_id: examId, question_ids: Object.fromEntries(testQuestions.map(item => [String(item.id), item.sourceId]).filter(([, sourceId]) => sourceId)), correct: correctCount, wrong: wrongCount, unanswered: unansweredCount, score: netScore, gross_score: grossMarks, negative_score: negativeMarks, accuracy, answers: {...answers}, review_ids: [...review], language, total_questions: testQuestions.length, marks_per_question: Number(examConfig.marks_per_question || 1), negative_marks_per_question: Number(examConfig.negative_marks || 0), passing_percentage: Number(examConfig.passing_percentage || 33), test_name: examName };
+    const summary = { practice_mode: true, exam_id: examId, question_ids: Object.fromEntries(testQuestions.map(item => [String(item.id), item.sourceId]).filter(([, sourceId]) => sourceId)), correct: correctCount, wrong: wrongCount, unanswered: unansweredCount, score: netScore, gross_score: grossMarks, negative_score: negativeMarks, accuracy, answers: {...answers}, review_ids: [...review], language, total_questions: testQuestions.length, marks_per_question: Number(examConfig.marks_per_question || 1), negative_marks_per_question: Number(examConfig.negative_marks || 0), passing_percentage: Number(examConfig.passing_percentage || 33), test_name: examName };
     setResult(summary); setView("result"); setShowSubmit(false);
     try {
       const sessionKey = await ensureSessionKey();
