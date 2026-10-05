@@ -1,15 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, ShieldCheck, Target, Trophy, X } from "lucide-react";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
-
-let sessionKeyPromise = null;
 async function ensureSessionKey() {
-  if (!supabase) throw new Error("Cloud storage is not configured");
   if (typeof window === "undefined") throw new Error("Browser session is not available");
   let key = window.localStorage.getItem("exam_prep_session_key");
   if (!key) {
@@ -18,8 +12,6 @@ async function ensureSessionKey() {
   }
   return key;
 }
-import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, ShieldCheck, Target, Trophy, X } from "lucide-react";
-
 const questionBank = [
   { id: 1, subject: "सामान्य ज्ञान", en: "Which is the largest planet in our Solar System?", hi: "हमारे सौरमंडल का सबसे बड़ा ग्रह कौन-सा है?", options: ["Earth / पृथ्वी", "Jupiter / बृहस्पति", "Saturn / शनि", "Neptune / वरुण"], answer: 1, explanation: "Jupiter is the largest planet in the Solar System, with a diameter of about 143,000 km. / बृहस्पति सौरमंडल का सबसे बड़ा ग्रह है।" },
   { id: 2, subject: "भारतीय संविधान", en: "When did the Constitution of India come into force?", hi: "भारत का संविधान कब लागू हुआ?", options: ["15 August 1947", "26 January 1950", "26 November 1949", "2 October 1950"], answer: 1, explanation: "The Constitution came into force on 26 January 1950, celebrated as Republic Day. / संविधान 26 जनवरी 1950 को लागू हुआ।" },
@@ -58,14 +50,12 @@ export default function HomePage() {
   useEffect(() => {
     let active = true;
     async function loadHistory() {
-      if (!supabase) { setStorageMessage("Cloud storage is not configured"); return; }
       try {
         const key = await ensureSessionKey();
-        const { data, error } = await supabase.from("test_results")
-          .select("id, test_name, score, total_questions, correct, wrong, unanswered, accuracy, answers, review_ids, language, created_at")
-          .eq("session_key", key).order("created_at", { ascending: false }).limit(50);
-        if (error) throw error;
-        if (active) { setHistory(data || []); setStorageMessage(""); }
+        const response = await fetch(`/api/results?session_key=${encodeURIComponent(key)}`);
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.error || "Could not load saved results");
+        if (active) { setHistory(payload.data || []); setStorageMessage(""); }
       } catch (error) {
         if (active) setStorageMessage(error?.message || "Could not load saved results");
       }
@@ -90,16 +80,14 @@ export default function HomePage() {
     const summary = { correct: correctCount, wrong: Object.keys(answers).filter(id => questionBank[Number(id)-1].answer !== answers[id]).length, unanswered: questionBank.length - Object.keys(answers).length, score: correctCount, accuracy: Math.round(correctCount / questionBank.length * 100), answers: {...answers}, review_ids: [...review], language, total_questions: questionBank.length, test_name: "Quick mock test" };
     setResult(summary); setView("result"); setShowSubmit(false);
     try {
-      if (!supabase) throw new Error("Cloud storage is not configured");
       const sessionKey = await ensureSessionKey();
-      const { data, error } = await supabase.from("test_results").insert({
-        session_key: sessionKey, test_name: summary.test_name,
-        score: summary.score, total_questions: summary.total_questions, correct: summary.correct,
-        wrong: summary.wrong, unanswered: summary.unanswered, accuracy: summary.accuracy,
-        answers: summary.answers, review_ids: summary.review_ids, language: summary.language
-      }).select("id, test_name, score, total_questions, correct, wrong, unanswered, accuracy, answers, review_ids, language, created_at").single();
-      if (error) throw error;
-      setHistory(old => [data, ...old].slice(0, 50));
+      const response = await fetch("/api/results", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ session_key: sessionKey, ...summary })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error || "Result could not be saved to cloud");
+      setHistory(old => [payload.data, ...old].slice(0, 50));
       setStorageMessage("");
     } catch (error) {
       setStorageMessage(error?.message || "Result could not be saved to cloud");
