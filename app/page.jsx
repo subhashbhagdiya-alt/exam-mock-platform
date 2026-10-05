@@ -181,7 +181,11 @@ export default function HomePage() {
     async function loadHistory() {
       try {
         const key = await ensureSessionKey();
-        const response = await fetch(`/api/results?session_key=${encodeURIComponent(key)}`);
+        const { data: sessionData } = await supabaseBrowser.auth.getSession();
+        const accessToken = sessionData.session?.access_token || "";
+        const response = await fetch(`/api/results?session_key=${encodeURIComponent(key)}`, {
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+        });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error || "Could not load saved results");
         if (active) { setHistory(payload.data || []); setStorageMessage(""); }
@@ -277,8 +281,11 @@ export default function HomePage() {
         setHistory(old => [{...summary, created_at: new Date().toISOString(), offline_pending: true}, ...old].slice(0, 50));
         return;
       }
+      const { data: sessionData } = await supabaseBrowser.auth.getSession();
+      const accessToken = sessionData.session?.access_token || "";
       const response = await fetch("/api/results", {
-        method: "POST", headers: { "content-type": "application/json" },
+        method: "POST",
+        headers: { "content-type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
         body: JSON.stringify(body)
       });
       const payload = await response.json();
