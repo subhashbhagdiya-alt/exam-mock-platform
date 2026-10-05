@@ -96,12 +96,19 @@ export async function GET(request) {
 
   let authUserId = null;
   if (accessToken) {
-    const { data } = await client.auth.getUser(accessToken);
+    const { data, error } = await client.auth.getUser(accessToken);
+    if (error) return NextResponse.json({ error: "Invalid login session" }, { status: 401 });
     authUserId = data?.user?.id || null;
   }
+  if (!authUserId) return NextResponse.json({ error: "Login required" }, { status: 401 });
 
-  let query = client.from("test_results").select(fields).order("created_at", { ascending: false }).limit(50);
-  query = authUserId ? query.eq("user_id", authUserId) : query.eq("session_key", sessionKey);
+  const deviceKey = request.headers.get("x-device-key") || "";
+  if (!validDeviceKey(deviceKey)) return NextResponse.json({ error: "Trusted device required" }, { status: 403 });
+  const { data: device, error: deviceError } = await client.from("user_devices").select("device_key").eq("user_id", authUserId).maybeSingle();
+  if (deviceError) return NextResponse.json({ error: deviceError.message }, { status: 500 });
+  if (!device || device.device_key !== deviceKey) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
+
+  const query = client.from("test_results").select(fields).eq("user_id", authUserId).order("created_at", { ascending: false }).limit(50);
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ data: data || [] });
