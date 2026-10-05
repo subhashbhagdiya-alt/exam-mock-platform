@@ -82,6 +82,7 @@ export default function HomePage() {
   const [practiceDuration, setPracticeDuration] = useState(10);
   const [availableQuestionCount, setAvailableQuestionCount] = useState(0);
   const [nativeSimStatus, setNativeSimStatus] = useState("web");
+  const [trustedDeviceVerified, setTrustedDeviceVerified] = useState(false);
   const hi = language === "hi";
   const t = (h, e) => hi ? h : e;
   const q = testQuestions[current];
@@ -103,9 +104,13 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!user || !supabaseBrowser || typeof window === "undefined") return;
+    if (!user || !supabaseBrowser || typeof window === "undefined") {
+      setTrustedDeviceVerified(false);
+      return;
+    }
     const existing = localStorage.getItem("exam_prep_device_key") || crypto.randomUUID();
     localStorage.setItem("exam_prep_device_key", existing);
+    setTrustedDeviceVerified(false);
     (async () => {
       const { data: device, error } = await supabaseBrowser.from("user_devices").select("device_key").eq("user_id", user.id).maybeSingle();
       if (error) {
@@ -136,6 +141,7 @@ export default function HomePage() {
           last_seen_at: new Date().toISOString()
         }).eq("user_id", user.id);
       }
+      setTrustedDeviceVerified(true);
       setAuthMessage(t("लॉगिन सफल। यह डिवाइस trusted है।","Login successful. This device is trusted."));
     })();
   }, [user]);
@@ -255,8 +261,9 @@ export default function HomePage() {
         const key = await ensureSessionKey();
         const { data: sessionData } = await supabaseBrowser.auth.getSession();
         const accessToken = sessionData.session?.access_token || "";
+        const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
         const response = await fetch(`/api/results?session_key=${encodeURIComponent(key)}`, {
-          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}`, ...(deviceKey ? { "x-device-key": deviceKey } : {}) } : {}
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error || "Could not load saved results");
@@ -365,6 +372,7 @@ export default function HomePage() {
 
   async function startTest() {
     if (!user) { setAuthMessage(t("पहले मोबाइल नंबर से लॉगिन करें।","Please sign in with your mobile number first.")); return; }
+    if (!trustedDeviceVerified) { setAuthMessage(t("Trusted device verification पूरी होने तक test शुरू नहीं किया जा सकता।","The test cannot start until trusted-device verification is complete.")); return; }
     if (!availableQuestionCount || practiceQuestionCount > availableQuestionCount) { setAuthMessage(t("इस परीक्षा के लिए चुने गए सवाल अभी उपलब्ध नहीं हैं।","The selected number of questions is not currently available for this exam.")); return; }
     setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setShowSubmit(false);
     try {
