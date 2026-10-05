@@ -75,11 +75,11 @@ export default function HomePage() {
   }, [view, seconds, result]);
 
   async function startTest() {
-    setAnswers({}); setReview([]); setCurrent(0); setSeconds(Number(examConfig.duration_minutes || 10) * 60); setResult(null); setShowSubmit(false);
+    setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setShowSubmit(false);
     try {
       const response = await fetch("/api/questions?exam=mpesb&limit=10", { cache: "no-store" });
       const payload = await response.json();
-      if (response.ok && payload.exam) setExamConfig({ total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) });
+      if (response.ok && payload.exam) { const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setSeconds(config.duration_minutes * 60); } else { setSeconds(Number(examConfig.duration_minutes || 10) * 60); }
       if (response.ok && Array.isArray(payload.data) && payload.data.length) {
         const mapped = payload.data.map((item, index) => ({
           id: index + 1,
