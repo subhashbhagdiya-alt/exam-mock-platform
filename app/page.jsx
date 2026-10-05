@@ -44,6 +44,7 @@ export default function HomePage() {
   const [storageMessage, setStorageMessage] = useState("");
   const [showSubmit, setShowSubmit] = useState(false);
   const [testQuestions, setTestQuestions] = useState(questionBank);
+  const [examConfig, setExamConfig] = useState({ total_questions: 10, duration_minutes: 10, marks_per_question: 1, negative_marks: 0.25, passing_percentage: 33 });
   const hi = language === "hi";
   const t = (h, e) => hi ? h : e;
   const q = testQuestions[current];
@@ -74,10 +75,11 @@ export default function HomePage() {
   }, [view, seconds, result]);
 
   async function startTest() {
-    setAnswers({}); setReview([]); setCurrent(0); setSeconds(600); setResult(null); setShowSubmit(false);
+    setAnswers({}); setReview([]); setCurrent(0); setSeconds(Number(examConfig.duration_minutes || 10) * 60); setResult(null); setShowSubmit(false);
     try {
       const response = await fetch("/api/questions?exam=mpesb&limit=10", { cache: "no-store" });
       const payload = await response.json();
+      if (response.ok && payload.exam) setExamConfig({ total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) });
       if (response.ok && Array.isArray(payload.data) && payload.data.length) {
         const mapped = payload.data.map((item, index) => ({
           id: index + 1,
@@ -105,8 +107,15 @@ export default function HomePage() {
   }
   async function finishTest() {
     if (result) return;
-    const correctCount = Object.entries(answers).filter(([id, a]) => testQuestions[Number(id)-1]?.answer === a).length;
-    const summary = { correct: correctCount, wrong: Object.keys(answers).filter(id => testQuestions[Number(id)-1]?.answer !== answers[id]).length, unanswered: testQuestions.length - Object.keys(answers).length, score: correctCount, accuracy: Math.round(correctCount / testQuestions.length * 100), answers: {...answers}, review_ids: [...review], language, total_questions: testQuestions.length, test_name: "Quick mock test" };
+    const entries = Object.entries(answers);
+    const correctCount = entries.filter(([id, a]) => testQuestions[Number(id)-1]?.answer === a).length;
+    const wrongCount = entries.filter(([id, a]) => testQuestions[Number(id)-1]?.answer !== a).length;
+    const unansweredCount = Math.max(0, testQuestions.length - entries.length);
+    const grossMarks = correctCount * Number(examConfig.marks_per_question || 1);
+    const negativeMarks = wrongCount * Number(examConfig.negative_marks || 0);
+    const netScore = Math.max(0, grossMarks - negativeMarks);
+    const accuracy = Math.round(correctCount / Math.max(1, testQuestions.length) * 100);
+    const summary = { correct: correctCount, wrong: wrongCount, unanswered: unansweredCount, score: netScore, gross_score: grossMarks, negative_score: negativeMarks, accuracy, answers: {...answers}, review_ids: [...review], language, total_questions: testQuestions.length, marks_per_question: Number(examConfig.marks_per_question || 1), negative_marks_per_question: Number(examConfig.negative_marks || 0), passing_percentage: Number(examConfig.passing_percentage || 33), test_name: "MPESB Mock Test" };
     setResult(summary); setView("result"); setShowSubmit(false);
     try {
       const sessionKey = await ensureSessionKey();
