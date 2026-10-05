@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, ShieldCheck, Target, Trophy, X } from "lucide-react";
 
 const questionBank = [
@@ -30,14 +30,12 @@ export default function HomePage() {
   const [current, setCurrent] = useState(0);
   const [seconds, setSeconds] = useState(600);
   const [result, setResult] = useState(null);
-  const [confirmed, setConfirmed] = useState(false);
   const [history, setHistory] = useState([]);
   const [showSubmit, setShowSubmit] = useState(false);
   const hi = language === "hi";
   const t = (h, e) => hi ? h : e;
   const q = questionBank[current];
   const answered = Object.keys(answers).length;
-  const correct = result ? result.correct : 0;
 
   useEffect(() => {
     if (view !== "test" || result) return;
@@ -46,13 +44,8 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, [view, seconds, result]);
 
-  const stats = useMemo(() => {
-    const c = Object.entries(answers).filter(([id, a]) => questionBank[Number(id)-1].answer === a).length;
-    return { correct: c, wrong: Object.keys(answers).length - c, unanswered: questionBank.length - Object.keys(answers).length, accuracy: Object.keys(answers).length ? Math.round(c / Object.keys(answers).length * 100) : 0 };
-  }, [answers]);
-
   function startTest() {
-    setAnswers({}); setReview([]); setCurrent(0); setSeconds(600); setResult(null); setConfirmed(false); setShowSubmit(false); setView("test");
+    setAnswers({}); setReview([]); setCurrent(0); setSeconds(600); setResult(null); setShowSubmit(false); setView("test");
   }
   function finishTest() {
     const correctCount = Object.entries(answers).filter(([id, a]) => questionBank[Number(id)-1].answer === a).length;
