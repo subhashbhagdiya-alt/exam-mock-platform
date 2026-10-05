@@ -1,0 +1,11 @@
+{
+  "name": "ExamPrep — Mock Test Platform",
+  "short_name": "ExamPrep",
+  "description": "Offline-ready competitive exam preparation and mock tests.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090b10",
+  "theme_color": "#8f80ff",
+  "lang": "hi",
+  "icons": []
+}
