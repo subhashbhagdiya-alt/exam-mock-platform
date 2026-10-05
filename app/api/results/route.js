@@ -4,9 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-function getClient(sessionKey) {
+function getClient(sessionKey, accessToken) {
   if (!supabaseUrl || !publishableKey) return null;
-  return createClient(supabaseUrl, publishableKey, { auth: { autoRefreshToken: false, persistSession: false }, global: { headers: { "x-session-key": sessionKey } } });
+  return createClient(supabaseUrl, publishableKey, { auth: { autoRefreshToken: false, persistSession: false }, global: { headers: { "x-session-key": sessionKey, ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) } } });
 }
 
 const fields = "id, exam_id, test_name, score, gross_score, negative_score, marks_per_question, negative_marks_per_question, passing_percentage, total_questions, correct, wrong, unanswered, accuracy, answers, review_ids, language, created_at";
@@ -42,7 +42,9 @@ async function cleanResult(body, client) {
   }
   const total = localIds.length;
   if (total < 1 || correct + wrong + unanswered !== total) throw new Error("Invalid question counts");
-  if (Number(exam.data.total_questions) !== total) throw new Error("Question count does not match exam rules");
+  const practiceMode = body.practice_mode === true;
+  if (!practiceMode && Number(exam.data.total_questions) !== total) throw new Error("Question count does not match exam rules");
+  if (practiceMode && total > 50) throw new Error("Practice test is limited to 50 questions");
   const marks = Number(exam.data.marks_per_question || 1);
   const negativePer = Number(exam.data.negative_marks || 0);
   const gross = correct * marks;
