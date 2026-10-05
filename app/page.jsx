@@ -1,18 +1,4 @@
-"use clie
-
-  useEffect(() => {
-    let active = true;
-    async function loadJobTracks() {
-      try {
-        const response = await fetch("/api/job-tracks", { cache: "no-store" });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload?.error || "Could not load job tracks");
-        if (active) setJobTracks(Array.isArray(payload.data) ? payload.data : []);
-      } catch {}
-    }
-    loadJobTracks();
-    return () => { active = false; };
-  }, []);nt";
+"use client";
 
 import { useEffect, useState } from "react";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, ShieldCheck, Target, Trophy, X } from "lucide-react";
@@ -91,6 +77,20 @@ export default function HomePage() {
       } catch {}
     }
     loadExams();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadJobTracks() {
+      try {
+        const response = await fetch("/api/job-tracks", { cache: "no-store" });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.error || "Could not load job tracks");
+        if (active) setJobTracks(Array.isArray(payload.data) ? payload.data : []);
+      } catch {}
+    }
+    loadJobTracks();
     return () => { active = false; };
   }, []);
 
