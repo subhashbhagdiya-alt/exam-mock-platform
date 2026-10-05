@@ -131,10 +131,12 @@ export default function HomePage() {
       try {
         const raw = localStorage.getItem("exam_prep_offline_results");
         const pending = raw ? JSON.parse(raw) : [];
+      const { data: sessionData } = await supabaseBrowser.auth.getSession();
+      const accessToken = sessionData.session?.access_token || "";
         if (!Array.isArray(pending) || !pending.length) return;
         const remaining = [];
         for (const item of pending) {
-          const response = await fetch("/api/results", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(item) });
+          const response = await fetch("/api/results", { method: "POST", headers: { "content-type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}), ...(item.device_key ? { "x-device-key": item.device_key } : {}) }, body: JSON.stringify(item) });
           if (!response.ok) remaining.push(item);
         }
         localStorage.setItem("exam_prep_offline_results", JSON.stringify(remaining));
@@ -309,7 +311,8 @@ export default function HomePage() {
     setResult(summary); setView("result"); setShowSubmit(false);
     try {
       const sessionKey = await ensureSessionKey();
-      const body = { session_key: sessionKey, practice_mode: true, requested_total_questions: practiceQuestionCount, requested_duration_minutes: practiceDuration, user_id: user?.id || null, ...summary };
+      const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
+       const body = { session_key: sessionKey, practice_mode: true, requested_total_questions: practiceQuestionCount, requested_duration_minutes: practiceDuration, user_id: user?.id || null, device_key: deviceKey, ...summary };
       if (!navigator.onLine) {
         const pending = JSON.parse(localStorage.getItem("exam_prep_offline_results") || "[]");
         localStorage.setItem("exam_prep_offline_results", JSON.stringify([...pending, body].slice(-20)));
