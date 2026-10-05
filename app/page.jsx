@@ -15,6 +15,12 @@ const supabaseBrowser = (
     )
   : null;
 
+async function hashRecoveryCode(code) {
+  const data = new TextEncoder().encode(code.trim().toUpperCase());
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
 async function ensureSessionKey() {
   if (typeof window === "undefined") throw new Error("Browser session is not available");
   let key = window.localStorage.getItem("exam_prep_session_key");
@@ -69,6 +75,7 @@ export default function HomePage() {
   const [user, setUser] = useState(null);
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
   const [authStep, setAuthStep] = useState("phone");
   const [authMessage, setAuthMessage] = useState("");
   const [practiceQuestionCount, setPracticeQuestionCount] = useState(10);
@@ -107,8 +114,8 @@ export default function HomePage() {
         return;
       }
       if (device && device.device_key !== existing) {
-        setAuthMessage(t("यह अकाउंट दूसरे डिवाइस से बंधा है। उसी trusted device पर लॉगिन करें।","This account is already bound to another device. Use the original trusted device."));
-        await supabaseBrowser.auth.signOut();
+        setAuthStep("recovery");
+        setAuthMessage(t("यह अकाउंट दूसरे trusted device से जुड़ा है। पुराने device से recovery code लेकर यहाँ दर्ज करें।","This account is bound to another trusted device. Enter a recovery code generated on the old trusted device."));
         return;
       }
       if (!device) {
@@ -302,6 +309,53 @@ export default function HomePage() {
     else setAuthMessage(t("OTP सही है। Trusted device की जाँच हो रही है…","OTP verified. Checking trusted device…"));
   }
 
+  async function createRecoveryCode() {
+    if (!supabaseBrowser || !user || typeof window === "undefined") return;
+    const deviceKey = localStorage.getItem("exam_prep_device_key") || "";
+    if (!/^[0-9a-f-]{36}$/i.test(deviceKey)) {
+      setAuthMessage(t("Trusted device की जानकारी नहीं मिली।","Trusted device information is unavailable."));
+      return;
+    }
+    const bytes = new Uint8Array(9);
+    crypto.getRandomValues(bytes);
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const code = Array.from(bytes, byte => alphabet[byte % alphabet.length]).join("");
+    const codeHash = await hashRecoveryCode(code);
+    const { data, error } = await supabaseBrowser.rpc("create_device_recovery_code", { p_device_key: deviceKey, p_code_hash: codeHash });
+    if (error || data !== true) {
+      setAuthMessage(error?.message || t("Recovery code नहीं बन सका।","Could not create a recovery code."));
+      return;
+    }
+    setAuthMessage(t("Recovery code: " + code + " — इसे नए फोन में OTP के बाद दर्ज करें। यह 15 मिनट में expire होगा।","Recovery code: " + code + " — enter it on the new phone after OTP. It expires in 15 minutes."));
+  }
+
+  async function recoverTrustedDevice() {
+    if (!supabaseBrowser || !user || typeof window === "undefined") return;
+    const code = recoveryCode.replace(/\s+/g, "").toUpperCase();
+    if (!/^[A-Z0-9]{9}$/.test(code)) {
+      setAuthMessage(t("9 अक्षरों का recovery code दर्ज करें।","Enter the 9-character recovery code."));
+      return;
+    }
+    const newDeviceKey = localStorage.getItem("exam_prep_device_key") || "";
+    if (!/^[0-9a-f-]{36}$/i.test(newDeviceKey)) {
+      setAuthMessage(t("नए device की पहचान नहीं मिली।","New-device identity is unavailable."));
+      return;
+    }
+    const codeHash = await hashRecoveryCode(code);
+    const { data, error } = await supabaseBrowser.rpc("consume_device_recovery_code", {
+      p_code_hash: codeHash,
+      p_new_device_key: newDeviceKey,
+      p_phone: user.phone || null
+    });
+    if (error || data !== true) {
+      setAuthMessage(error?.message || t("Recovery code गलत, expired या पहले इस्तेमाल हो चुका है।","Recovery code is invalid, expired, or already used."));
+      return;
+    }
+    setAuthStep("phone");
+    setRecoveryCode("");
+    setAuthMessage(t("नया device trusted बन गया।","The new device is now trusted."));
+  }
+
   async function logout() {
     if (supabaseBrowser) await supabaseBrowser.auth.signOut();
     setUser(null);
@@ -401,7 +455,7 @@ export default function HomePage() {
         {view === "home" && <div className="content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
           <div className="auth-panel">
   <div><b>{user ? t("मोबाइल अकाउंट सक्रिय","Mobile account active") : t("मोबाइल से लॉगिन करें","Sign in with mobile")}</b><span>{user ? (user.phone || "") : t("आपके रिज़ल्ट आपके अकाउंट से जुड़े रहेंगे।","Your results stay linked to your account.")}</span></div>
-  {user ? <button onClick={logout}>{t("लॉगआउट","Sign out")}</button> : <div className="auth-actions">{authStep === "phone" ? <><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+91XXXXXXXXXX"/><button onClick={sendOtp}>{t("OTP भेजें","Send OTP")}</button></> : <><input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" placeholder={t("OTP","OTP")}/><button onClick={verifyOtp}>{t("Verify","Verify")}</button></>}</div>}
+  {user ? <button onClick={logout}>{t("लॉगआउट","Sign out")}</button> : <div className="auth-actions">{authStep === "phone" ? <><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+91XXXXXXXXXX"/><button onClick={sendOtp}>{t("OTP भेजें","Send OTP")}</button></> : authStep === "otp" ? <><input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit OTP")}/><button onClick={verifyOtp}>{t("Verify","Verify")}</button></> : <><input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/><button onClick={recoverTrustedDevice}>{t("Device बदलें","Replace device")}</button></>}</div>}
   {authMessage && <small>{authMessage}</small>}
 </div>
 <div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("आपके लक्ष्य, आपकी मेहनत","YOUR GOALS. YOUR GRIT.")}</div><h1>{t("नमस्ते, सुभाष","Hello, Subhash")} <span className="wave">✦</span><br/><span className="muted-heading">{t("आज कुछ नया सीखें।","Ready to level up today?")}</span></h1><p className="intro">{t("अपनी तैयारी को परखें, कमज़ोर विषय पहचानें और हर टेस्ट के साथ बेहतर बनें।","Test your knowledge, spot weak areas, and get better with every attempt.")}</p></div><div className="hero-emblem"><div className="emblem-ring"><GraduationCap size={47}/><span>EXAM<br/>READY</span></div><div className="orbit-dot dot-one"/><div className="orbit-dot dot-two"/></div></div>
@@ -424,7 +478,7 @@ export default function HomePage() {
           <div className="practice-config">
   <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{Array.from(new Set([10,20,30,40,50,availableQuestionCount].filter(n => n > 0 && n <= availableQuestionCount))).sort((a,b) => a-b).map(n=><button key={n} className={practiceQuestionCount===n?"active":""} onClick={()=>setPracticeQuestionCount(n)}>{n}</button>)}</div><small>{availableQuestionCount ? t(`${availableQuestionCount} verified/active questions अभी उपलब्ध हैं।`,`There are ${availableQuestionCount} active/verified questions available right now.`) : t("इस परीक्षा का question bank अभी उपलब्ध नहीं है।","This exam does not have a question bank yet.")}</small></div>
   <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60].map(n=><button key={n} className={practiceDuration===n?"active":""} onClick={()=>setPracticeDuration(n)}>{n}m</button>)}</div></div>
-  <div className="config-block device-security"><b>{t("SIM / डिवाइस सुरक्षा","SIM / Device security")}</b><div className="config-options"><button onClick={requestNativeSimPermission}>{nativeSimStatus === "sim-ready" ? t("SIM चालू ✓","SIM active ✓") : t("SIM अनुमति दें","Allow SIM")}</button></div><small>{t("Android app में user की permission के बाद SIM state को trusted-device check में जोड़ा जा सकता है।","In the Android app, SIM state can be added to trusted-device checks after the user grants permission.")}</small></div>
+  <div className="config-block device-security"><b>{t("SIM / डिवाइस सुरक्षा","SIM / Device security")}</b><div className="config-options"><button onClick={requestNativeSimPermission}>{nativeSimStatus === "sim-ready" ? t("SIM चालू ✓","SIM active ✓") : t("SIM अनुमति दें","Allow SIM")}</button>{user && <button onClick={createRecoveryCode}>{t("नए फोन के लिए recovery code","Create recovery code")}</button>}</div><small>{t("Recovery code केवल trusted device से बनता है, 15 मिनट में expire होता है और एक बार इस्तेमाल होता है।","A recovery code can only be created on the trusted device, expires in 15 minutes, and works once.")}</small></div>
 </div>
 <div className="feature-grid"><article className="feature-card featured"><div className="feature-top"><div className="feature-icon"><ListChecks size={22}/></div><span className="tag">POPULAR</span></div><h3>{t("चयनित भर्ती का मॉक टेस्ट","Mock test for selected recruitment")}</h3><div className="selected-track"><span>{t("ट्रैक","TRACK")}</span><b>{jobTracks.find(item => item.slug === selectedJobTrack)?.name_hi || examName}</b></div><p>{t(`${examConfig.total_questions} सवाल · ${examConfig.duration_minutes} मिनट · तुरंत रिज़ल्ट`,`${examConfig.total_questions} questions · ${examConfig.duration_minutes} minutes · instant results`)}</p><div className="feature-meta"><span><Clock3 size={14}/> {examConfig.duration_minutes} min</span><span><Target size={14}/> {Number(examConfig.total_questions) * Number(examConfig.marks_per_question)} marks</span></div><button className="primary-button" disabled={!availableQuestionCount} onClick={startTest}>{t("टेस्ट शुरू करें","Start mock test")}<ArrowRight size={17}/></button><div className="card-decoration">01</div></article><article className="feature-card"><div className="feature-top"><div className="feature-icon green-icon"><Target size={22}/></div><span className="tag tag-green">PRACTICE</span></div><h3>{t("स्मार्ट रिविज़न","Smart revision")}</h3><p>{t("गलत जवाबों की समीक्षा करें और कॉन्सेप्ट मज़बूत करें।","Review explanations and strengthen concepts.")}</p><div className="mini-progress"><span style={{width: history.length ? "65%" : "8%"}}/></div><div className="feature-meta"><span>{t("आपकी प्रगति","Your progress")}</span><span>{history.length ? "65%" : "0%"}</span></div><button className="secondary-button" onClick={() => setView("history")}>{t("रिज़ल्ट देखें","View results")}<ArrowRight size={16}/></button></article><article className="feature-card"><div className="feature-top"><div className="feature-icon blue-icon"><Globe2 size={22}/></div><span className="tag tag-blue">BILINGUAL</span></div><h3>{t("हिंदी + English","Hindi + English")}</h3><p>{t("अपनी सुविधा के अनुसार भाषा बदलें।","Switch between Hindi and English anytime.")}</p><div className="language-pills"><span>अ आ इ</span><span>ABC</span></div><div className="feature-meta"><span>{t("दोनों भाषाओं में सवाल","Questions in both languages")}</span></div><button className="secondary-button" onClick={() => setLanguage(hi ? "en" : "hi")}>{t("English में बदलें","Switch to हिंदी")}<Languages size={16}/></button></article></div>
           <div className="bottom-note"><div className="note-icon"><ShieldCheck size={18}/></div><div><b>{t("आपकी तैयारी, आपकी रफ़्तार","Your preparation, your pace")}</b><p>{t("यह डेमो प्लेटफॉर्म है। अभ्यास के लिए प्रश्न दिए गए हैं; आधिकारिक परीक्षा के लिए नवीनतम सिलेबस देखें।","This is a demo practice platform. Check the latest official syllabus for your target exam.")}</p></div></div>
