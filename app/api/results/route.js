@@ -9,7 +9,7 @@ function getClient(sessionKey) {
   return createClient(supabaseUrl, publishableKey, { auth: { autoRefreshToken: false, persistSession: false }, global: { headers: { "x-session-key": sessionKey } } });
 }
 
-const fields = "id, test_name, score, total_questions, correct, wrong, unanswered, accuracy, answers, review_ids, language, created_at";
+const fields = "id, test_name, score, gross_score, negative_score, marks_per_question, negative_marks_per_question, passing_percentage, total_questions, correct, wrong, unanswered, accuracy, answers, review_ids, language, created_at";
 
 function validSessionKey(value) {
   return typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value);
@@ -29,7 +29,12 @@ function cleanResult(body) {
     accuracy: Number(body.accuracy),
     answers: body.answers,
     review_ids: body.review_ids,
-    language: body.language === "en" ? "en" : "hi"
+    language: body.language === "en" ? "en" : "hi",
+    gross_score: Number(body.gross_score || 0),
+    negative_score: Number(body.negative_score || 0),
+    marks_per_question: Number(body.marks_per_question || 1),
+    negative_marks_per_question: Number(body.negative_marks_per_question || 0),
+    passing_percentage: Number(body.passing_percentage || 0)
   };
 }
 
