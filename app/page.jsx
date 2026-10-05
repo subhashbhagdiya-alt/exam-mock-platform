@@ -96,18 +96,40 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!user || typeof window === "undefined") return;
+    if (!user || !supabaseBrowser || typeof window === "undefined") return;
     const existing = localStorage.getItem("exam_prep_device_key") || crypto.randomUUID();
     localStorage.setItem("exam_prep_device_key", existing);
     (async () => {
       const { data: device, error } = await supabaseBrowser.from("user_devices").select("device_key").eq("user_id", user.id).maybeSingle();
-      if (error) return;
-      if (device && device.device_key !== existing) {
-        setAuthMessage(t("यह अकाउंट दूसरे डिवाइस से बंधा है। उसी डिवाइस पर लॉगिन करें।","This account is already bound to another device. Use the original device."));
+      if (error) {
+        setAuthMessage(t("Trusted device की जाँच नहीं हो सकी।","Trusted-device verification could not be completed."));
         await supabaseBrowser.auth.signOut();
         return;
       }
-      await supabaseBrowser.from("user_devices").upsert({ user_id: user.id, device_key: existing, phone: user.phone || null, last_seen_at: new Date().toISOString() }, { onConflict: "user_id" });
+      if (device && device.device_key !== existing) {
+        setAuthMessage(t("यह अकाउंट दूसरे डिवाइस से बंधा है। उसी trusted device पर लॉगिन करें।","This account is already bound to another device. Use the original trusted device."));
+        await supabaseBrowser.auth.signOut();
+        return;
+      }
+      if (!device) {
+        const { error: bindError } = await supabaseBrowser.from("user_devices").insert({
+          user_id: user.id,
+          device_key: existing,
+          phone: user.phone || null,
+          last_seen_at: new Date().toISOString()
+        });
+        if (bindError) {
+          setAuthMessage(t("यह डिवाइस trusted नहीं बन सका।","This device could not be trusted."));
+          await supabaseBrowser.auth.signOut();
+          return;
+        }
+      } else {
+        await supabaseBrowser.from("user_devices").update({
+          phone: user.phone || null,
+          last_seen_at: new Date().toISOString()
+        }).eq("user_id", user.id);
+      }
+      setAuthMessage(t("लॉगिन सफल। यह डिवाइस trusted है।","Login successful. This device is trusted."));
     })();
   }, [user]);
 
@@ -126,17 +148,23 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    let active = true;
+    if (!supabaseBrowser || typeof window === "undefined") return;
     async function flushOfflineResults() {
       try {
         const raw = localStorage.getItem("exam_prep_offline_results");
         const pending = raw ? JSON.parse(raw) : [];
-      const { data: sessionData } = await supabaseBrowser.auth.getSession();
-      const accessToken = sessionData.session?.access_token || "";
         if (!Array.isArray(pending) || !pending.length) return;
+        const { data: sessionData } = await supabaseBrowser.auth.getSession();
+        const accessToken = sessionData.session?.access_token || "";
+        if (!accessToken) return;
         const remaining = [];
         for (const item of pending) {
-          const response = await fetch("/api/results", { method: "POST", headers: { "content-type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}), ...(item.device_key ? { "x-device-key": item.device_key } : {}) }, body: JSON.stringify(item) });
+          if (!item?.device_key) { remaining.push(item); continue; }
+          const response = await fetch("/api/results", {
+            method: "POST",
+            headers: { "content-type": "application/json", Authorization: `Bearer ${accessToken}` },
+            body: JSON.stringify(item)
+          });
           if (!response.ok) remaining.push(item);
         }
         localStorage.setItem("exam_prep_offline_results", JSON.stringify(remaining));
@@ -242,26 +270,43 @@ export default function HomePage() {
   }, [view, seconds, result]);
 
   async function sendOtp() {
+    if (!supabaseBrowser) {
+      setAuthMessage(t("Login सेवा अभी उपलब्ध नहीं है।","Login service is not available right now."));
+      return;
+    }
     const normalized = phone.replace(/\s+/g, "");
     if (!/^\+[1-9]\d{7,14}$/.test(normalized)) {
       setAuthMessage(t("मोबाइल नंबर +91XXXXXXXXXX जैसे लिखें।","Enter the number in international format, e.g. +91XXXXXXXXXX."));
       return;
     }
+    setAuthMessage(t("OTP भेजा जा रहा है…","Sending OTP…"));
     const { error } = await supabaseBrowser.auth.signInWithOtp({ phone: normalized, options: { channel: "sms" } });
     if (error) setAuthMessage(error.message);
-    else { setAuthStep("otp"); setAuthMessage(t("OTP भेज दिया गया है।","OTP sent.")); }
+    else { setAuthStep("otp"); setOtp(""); setAuthMessage(t("OTP भेज दिया गया है।","OTP sent.")); }
   }
 
   async function verifyOtp() {
+    if (!supabaseBrowser) {
+      setAuthMessage(t("Login सेवा अभी उपलब्ध नहीं है।","Login service is not available right now."));
+      return;
+    }
     const normalized = phone.replace(/\s+/g, "");
-    const { error } = await supabaseBrowser.auth.verifyOtp({ phone: normalized, token: otp.trim(), type: "sms" });
+    const token = otp.replace(/\s+/g, "");
+    if (!/^\d{6}$/.test(token)) {
+      setAuthMessage(t("6 अंकों का OTP दर्ज करें।","Enter the 6-digit OTP."));
+      return;
+    }
+    setAuthMessage(t("OTP जाँचा जा रहा है…","Verifying OTP…"));
+    const { error } = await supabaseBrowser.auth.verifyOtp({ phone: normalized, token, type: "sms" });
     if (error) setAuthMessage(error.message);
-    else { setAuthStep("phone"); setAuthMessage(t("लॉगिन सफल। यह डिवाइस आपका trusted device है।","Login successful. This device is now trusted.")); }
+    else setAuthMessage(t("OTP सही है। Trusted device की जाँच हो रही है…","OTP verified. Checking trusted device…"));
   }
 
   async function logout() {
-    await supabaseBrowser.auth.signOut();
+    if (supabaseBrowser) await supabaseBrowser.auth.signOut();
     setUser(null);
+    setAuthStep("phone");
+    setOtp("");
   }
 
   async function startTest() {
