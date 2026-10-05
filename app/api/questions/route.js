@@ -23,7 +23,7 @@ export async function GET(request) {
 
   const { data: examRow, error: examError } = await client
     .from("exams")
-    .select("id,name,slug")
+    .select("id,name,slug,total_questions,duration_minutes,marks_per_question,negative_marks,passing_percentage")
     .eq("slug", exam)
     .eq("is_active", true)
     .maybeSingle();
