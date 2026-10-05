@@ -6,6 +6,24 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+let sessionPromise = null;
+async function ensureAuthSession() {
+  if (!supabase) throw new Error("Cloud storage is not configured");
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (session) return session;
+  if (!sessionPromise) {
+    sessionPromise = supabase.auth.signInAnonymously()
+      .then(({ data, error }) => {
+        if (error) throw error;
+        if (!data.session) throw new Error("Anonymous sign-in did not create a session. Enable Anonymous Sign-Ins in Supabase Auth settings.");
+        return data.session;
+      })
+      .finally(() => { sessionPromise = null; });
+  }
+  return sessionPromise;
+}
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, ShieldCheck, Target, Trophy, X } from "lucide-react";
 
 const questionBank = [
@@ -48,12 +66,7 @@ export default function HomePage() {
     async function loadHistory() {
       if (!supabase) { setStorageMessage("Cloud storage is not configured"); return; }
       try {
-        let { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          const signed = await supabase.auth.signInAnonymously();
-          if (signed.error) throw signed.error;
-          session = signed.data.session;
-        }
+        await ensureAuthSession();
         const { data, error } = await supabase.from("test_results")
           .select("id, test_name, score, total_questions, correct, wrong, unanswered, accuracy, answers, review_ids, language, created_at")
           .order("created_at", { ascending: false }).limit(50);
@@ -84,8 +97,8 @@ export default function HomePage() {
     setResult(summary); setView("result"); setShowSubmit(false);
     try {
       if (!supabase) throw new Error("Cloud storage is not configured");
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
+      const session = await ensureAuthSession();
+      const user = session.user;
       if (!user) throw new Error("Sign-in session not available");
       const { data, error } = await supabase.from("test_results").insert({
         user_id: user.id, session_key: user.id, test_name: summary.test_name,
