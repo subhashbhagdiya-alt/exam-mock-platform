@@ -17,8 +17,7 @@ export async function GET(request) {
   if (!url || !key) return NextResponse.json({ error: "Question bank is not configured" }, { status: 503 });
   const { searchParams } = new URL(request.url);
   const exam = searchParams.get("exam") || "mpesb";
-  const limit = Math.min(Math.max(Number(searchParams.get("limit") || 10), 1), 50);
-  const poolSize = Math.min(Math.max(limit * 2, limit), 50);
+  const requestedLimit = searchParams.get("limit");
   const client = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 
   const { data: examRow, error: examError } = await client
@@ -29,6 +28,8 @@ export async function GET(request) {
     .maybeSingle();
   if (examError) return NextResponse.json({ error: examError.message }, { status: 500 });
   if (!examRow) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
+  const limit = Math.min(Math.max(Number(requestedLimit || examRow.total_questions || 10), 1), 50);
+  const poolSize = Math.min(Math.max(limit * 2, limit), 50);
 
   const { data, error } = await client
     .from("question_bank")
