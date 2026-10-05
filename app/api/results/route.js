@@ -18,6 +18,16 @@ function validSessionKey(value) {
 function cleanResult(body) {
   const required = ["test_name","score","total_questions","correct","wrong","unanswered","accuracy","answers","review_ids","language"];
   if (!body || required.some(k => body[k] === undefined)) throw new Error("Invalid result payload");
+  const numeric = ["score","total_questions","correct","wrong","unanswered","accuracy","gross_score","negative_score","marks_per_question","negative_marks_per_question","passing_percentage"];
+  for (const key of numeric) {
+    if (body[key] !== undefined && (!Number.isFinite(Number(body[key])) || Number(body[key]) < 0)) throw new Error("Invalid numeric result field: " + key);
+  }
+  const total = Number(body.total_questions);
+  const correct = Number(body.correct);
+  const wrong = Number(body.wrong);
+  const unanswered = Number(body.unanswered);
+  if (!Number.isInteger(total) || total < 1 || !Number.isInteger(correct) || !Number.isInteger(wrong) || !Number.isInteger(unanswered) || correct + wrong + unanswered !== total) throw new Error("Invalid question counts");
+  if (Number(body.accuracy) > 100 || Number(body.passing_percentage || 0) > 100) throw new Error("Invalid percentage");
   return {
     session_key: body.session_key,
     test_name: String(body.test_name).slice(0, 100),
