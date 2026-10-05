@@ -46,6 +46,7 @@ export default function HomePage() {
   const [testQuestions, setTestQuestions] = useState(questionBank);
   const [examConfig, setExamConfig] = useState({ total_questions: 10, duration_minutes: 10, marks_per_question: 1, negative_marks: 0, passing_percentage: 33 });
   const [examName, setExamName] = useState("MPESB Mock Test");
+  const [examId, setExamId] = useState(null);
   const hi = language === "hi";
   const t = (h, e) => hi ? h : e;
   const q = testQuestions[current];
@@ -80,7 +81,7 @@ export default function HomePage() {
     try {
       const response = await fetch("/api/questions?exam=mpesb", { cache: "no-store" });
       const payload = await response.json();
-      if (response.ok && payload.exam) { const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setSeconds(config.duration_minutes * 60); } else { setSeconds(Number(examConfig.duration_minutes || 10) * 60); }
+      if (response.ok && payload.exam) { const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(config.duration_minutes * 60); } else { setSeconds(Number(examConfig.duration_minutes || 10) * 60); }
       if (response.ok && Array.isArray(payload.data) && payload.data.length) {
         const mapped = payload.data.map((item, index) => ({
           id: index + 1,
@@ -116,7 +117,7 @@ export default function HomePage() {
     const negativeMarks = wrongCount * Number(examConfig.negative_marks || 0);
     const netScore = Math.max(0, grossMarks - negativeMarks);
     const accuracy = Math.round(correctCount / Math.max(1, testQuestions.length) * 100);
-    const summary = { correct: correctCount, wrong: wrongCount, unanswered: unansweredCount, score: netScore, gross_score: grossMarks, negative_score: negativeMarks, accuracy, answers: {...answers}, review_ids: [...review], language, total_questions: testQuestions.length, marks_per_question: Number(examConfig.marks_per_question || 1), negative_marks_per_question: Number(examConfig.negative_marks || 0), passing_percentage: Number(examConfig.passing_percentage || 33), test_name: examName };
+    const summary = { exam_id: examId, question_ids: Object.fromEntries(testQuestions.map(item => [String(item.id), item.sourceId]).filter(([, sourceId]) => sourceId)), correct: correctCount, wrong: wrongCount, unanswered: unansweredCount, score: netScore, gross_score: grossMarks, negative_score: negativeMarks, accuracy, answers: {...answers}, review_ids: [...review], language, total_questions: testQuestions.length, marks_per_question: Number(examConfig.marks_per_question || 1), negative_marks_per_question: Number(examConfig.negative_marks || 0), passing_percentage: Number(examConfig.passing_percentage || 33), test_name: examName };
     setResult(summary); setView("result"); setShowSubmit(false);
     try {
       const sessionKey = await ensureSessionKey();
