@@ -3,7 +3,10 @@ import "./globals.css";
 export const metadata = {
   title: "ExamPrep — Mock Test Platform",
   description: "Practice competitive exams with timed mock tests, instant feedback, offline access, and detailed performance analysis.",
-  manifest: "/manifest.json",
+  manifest: "/manifest.json"
+};
+
+export const viewport = {
   themeColor: "#8f80ff"
 };
 
