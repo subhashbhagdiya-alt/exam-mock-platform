@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, ShieldCheck, Target, Trophy, X } from "lucide-react";
 
 const questionBank = [
@@ -31,11 +36,36 @@ export default function HomePage() {
   const [seconds, setSeconds] = useState(600);
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
+  const [storageMessage, setStorageMessage] = useState("");
   const [showSubmit, setShowSubmit] = useState(false);
   const hi = language === "hi";
   const t = (h, e) => hi ? h : e;
   const q = questionBank[current];
   const answered = Object.keys(answers).length;
+
+  useEffect(() => {
+    let active = true;
+    async function loadHistory() {
+      if (!supabase) { setStorageMessage("Cloud storage is not configured"); return; }
+      try {
+        let { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          const signed = await supabase.auth.signInAnonymously();
+          if (signed.error) throw signed.error;
+          session = signed.data.session;
+        }
+        const { data, error } = await supabase.from("test_results")
+          .select("id, test_name, score, total_questions, correct, wrong, unanswered, accuracy, answers, review_ids, language, created_at")
+          .order("created_at", { ascending: false }).limit(50);
+        if (error) throw error;
+        if (active) { setHistory(data || []); setStorageMessage(""); }
+      } catch (error) {
+        if (active) setStorageMessage(error?.message || "Could not load saved results");
+      }
+    }
+    loadHistory();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (view !== "test" || result) return;
@@ -47,10 +77,29 @@ export default function HomePage() {
   function startTest() {
     setAnswers({}); setReview([]); setCurrent(0); setSeconds(600); setResult(null); setShowSubmit(false); setView("test");
   }
-  function finishTest() {
+  async function finishTest() {
+    if (result) return;
     const correctCount = Object.entries(answers).filter(([id, a]) => questionBank[Number(id)-1].answer === a).length;
-    const summary = { correct: correctCount, wrong: Object.keys(answers).length - correctCount, unanswered: questionBank.length - Object.keys(answers).length, score: correctCount * 1, accuracy: Object.keys(answers).length ? Math.round(correctCount / Object.keys(answers).length * 100) : 0 };
-    setResult(summary); setHistory(old => [summary, ...old].slice(0, 5)); setView("result"); setShowSubmit(false);
+    const summary = { correct: correctCount, wrong: Object.keys(answers).filter(id => questionBank[Number(id)-1].answer !== answers[id]).length, unanswered: questionBank.length - Object.keys(answers).length, score: correctCount, accuracy: Math.round(correctCount / questionBank.length * 100), answers: {...answers}, review_ids: [...review], language, total_questions: questionBank.length, test_name: "Quick mock test" };
+    setResult(summary); setView("result"); setShowSubmit(false);
+    try {
+      if (!supabase) throw new Error("Cloud storage is not configured");
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error("Sign-in session not available");
+      const { data, error } = await supabase.from("test_results").insert({
+        user_id: user.id, session_key: user.id, test_name: summary.test_name,
+        score: summary.score, total_questions: summary.total_questions, correct: summary.correct,
+        wrong: summary.wrong, unanswered: summary.unanswered, accuracy: summary.accuracy,
+        answers: summary.answers, review_ids: summary.review_ids, language: summary.language
+      }).select("id, test_name, score, total_questions, correct, wrong, unanswered, accuracy, answers, review_ids, language, created_at").single();
+      if (error) throw error;
+      setHistory(old => [data, ...old].slice(0, 50));
+      setStorageMessage("");
+    } catch (error) {
+      setStorageMessage(error?.message || "Result could not be saved to cloud");
+      setHistory(old => [{...summary, created_at: new Date().toISOString()}, ...old].slice(0, 50));
+    }
   }
   function chooseAnswer(index) { setAnswers(old => ({ ...old, [q.id]: index })); }
   function toggleReview() { setReview(old => old.includes(q.id) ? old.filter(n => n !== q.id) : [...old, q.id]); }
@@ -69,7 +118,7 @@ export default function HomePage() {
       <section className="main">
         <header className="topbar"><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className="live-pill"><i/> {t("सिस्टम तैयार","SYSTEM READY")}</span><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button></div></header>
 
-        {view === "home" && <div className="content">
+        {view === "home" && <div className="content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
           <div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("आपके लक्ष्य, आपकी मेहनत","YOUR GOALS. YOUR GRIT.")}</div><h1>{t("नमस्ते, सुभाष","Hello, Subhash")} <span className="wave">✦</span><br/><span className="muted-heading">{t("आज कुछ नया सीखें।","Ready to level up today?")}</span></h1><p className="intro">{t("अपनी तैयारी को परखें, कमज़ोर विषय पहचानें और हर टेस्ट के साथ बेहतर बनें।","Test your knowledge, spot weak areas, and get better with every attempt.")}</p></div><div className="hero-emblem"><div className="emblem-ring"><GraduationCap size={47}/><span>EXAM<br/>READY</span></div><div className="orbit-dot dot-one"/><div className="orbit-dot dot-two"/></div></div>
           <div className="stats-grid"><div className="stat-card"><div className="stat-top"><span>{t("कुल मॉक टेस्ट","MOCK TESTS")}</span><div className="stat-icon purple"><BookOpen size={18}/></div></div><div className="stat-value">{history.length.toString().padStart(2,"0")}<small> / 50</small></div><div className="stat-foot">{t("हर प्रयास मायने रखता है","Every attempt counts")}</div></div><div className="stat-card"><div className="stat-top"><span>{t("सर्वश्रेष्ठ स्कोर","BEST SCORE")}</span><div className="stat-icon gold"><Trophy size={18}/></div></div><div className="stat-value">{history.length ? Math.max(...history.map(h=>h.score)) : "—"}<small> / 10</small></div><div className="stat-foot">{t("अपना रिकॉर्ड तोड़ें","Beat your personal best")}</div></div><div className="stat-card"><div className="stat-top"><span>{t("औसत सटीकता","AVG. ACCURACY")}</span><div className="stat-icon green"><Target size={18}/></div></div><div className="stat-value">{history.length ? Math.round(history.reduce((a,h)=>a+h.accuracy,0)/history.length) : 0}<small>%</small></div><div className="stat-foot">{t("सही जवाबों का प्रतिशत","Correct answer rate")}</div></div></div>
           <div className="section-heading"><div><h2>{t("अपनी तैयारी शुरू करें","Pick up where you want to grow")}</h2><p>{t("छोटे कदम, बड़ी सफलता।","Focused practice makes progress.")}</p></div><span className="section-count">01 — 03</span></div>
@@ -86,7 +135,7 @@ export default function HomePage() {
 
         {view === "result" && result && <div className="content result-content"><div className="result-hero"><div className="result-trophy"><Trophy size={37}/></div><div className="eyebrow"><span className="eyebrow-line"/> SESSION COMPLETE</div><h1>{t("शानदार प्रयास, सुभाष!","Great effort, Subhash!")}</h1><p>{t("हर टेस्ट आपको आपके लक्ष्य के और करीब ले जाता है।","Every attempt takes you one step closer to your goal.")}</p><div className="score-circle"><div><strong>{result.score}<small>/10</small></strong><span>{t("आपका स्कोर","YOUR SCORE")}</span></div></div></div><div className="result-stats"><div className="result-stat"><CheckCircle2 size={19}/><span>{t("सही जवाब","Correct")}</span><b>{result.correct}</b></div><div className="result-stat wrong-stat"><X size={19}/><span>{t("गलत जवाब","Incorrect")}</span><b>{result.wrong}</b></div><div className="result-stat unanswered-stat"><Clock3 size={19}/><span>{t("बिना जवाब","Unanswered")}</span><b>{result.unanswered}</b></div><div className="result-stat accuracy-stat"><Target size={19}/><span>{t("सटीकता","Accuracy")}</span><b>{result.accuracy}%</b></div></div><div className="review-panel"><div className="section-heading"><div><h2>{t("सवालों की समीक्षा","Review your answers")}</h2><p>{t("सही उत्तर और व्याख्या देखें।","See the correct answer and explanation.")}</p></div><span className="section-count">10 QUESTIONS</span></div>{questionBank.map((item,i)=>{const a=answers[item.id]; const isRight=a===item.answer; return <div className="review-question" key={item.id}><div className={"review-status " + (a===undefined ? "status-empty" : isRight ? "status-right" : "status-wrong")}>{a===undefined ? "—" : isRight ? <Check size={16}/> : <X size={16}/>}</div><div className="review-body"><b>{i+1}. {hi ? item.hi : item.en}</b><span>{t("आपका जवाब:","Your answer:")} {a===undefined ? t("जवाब नहीं दिया","Not answered") : item.options[a]}</span><span className="correct-answer">{t("सही जवाब:","Correct answer:")} {item.options[item.answer]}</span><p>{item.explanation}</p></div></div>})}</div><div className="result-actions"><button className="secondary-button" onClick={() => setView("home")}><Home size={17}/>{t("डैशबोर्ड","Dashboard")}</button><button className="primary-button" onClick={startTest}><RotateCcw size={17}/>{t("फिर से टेस्ट दें","Retake test")}</button></div></div>}
 
-        {view === "history" && <div className="content"><div className="eyebrow"><span className="eyebrow-line"/> YOUR JOURNEY</div><h1>{t("आपके रिज़ल्ट","Your results")}</h1><p className="intro">{t("आपके हाल के मॉक टेस्ट और प्रगति यहाँ दिखाई देंगे।","Your recent mock test attempts and progress appear here.")}</p>{history.length ? <div className="history-list">{history.map((h,i)=><div className="history-item" key={i}><div className="history-icon"><Award size={21}/></div><div className="history-main"><b>{t("क्विक मॉक टेस्ट","Quick mock test")}</b><span>{t("प्रयास","Attempt")} {history.length-i} · {h.accuracy}% {t("सटीकता","accuracy")}</span></div><strong>{h.score}/10</strong><span className="history-grade">{h.score>=8?t("बहुत अच्छा","Great"):h.score>=5?t("अच्छा प्रयास","Good effort"):t("अभ्यास जारी रखें","Keep practicing")}</span></div>)}</div> : <div className="empty-state"><div className="empty-icon"><BookOpen size={28}/></div><h2>{t("आपका पहला टेस्ट इंतज़ार कर रहा है","Your first test is waiting")}</h2><p>{t("टेस्ट पूरा करने के बाद आपका स्कोर और विश्लेषण यहाँ दिखाई देगा।","Complete a mock test to see your score and analysis here.")}</p><button className="primary-button" onClick={startTest}>{t("पहला टेस्ट शुरू करें","Start your first test")}<ArrowRight size={17}/></button></div>}</div>}
+        {view === "history" && <div className="content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}<div className="eyebrow"><span className="eyebrow-line"/> YOUR JOURNEY</div><h1>{t("आपके रिज़ल्ट","Your results")}</h1><p className="intro">{t("आपके हाल के मॉक टेस्ट और प्रगति यहाँ दिखाई देंगे।","Your recent mock test attempts and progress appear here.")}</p>{history.length ? <div className="history-list">{history.map((h,i)=><div className="history-item" key={i}><div className="history-icon"><Award size={21}/></div><div className="history-main"><b>{t("क्विक मॉक टेस्ट","Quick mock test")}</b><span>{t("प्रयास","Attempt")} {history.length-i} · {h.accuracy}% {t("सटीकता","accuracy")}</span></div><strong>{h.score}/10</strong><span className="history-grade">{h.score>=8?t("बहुत अच्छा","Great"):h.score>=5?t("अच्छा प्रयास","Good effort"):t("अभ्यास जारी रखें","Keep practicing")}</span></div>)}</div> : <div className="empty-state"><div className="empty-icon"><BookOpen size={28}/></div><h2>{t("आपका पहला टेस्ट इंतज़ार कर रहा है","Your first test is waiting")}</h2><p>{t("टेस्ट पूरा करने के बाद आपका स्कोर और विश्लेषण यहाँ दिखाई देगा।","Complete a mock test to see your score and analysis here.")}</p><button className="primary-button" onClick={startTest}>{t("पहला टेस्ट शुरू करें","Start your first test")}<ArrowRight size={17}/></button></div>}</div>}
 
         <footer className="footer"><span>© 2026 ExamPrep</span><span>{t("अभ्यास • प्रगति • सफलता","PRACTICE · PROGRESS · SUCCESS")}</span><span>{t("आपकी तैयारी जारी है","Keep showing up ✦")}</span></footer>
       </section>
