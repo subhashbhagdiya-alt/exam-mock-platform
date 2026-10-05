@@ -65,6 +65,31 @@ export default function HomePage() {
   });
 
   useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function flushOfflineResults() {
+      try {
+        const raw = localStorage.getItem("exam_prep_offline_results");
+        const pending = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(pending) || !pending.length) return;
+        const remaining = [];
+        for (const item of pending) {
+          const response = await fetch("/api/results", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(item) });
+          if (!response.ok) remaining.push(item);
+        }
+        localStorage.setItem("exam_prep_offline_results", JSON.stringify(remaining));
+      } catch {}
+    }
+    flushOfflineResults();
+    window.addEventListener("online", flushOfflineResults);
+    return () => window.removeEventListener("online", flushOfflineResults);
+  }, []);
+
+  useEffect(() => {
     let active = true;
     async function loadExams() {
       try {
@@ -171,9 +196,17 @@ export default function HomePage() {
     setResult(summary); setView("result"); setShowSubmit(false);
     try {
       const sessionKey = await ensureSessionKey();
+      const body = { session_key: sessionKey, ...summary };
+      if (!navigator.onLine) {
+        const pending = JSON.parse(localStorage.getItem("exam_prep_offline_results") || "[]");
+        localStorage.setItem("exam_prep_offline_results", JSON.stringify([...pending, body].slice(-20)));
+        setStorageMessage(t("ऑफलाइन रिज़ल्ट सुरक्षित है; इंटरनेट आते ही sync होगा।","Result saved offline; it will sync automatically when you are back online."));
+        setHistory(old => [{...summary, created_at: new Date().toISOString(), offline_pending: true}, ...old].slice(0, 50));
+        return;
+      }
       const response = await fetch("/api/results", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ session_key: sessionKey, ...summary })
+        body: JSON.stringify(body)
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error || "Result could not be saved to cloud");
