@@ -23,8 +23,8 @@ export async function GET(request) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return NextResponse.json({ error: "Database is not configured" }, { status: 503 });
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return NextResponse.json({ error: "Server database credentials are not configured" }, { status: 503 });
 
   const client = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: sources, error } = await client.from("exam_sources").select("id,url,last_hash,last_checked_at").in("url", SOURCES).eq("active", true);
