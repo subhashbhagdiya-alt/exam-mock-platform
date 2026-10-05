@@ -67,6 +67,8 @@ export default function HomePage() {
   const [authMessage, setAuthMessage] = useState("");
   const [practiceQuestionCount, setPracticeQuestionCount] = useState(10);
   const [practiceDuration, setPracticeDuration] = useState(10);
+  const [availableQuestionCount, setAvailableQuestionCount] = useState(0);
+  const [nativeSimStatus, setNativeSimStatus] = useState("web");
   const hi = language === "hi";
   const t = (h, e) => hi ? h : e;
   const q = testQuestions[current];
@@ -161,6 +163,44 @@ export default function HomePage() {
     loadExams();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadQuestionAvailability() {
+      try {
+        const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=50`, { cache: "no-store" });
+        const payload = await response.json();
+        if (active) setAvailableQuestionCount(Array.isArray(payload.data) ? payload.data.length : 0);
+      } catch { if (active) setAvailableQuestionCount(0); }
+    }
+    loadQuestionAvailability();
+    return () => { active = false; };
+  }, [selectedExam]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const bridge = window.ExamPrepNative;
+    if (!bridge) { setNativeSimStatus("web"); return; }
+    setNativeSimStatus("native");
+    if (typeof bridge.getSimState === "function") {
+      Promise.resolve(bridge.getSimState()).then(state => setNativeSimStatus(state === "ready" ? "sim-ready" : "native")).catch(() => {});
+    }
+  }, []);
+
+  async function requestNativeSimPermission() {
+    const bridge = typeof window !== "undefined" ? window.ExamPrepNative : null;
+    if (!bridge || typeof bridge.requestSimPermission !== "function") {
+      setAuthMessage(t("SIM की अनुमति केवल Android app में दी जा सकती है। Browser/PWA SIM को पढ़ नहीं सकता।","SIM permission can only be granted in the Android app. A browser/PWA cannot read SIM state."));
+      return;
+    }
+    try {
+      const state = await bridge.requestSimPermission();
+      setNativeSimStatus(state === "ready" ? "sim-ready" : "native");
+      setAuthMessage(state === "ready" ? t("SIM verification चालू है।","SIM verification is enabled.") : t("SIM permission पूरी नहीं हुई।","SIM permission was not granted."));
+    } catch (error) {
+      setAuthMessage(error?.message || t("SIM permission नहीं मिल सकी।","SIM permission could not be granted."));
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -338,8 +378,9 @@ export default function HomePage() {
             {!filteredJobTracks.length && <div className="exam-empty">{t("कोई परीक्षा नहीं मिली।","No exam found.")}</div>}
           </div>
           <div className="practice-config">
-  <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{[10,30,50].map(n=><button key={n} className={practiceQuestionCount===n?"active":""} disabled={n > (selectedExam === "mpesb" ? 19 : 0)} onClick={()=>setPracticeQuestionCount(n)}>{n}</button>)}</div><small>{t("30/50 तभी उपलब्ध होंगे जब उस परीक्षा का question bank पर्याप्त हो।","30/50 unlock when that exam has enough verified questions.")}</small></div>
+  <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{[10,20,30,40,50].map(n=><button key={n} className={practiceQuestionCount===n?"active":""} disabled={n > availableQuestionCount} onClick={()=>setPracticeQuestionCount(n)}>{n}</button>)}</div><small>{availableQuestionCount ? t(`${availableQuestionCount} verified/active questions अभी उपलब्ध हैं।`,`There are ${availableQuestionCount} active/verified questions available right now.`) : t("इस परीक्षा का question bank अभी उपलब्ध नहीं है।","This exam does not have a question bank yet.")}</small></div>
   <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60].map(n=><button key={n} className={practiceDuration===n?"active":""} onClick={()=>setPracticeDuration(n)}>{n}m</button>)}</div></div>
+  <div className="config-block device-security"><b>{t("SIM / डिवाइस सुरक्षा","SIM / Device security")}</b><div className="config-options"><button onClick={requestNativeSimPermission}>{nativeSimStatus === "sim-ready" ? t("SIM चालू ✓","SIM active ✓") : t("SIM अनुमति दें","Allow SIM")}</button></div><small>{t("Android app में user की permission के बाद SIM state को trusted-device check में जोड़ा जा सकता है।","In the Android app, SIM state can be added to trusted-device checks after the user grants permission.")}</small></div>
 </div>
 <div className="feature-grid"><article className="feature-card featured"><div className="feature-top"><div className="feature-icon"><ListChecks size={22}/></div><span className="tag">POPULAR</span></div><h3>{t("चयनित भर्ती का मॉक टेस्ट","Mock test for selected recruitment")}</h3><div className="selected-track"><span>{t("ट्रैक","TRACK")}</span><b>{jobTracks.find(item => item.slug === selectedJobTrack)?.name_hi || examName}</b></div><p>{t(`${examConfig.total_questions} सवाल · ${examConfig.duration_minutes} मिनट · तुरंत रिज़ल्ट`,`${examConfig.total_questions} questions · ${examConfig.duration_minutes} minutes · instant results`)}</p><div className="feature-meta"><span><Clock3 size={14}/> {examConfig.duration_minutes} min</span><span><Target size={14}/> {Number(examConfig.total_questions) * Number(examConfig.marks_per_question)} marks</span></div><button className="primary-button" onClick={startTest}>{t("टेस्ट शुरू करें","Start mock test")}<ArrowRight size={17}/></button><div className="card-decoration">01</div></article><article className="feature-card"><div className="feature-top"><div className="feature-icon green-icon"><Target size={22}/></div><span className="tag tag-green">PRACTICE</span></div><h3>{t("स्मार्ट रिविज़न","Smart revision")}</h3><p>{t("गलत जवाबों की समीक्षा करें और कॉन्सेप्ट मज़बूत करें।","Review explanations and strengthen concepts.")}</p><div className="mini-progress"><span style={{width: history.length ? "65%" : "8%"}}/></div><div className="feature-meta"><span>{t("आपकी प्रगति","Your progress")}</span><span>{history.length ? "65%" : "0%"}</span></div><button className="secondary-button" onClick={() => setView("history")}>{t("रिज़ल्ट देखें","View results")}<ArrowRight size={16}/></button></article><article className="feature-card"><div className="feature-top"><div className="feature-icon blue-icon"><Globe2 size={22}/></div><span className="tag tag-blue">BILINGUAL</span></div><h3>{t("हिंदी + English","Hindi + English")}</h3><p>{t("अपनी सुविधा के अनुसार भाषा बदलें।","Switch between Hindi and English anytime.")}</p><div className="language-pills"><span>अ आ इ</span><span>ABC</span></div><div className="feature-meta"><span>{t("दोनों भाषाओं में सवाल","Questions in both languages")}</span></div><button className="secondary-button" onClick={() => setLanguage(hi ? "en" : "hi")}>{t("English में बदलें","Switch to हिंदी")}<Languages size={16}/></button></article></div>
           <div className="bottom-note"><div className="note-icon"><ShieldCheck size={18}/></div><div><b>{t("आपकी तैयारी, आपकी रफ़्तार","Your preparation, your pace")}</b><p>{t("यह डेमो प्लेटफॉर्म है। अभ्यास के लिए प्रश्न दिए गए हैं; आधिकारिक परीक्षा के लिए नवीनतम सिलेबस देखें।","This is a demo practice platform. Check the latest official syllabus for your target exam.")}</p></div></div>
