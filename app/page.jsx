@@ -379,6 +379,9 @@ export default function HomePage() {
     setUser(null);
     setAuthStep("phone");
     setOtp("");
+    setRecoveryCode("");
+    setTrustedDeviceVerified(false);
+    setAuthMessage("");
   }
 
   async function startTest() {
