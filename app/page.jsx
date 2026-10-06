@@ -66,8 +66,10 @@ export default function HomePage() {
   const [examName, setExamName] = useState("MPESB Mock Test");
   const [examId, setExamId] = useState(null);
   const [exams, setExams] = useState([]);
+  const [examsLoading, setExamsLoading] = useState(true);
   const [selectedExam, setSelectedExam] = useState("mpesb");
   const [jobTracks, setJobTracks] = useState([]);
+  const [jobTracksLoading, setJobTracksLoading] = useState(true);
   const [selectedJobTrack, setSelectedJobTrack] = useState("mpesb-common");
   const [examFilter, setExamFilter] = useState("all");
   const [examQuery, setExamQuery] = useState("");
@@ -199,6 +201,7 @@ export default function HomePage() {
         const available = Array.isArray(payload.data) ? payload.data : [];
         if (active) {
           setExams(available);
+          setExamsLoading(false);
           const preferred = available.find(item => item.slug === "mpesb") || available[0];
           if (preferred) {
             setSelectedExam(preferred.slug);
@@ -207,7 +210,7 @@ export default function HomePage() {
             setExamName(preferred.name || "Mock Test");
           }
         }
-      } catch {}
+      } catch { if (active) setExamsLoading(false); }
     }
     loadExams();
     return () => { active = false; };
@@ -248,8 +251,11 @@ export default function HomePage() {
         const response = await fetch("/api/job-tracks", { cache: "no-store" });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error || "Could not load job tracks");
-        if (active) setJobTracks(Array.isArray(payload.data) ? payload.data : []);
-      } catch {}
+        if (active) {
+          setJobTracks(Array.isArray(payload.data) ? payload.data : []);
+          setJobTracksLoading(false);
+        }
+      } catch { if (active) setJobTracksLoading(false); }
     }
     loadJobTracks();
     return () => { active = false; };
@@ -483,13 +489,13 @@ export default function HomePage() {
               <div className="exam-search"><Search size={15}/><input value={examQuery} onChange={e => setExamQuery(e.target.value)} placeholder={t("परीक्षा खोजें…","Search exams…")} /></div>
               <div className="exam-filters"><button className={examFilter==="all" ? "active" : ""} onClick={() => setExamFilter("all")}><SlidersHorizontal size={13}/>{t("सभी","All")}</button><button className={examFilter==="recruitment" ? "active" : ""} onClick={() => setExamFilter("recruitment")}>{t("भर्ती","Recruitment")}</button><button className={examFilter==="entrance" ? "active" : ""} onClick={() => setExamFilter("entrance")}>{t("प्रवेश","Entrance")}</button><button className={examFilter==="eligibility" ? "active" : ""} onClick={() => setExamFilter("eligibility")}>{t("पात्रता","Eligibility")}</button></div>
             </div>
-            <div className="job-grid">{filteredJobTracks.map((track,index) => <button key={track.slug} className={"job-card " + (selectedJobTrack === track.slug ? "selected" : "") + (track.status === "coming_soon" ? "coming" : "")} onClick={() => { if (track.status !== "question_bank_ready" || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedExam(track.exam_slug); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Number(exam.duration_minutes || 10), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); } }}>
+            <div className="job-grid">{jobTracksLoading ? <div className="exam-loading">{t("परीक्षाएँ लोड हो रही हैं…","Loading exams…")}</div> : filteredJobTracks.map((track,index) => <button key={track.slug} className={"job-card " + (selectedJobTrack === track.slug ? "selected" : "") + (track.status === "coming_soon" ? "coming" : "")} onClick={() => { if (track.status !== "question_bank_ready" || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedExam(track.exam_slug); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Number(exam.duration_minutes || 10), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); } }}>
                 <span className="job-number">{String(index + 1).padStart(2,"0")}</span><div className="job-3d-icon"><GraduationCap size={17}/></div>
                 <div className="job-copy"><b>{hi ? track.name_hi : track.name_en}</b><span>{hi ? track.description_hi : track.description_en}</span><small>{track.exam_date_text ? `📅 ${track.exam_date_text}` : "📅 2026"}{track.form_status_text ? ` · ${track.form_status_text}` : ""}</small></div>
                 <em>{track.status === "question_bank_ready" ? t("अभी उपलब्ध","READY") : t("जल्द आएगा","SOON")}</em>
                 {selectedJobTrack === track.slug && <Check className="job-selected-check" size={15}/>}
               </button>)}</div>
-            {!filteredJobTracks.length && <div className="exam-empty">{t("कोई परीक्षा नहीं मिली।","No exam found.")}</div>}
+            {!jobTracksLoading && !filteredJobTracks.length && <div className="exam-empty">{t("कोई परीक्षा नहीं मिली।","No exam found.")}</div>}
           </div>
           <div className="practice-config">
   <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{Array.from(new Set([10,20,30,40,50,availableQuestionCount].filter(n => n > 0 && n <= availableQuestionCount))).sort((a,b) => a-b).map(n=><button key={n} className={practiceQuestionCount===n?"active":""} onClick={()=>setPracticeQuestionCount(n)}>{n}</button>)}</div><small>{availableQuestionCount ? t(`${availableQuestionCount} verified/active questions अभी उपलब्ध हैं।`,`There are ${availableQuestionCount} active/verified questions available right now.`) : t("इस परीक्षा का question bank अभी उपलब्ध नहीं है।","This exam does not have a question bank yet.")}</small></div>
