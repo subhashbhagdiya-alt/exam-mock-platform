@@ -71,6 +71,7 @@ export default function HomePage() {
   const [jobTracks, setJobTracks] = useState([]);
   const [jobTracksLoading, setJobTracksLoading] = useState(true);
   const [selectedJobTrack, setSelectedJobTrack] = useState("mpesb-common");
+  const [openExamGroup, setOpenExamGroup] = useState("MPESB");
   const [examFilter, setExamFilter] = useState("all");
   const [examQuery, setExamQuery] = useState("");
   const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
@@ -577,16 +578,16 @@ export default function HomePage() {
   const groupTracks = filteredJobTracks.filter(track => getExamGroup(track) === group.key);
   if (!groupTracks.length) return null;
   return <section key={group.key} className="exam-group">
-    <div className="exam-group-heading">
-      <div className="exam-group-title"><span className="exam-group-icon">{group.icon}</span><div><b>{hi ? group.labelHi : group.labelEn}</b><small>{groupTracks.length} {t("परीक्षाएँ","exams")}</small></div></div>
-      <span>{String(groupTracks.filter(track => track.question_bank_ready === true && track.exam_slug).length).padStart(2,"0")} READY</span>
-    </div>
-    <div className="job-grid">{groupTracks.map((track,index) => <button key={track.slug} className={"job-card " + (selectedJobTrack === track.slug ? "selected" : "") + (track.status === "coming_soon" ? "coming" : "")} onClick={() => { if (track.status !== "question_bank_ready" || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedExam(track.exam_slug); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Number(exam.duration_minutes || 10), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); } }}>
+    <button type="button" className={"exam-group-heading " + (openExamGroup === group.key ? "open" : "")} onClick={() => setOpenExamGroup(openExamGroup === group.key ? "" : group.key)}>
+      <span className="exam-group-title"><span className="exam-group-icon">{group.icon}</span><span><b>{hi ? group.labelHi : group.labelEn}</b><small>{groupTracks.length} {t("परीक्षाएँ","exams")}</small></span></span>
+      <span className="group-heading-right"><em>{String(groupTracks.filter(track => track.question_bank_ready === true && track.exam_slug).length).padStart(2,"0")} READY</em><ChevronRight size={16}/></span>
+    </button>
+    {openExamGroup === group.key && <div className="job-grid">{groupTracks.map((track,index) => <button key={track.slug} className={"job-card " + (selectedJobTrack === track.slug ? "selected" : "") + (track.status === "coming_soon" ? "coming" : "")} onClick={() => { if (track.status !== "question_bank_ready" || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedExam(track.exam_slug); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Number(exam.duration_minutes || 10), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); } }}>
       <span className="job-number">{String(index + 1).padStart(2,"0")}</span><div className="job-3d-icon"><GraduationCap size={17}/></div>
       <div className="job-copy"><b>{hi ? track.name_hi : track.name_en}</b><span>{hi ? track.description_hi : track.description_en}</span><small>{track.exam_date_text ? `📅 ${track.exam_date_text}` : "📅 2026"}{track.form_status_text ? ` · ${track.form_status_text}` : ""}</small></div>
       <em>{track.status === "question_bank_ready" ? t("अभी उपलब्ध","READY") : t("जल्द आएगा","SOON")}</em>
       {selectedJobTrack === track.slug && <Check className="job-selected-check" size={15}/>}
-    </button>)}</div>
+    </button>)}</div>}
   </section>;
 })}</div>
 </div>
