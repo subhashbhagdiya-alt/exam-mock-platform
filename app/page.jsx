@@ -468,6 +468,7 @@ export default function HomePage() {
     setAuthMessage("");
     if (!user) setAuthMessage(t("Guest practice mode: login के बिना टेस्ट शुरू हो रहा है। रिज़ल्ट इस device पर सेव होगा।","Guest practice mode: starting without login. The result will be saved on this device."));
     if (questionLoadError) { setAuthMessage(questionLoadError); return; }
+    if (questionBankLoading) { setAuthMessage(t("सवाल अभी लोड हो रहे हैं। एक सेकंड रुककर फिर दबाएँ।","Questions are still loading. Wait a second and tap again.")); return; }
     const readyCount = Number(selectedTrackData?.verified_question_count || availableQuestionCount || 0);
     if (!readyCount) { setAuthMessage(t("इस परीक्षा के verified सवाल अभी उपलब्ध नहीं हैं।","Verified questions are not available for this exam yet.")); return; }
     const requestedCount = Math.min(Number(practiceQuestionCount || 10), readyCount);
