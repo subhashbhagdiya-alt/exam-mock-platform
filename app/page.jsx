@@ -564,6 +564,7 @@ export default function HomePage() {
     </button>)}</div>
   </section>;
 })}</div>
+</div>
 <div className="practice-config">
   <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{Array.from(new Set([10,20,30,40,50,availableQuestionCount].filter(n => n > 0 && n <= availableQuestionCount))).sort((a,b) => a-b).map(n=><button key={n} className={practiceQuestionCount===n?"active":""} onClick={()=>setPracticeQuestionCount(n)}>{n}</button>)}</div><small>{availableQuestionCount ? t(`${availableQuestionCount} verified/active questions अभी उपलब्ध हैं।`,`There are ${availableQuestionCount} active/verified questions available right now.`) : t("इस परीक्षा का verified question bank अभी उपलब्ध नहीं है।","This exam does not have a verified question bank yet.")}</small></div>
   <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60].map(n=><button key={n} className={practiceDuration===n?"active":""} onClick={()=>setPracticeDuration(n)}>{n}m</button>)}</div></div>
