@@ -755,3 +755,75 @@
   .result-actions{bottom:5px}
   .result-actions button{min-height:40px;font-size:8px}
 }
+
+
+/* ===== Result analytics v6 ===== */
+.result-content{max-width:1100px}
+.result-hero{
+  border:1px solid #2f3542;
+  border-radius:20px;
+  background:radial-gradient(circle at 50% 0%,#211d3a,#10131a 55%);
+  box-shadow:0 18px 45px #0005;
+}
+.result-hero h1{font-size:clamp(24px,3vw,34px);letter-spacing:-.5px}
+.result-insight{
+  border:1px solid #2c3340;
+  border-radius:16px;
+  background:#11151c;
+}
+.result-stats{gap:9px}
+.result-stat{
+  border-radius:13px;
+  border-color:#2b313e;
+  background:#12161d;
+  transition:transform .15s,border-color .15s;
+}
+.result-stat:hover{transform:translateY(-1px);border-color:#454d5d}
+.subject-analysis{
+  margin-top:14px;
+  padding:16px;
+  border:1px solid #2b313e;
+  border-radius:16px;
+  background:#11151c;
+}
+.subject-analysis .section-heading{margin-bottom:12px}
+.subject-list{display:grid;gap:10px}
+.subject-row{
+  padding:10px 11px;
+  border:1px solid #272d39;
+  border-radius:11px;
+  background:#0e1218;
+}
+.subject-row-head{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-bottom:7px;
+}
+.subject-row-head b{
+  color:#e9ebf0;font:800 11px/1.25 Manrope,sans-serif;
+}
+.subject-row-head span{
+  color:#8f97a8;font:800 9px/1 Manrope,sans-serif;
+}
+.subject-bar{
+  height:6px;border-radius:999px;overflow:hidden;background:#252b36;
+}
+.subject-bar i{
+  display:block;height:100%;border-radius:inherit;
+  background:linear-gradient(90deg,#6655c7,#8d7bed);
+  transition:width .35s ease;
+}
+.review-panel{
+  border-color:#2b313e;
+  background:#11151c;
+}
+@media(max-width:760px){
+  .result-content{padding:12px 10px 88px}
+  .result-hero{border-radius:15px;padding:15px 12px}
+  .result-hero h1{font-size:21px}
+  .result-insight{padding:12px}
+  .subject-analysis{padding:11px;border-radius:14px}
+  .subject-row{padding:9px}
+  .subject-row-head b{font-size:9px}
+  .subject-row-head span{font-size:7px}
+  .subject-bar{height:5px}
+}
