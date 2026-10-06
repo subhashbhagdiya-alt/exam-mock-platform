@@ -368,6 +368,7 @@ export default function HomePage() {
       setAuthMessage(error?.message || t("Recovery code गलत, expired या पहले इस्तेमाल हो चुका है।","Recovery code is invalid, expired, or already used."));
       return;
     }
+    setTrustedDeviceVerified(true);
     setAuthStep("phone");
     setRecoveryCode("");
     setAuthMessage(t("नया device trusted बन गया।","The new device is now trusted."));
