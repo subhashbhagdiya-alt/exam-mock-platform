@@ -827,3 +827,14 @@
   .subject-row-head span{font-size:7px}
   .subject-bar{height:5px}
 }
+
+.start-hint{
+  display:block;
+  margin-top:7px;
+  color:#7f8798;
+  font:700 8px/1.4 Manrope,sans-serif;
+}
+.error-hint{color:#e59a9a}
+@media(max-width:760px){
+  .start-hint{font-size:7px;margin-top:6px}
+}
