@@ -28,8 +28,9 @@ export async function GET(request) {
     .maybeSingle();
   if (examError) return NextResponse.json({ error: examError.message }, { status: 500 });
   if (!examRow) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
-  const limit = Math.min(Math.max(Number(requestedLimit || examRow.total_questions || 10), 1), 50);
-  const poolSize = Math.min(Math.max(limit * 2, limit), 50);
+
+  const limit = Math.min(Math.max(Number(requestedLimit || examRow.total_questions || 10), 1), 100);
+  const poolSize = Math.min(Math.max(limit * 2, limit), 100);
 
   const { data, error } = await client
     .from("question_bank")
@@ -45,6 +46,6 @@ export async function GET(request) {
   return NextResponse.json({
     exam: examRow,
     data: selected,
-    meta: { requested: limit, available: data?.length || 0, selection: "high-prediction pool + shuffle" }
+    meta: { requested: limit, available: data?.length || 0, selection: "verified prediction-ranked pool + shuffle" }
   });
 }
