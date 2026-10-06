@@ -9,3 +9,25 @@
 .auth-panel{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 22px;padding:16px 18px;border:1px solid #272b3a;border-radius:16px;background:#10131b}.auth-panel>div:first-child{display:flex;flex-direction:column;gap:4px}.auth-panel span,.auth-panel small{color:#8f95a8;font-size:12px}.auth-actions{display:flex;gap:8px;align-items:center}.auth-actions input,.auth-panel input{background:#090b10;border:1px solid #303548;color:#fff;border-radius:10px;padding:10px 12px;outline:none}.auth-panel button{border:0;border-radius:10px;padding:10px 14px;background:#8f80ff;color:#fff;font-weight:700;cursor:pointer}.practice-config{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}.config-block{padding:16px;border:1px solid #272b3a;border-radius:15px;background:#10131b}.config-block>b{display:block;margin-bottom:10px}.config-options{display:flex;gap:8px;flex-wrap:wrap}.config-options button{border:1px solid #303548;background:#0a0d13;color:#c9cede;border-radius:9px;padding:9px 15px;cursor:pointer}.config-options button.active{background:#8f80ff;border-color:#8f80ff;color:#fff}.config-options button:disabled{opacity:.35;cursor:not-allowed}.config-block small{display:block;color:#777e91;margin-top:9px;font-size:11px}@media(max-width:700px){.auth-panel,.auth-actions{flex-direction:column;align-items:stretch}.practice-config{grid-template-columns:1fr}}
 
 .exam-loading{grid-column:1/-1;padding:28px;text-align:center;border:1px dashed #343849;background:#10131a;border-radius:12px;color:#858da0;font-size:10px;letter-spacing:.2px}
+
+/* Premium light + 3D exam catalog */
+.exam-groups{display:grid;gap:22px}
+.exam-group{position:relative;padding:14px;border:1px solid #292d3d;border-radius:18px;background:linear-gradient(145deg,#121622,#0b0e15);box-shadow:0 18px 40px #0005, inset 0 1px 0 #ffffff08;overflow:hidden}
+.exam-group:before{content:"";position:absolute;inset:-35% auto auto -10%;width:45%;height:80%;background:radial-gradient(circle,#9b8cff18,transparent 68%);pointer-events:none}
+.exam-group-heading{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;padding:4px 3px}
+.exam-group-heading>span{font:800 7px Manrope;letter-spacing:1.2px;color:#79dfb0;border:1px solid #2e604b;background:#10231b;border-radius:999px;padding:6px 9px}
+.exam-group-title{display:flex;align-items:center;gap:9px}
+.exam-group-title>div{display:grid;gap:2px}
+.exam-group-title b{font:800 13px/1.2 Manrope,'Noto Sans Devanagari',sans-serif;color:#e8eaf3}
+.exam-group-title small{font-size:8px;color:#737b8e}
+.exam-group-icon{width:30px;height:30px;display:grid;place-items:center;border:1px solid #413a61;border-radius:9px;background:linear-gradient(145deg,#2c2548,#171525);box-shadow:0 7px 13px #0005, inset 0 1px 0 #ffffff12;transform:translateZ(12px)}
+.exam-group .job-grid{position:relative;z-index:1}
+.job-card{box-shadow:0 12px 25px #0005, inset 0 1px 0 #ffffff0b, inset 0 -1px 0 #0008}
+.job-card:after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,#ffffff09,transparent 28%,transparent 72%,#a99bff05);pointer-events:none}
+.job-card:hover{box-shadow:0 20px 38px #0007,0 0 24px #9c8bff12,inset 0 1px 0 #ffffff12}
+.job-card.selected{box-shadow:0 18px 38px #0007,0 0 28px #9c8bff20,inset 0 1px 0 #ffffff16}
+.auth-panel{box-shadow:0 14px 34px #0005,inset 0 1px 0 #ffffff08}
+.phone-input{display:flex;align-items:center;min-width:205px;background:#090b10;border:1px solid #303548;border-radius:10px;overflow:hidden}
+.phone-input>span{padding:10px 10px;border-right:1px solid #303548;color:#b8afff;font-weight:800;background:#111322}
+.phone-input input{min-width:0!important;flex:1;border:0!important;background:transparent!important;border-radius:0!important}
+@media(max-width:700px){.exam-group{padding:11px}.exam-group-title b{font-size:12px}.exam-group-title small{font-size:7px}.phone-input{width:100%;min-width:0}.phone-input input{width:100%}}
