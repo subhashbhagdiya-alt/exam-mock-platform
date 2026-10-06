@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Target, Trophy, X } from "lucide-react";
 
@@ -279,7 +279,10 @@ export default function HomePage() {
 
   useEffect(() => {
     if (view !== "test" || result) return;
-    if (seconds <= 0) { finishTest(); return; }
+    if (seconds <= 0) {
+      finishTestRef.current?.();
+      return;
+    }
     const timer = setTimeout(() => setSeconds(s => s - 1), 1000);
     return () => clearTimeout(timer);
   }, [view, seconds, result]);
@@ -405,6 +408,8 @@ export default function HomePage() {
     }
     setView("test");
   }
+  const finishTestRef = useRef(null);
+
   async function finishTest() {
     if (result) return;
     const entries = Object.entries(answers);
@@ -444,6 +449,8 @@ export default function HomePage() {
       setHistory(old => [{...summary, created_at: new Date().toISOString()}, ...old].slice(0, 50));
     }
   }
+  finishTestRef.current = finishTest;
+
   function chooseAnswer(index) { setAnswers(old => ({ ...old, [q.id]: index })); }
   function toggleReview() { setReview(old => old.includes(q.id) ? old.filter(n => n !== q.id) : [...old, q.id]); }
 
