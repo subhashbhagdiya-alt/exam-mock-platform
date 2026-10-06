@@ -84,6 +84,7 @@ export default function HomePage() {
   const [practiceQuestionCount, setPracticeQuestionCount] = useState(10);
   const [practiceDuration, setPracticeDuration] = useState(10);
   const [availableQuestionCount, setAvailableQuestionCount] = useState(0);
+  const [questionLoadError, setQuestionLoadError] = useState("");
   const [nativeSimStatus, setNativeSimStatus] = useState("web");
   const [trustedDeviceVerified, setTrustedDeviceVerified] = useState(false);
   const hi = language === "hi";
@@ -229,8 +230,17 @@ export default function HomePage() {
       try {
         const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=50`, { cache: "no-store" });
         const payload = await response.json();
-        if (active) setAvailableQuestionCount(Array.isArray(payload.data) ? payload.data.length : 0);
-      } catch { if (active) setAvailableQuestionCount(0); }
+        if (!response.ok) throw new Error(payload?.error || "Question bank unavailable");
+        if (active) {
+          setAvailableQuestionCount(Array.isArray(payload.data) ? payload.data.length : 0);
+          setQuestionLoadError("");
+        }
+      } catch (error) {
+        if (active) {
+          setAvailableQuestionCount(0);
+          setQuestionLoadError(error?.message || "Question bank unavailable");
+        }
+      }
     }
     loadQuestionAvailability();
     return () => { active = false; };
@@ -393,9 +403,10 @@ export default function HomePage() {
   }
 
   async function startTest() {
+    setAuthMessage("");
     if (!user) { setAuthMessage(t("पहले मोबाइल नंबर से लॉगिन करें।","Please sign in with your mobile number first.")); return; }
     if (!trustedDeviceVerified) { setAuthMessage(t("Trusted device verification पूरी होने तक test शुरू नहीं किया जा सकता।","The test cannot start until trusted-device verification is complete.")); return; }
-    if (!availableQuestionCount || practiceQuestionCount > availableQuestionCount) { setAuthMessage(t("इस परीक्षा के लिए चुने गए सवाल अभी उपलब्ध नहीं हैं।","The selected number of questions is not currently available for this exam.")); return; }
+    if (questionLoadError || !availableQuestionCount || practiceQuestionCount > availableQuestionCount) { setAuthMessage(t("इस परीक्षा का verified question bank अभी उपलब्ध नहीं है।","The verified question bank for this exam is not available right now.")); return; }
     setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setShowSubmit(false);
     try {
       const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${practiceQuestionCount}`, { cache: "no-store" });
@@ -417,12 +428,20 @@ export default function HomePage() {
           predictionScore: Number(item.prediction_score || 0)
         })).filter(item => item.options.length === 4 && Number.isInteger(item.answer) && item.answer >= 0 && item.answer < 4);
         if (mapped.length) setTestQuestions(mapped);
-        else setTestQuestions(questionBank);
+        else {
+          setTestQuestions([]);
+          setAuthMessage(t("इस परीक्षा के सवाल वैध format में उपलब्ध नहीं हैं।","This exam's questions are not available in a valid format."));
+          return;
+        }
       } else {
-        setTestQuestions(questionBank);
+        setTestQuestions([]);
+        setAuthMessage(t("इस परीक्षा के verified सवाल अभी उपलब्ध नहीं हैं।","Verified questions are not available for this exam yet."));
+        return;
       }
-    } catch {
-      setTestQuestions(questionBank);
+    } catch (error) {
+      setTestQuestions([]);
+      setAuthMessage(error?.message || t("Question bank लोड नहीं हो सका। कृपया दोबारा प्रयास करें।","The question bank could not be loaded. Please try again."));
+      return;
     }
     setView("test");
   }
@@ -496,7 +515,7 @@ export default function HomePage() {
           <div className="stats-grid"><div className="stat-card"><div className="stat-top"><span>{t("कुल मॉक टेस्ट","MOCK TESTS")}</span><div className="stat-icon purple"><BookOpen size={18}/></div></div><div className="stat-value">{history.length.toString().padStart(2,"0")}<small> / 50</small></div><div className="stat-foot">{t("हर प्रयास मायने रखता है","Every attempt counts")}</div></div><div className="stat-card"><div className="stat-top"><span>{t("सर्वश्रेष्ठ स्कोर","BEST SCORE")}</span><div className="stat-icon gold"><Trophy size={18}/></div></div><div className="stat-value">{history.length ? (() => { const best = history.reduce((a, h) => Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1)) > Number(a.score || 0) / Math.max(1, Number(a.total_questions || 10) * Number(a.marks_per_question || 1)) ? h : a, history[0]); return best.score; })() : "—"}<small> / {history.length ? (() => { const best = history.reduce((a, h) => Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1)) > Number(a.score || 0) / Math.max(1, Number(a.total_questions || 10) * Number(a.marks_per_question || 1)) ? h : a, history[0]); return Number(best.total_questions || 10) * Number(best.marks_per_question || 1); })() : 0}</small></div><div className="stat-foot">{t("अपना रिकॉर्ड तोड़ें","Beat your personal best")}</div></div><div className="stat-card"><div className="stat-top"><span>{t("औसत सटीकता","AVG. ACCURACY")}</span><div className="stat-icon green"><Target size={18}/></div></div><div className="stat-value">{history.length ? Math.round(history.reduce((a,h)=>a+h.accuracy,0)/history.length) : 0}<small>%</small></div><div className="stat-foot">{t("सही जवाबों का प्रतिशत","Correct answer rate")}</div></div></div>
           <div className="section-heading"><div><h2>{t("अपनी तैयारी शुरू करें","Pick up where you want to grow")}</h2><p>{t("छोटे कदम, बड़ी सफलता।","Focused practice makes progress.")}</p></div><span className="section-count">01 — 03</span></div>
           <div className="job-section">
-            <div className="section-heading job-heading"><div><h2>{t("MPESB परीक्षा / जॉब चुनें","Choose an MPESB exam / job")}</h2><p>{t("2026 की मौजूदा भर्ती, प्रवेश और पात्रता परीक्षाएँ एक जगह।","Current 2026 recruitment, entrance and eligibility exams in one place.")}</p></div><span className="section-count">{jobTracks.length ? String(jobTracks.length).padStart(2,"0") : "00"} EXAMS</span></div>
+            <div className="section-heading job-heading"><div><h2>{t("MPESB परीक्षा / जॉब चुनें","Choose an MPESB exam / job")}</h2><p>{t("2026 की मौजूदा भर्ती, प्रवेश और पात्रता परीक्षाएँ एक जगह।","Current 2026 recruitment, entrance and eligibility exams in one place.")}</p></div><span className="section-count">{String(jobTracks.filter(track => track.status === "question_bank_ready" && track.exam_slug).length).padStart(2,"0")} READY · {String(jobTracks.length).padStart(2,"0")} EXAMS</span></div>
             <div className="exam-toolbar">
               <div className="exam-search"><Search size={15}/><input value={examQuery} onChange={e => setExamQuery(e.target.value)} placeholder={t("परीक्षा खोजें…","Search exams…")} /></div>
               <div className="exam-filters"><button className={examFilter==="all" ? "active" : ""} onClick={() => setExamFilter("all")}><SlidersHorizontal size={13}/>{t("सभी","All")}</button><button className={examFilter==="recruitment" ? "active" : ""} onClick={() => setExamFilter("recruitment")}>{t("भर्ती","Recruitment")}</button><button className={examFilter==="entrance" ? "active" : ""} onClick={() => setExamFilter("entrance")}>{t("प्रवेश","Entrance")}</button><button className={examFilter==="eligibility" ? "active" : ""} onClick={() => setExamFilter("eligibility")}>{t("पात्रता","Eligibility")}</button></div>
@@ -510,7 +529,7 @@ export default function HomePage() {
             {!jobTracksLoading && !filteredJobTracks.length && <div className="exam-empty">{t("कोई परीक्षा नहीं मिली।","No exam found.")}</div>}
           </div>
           <div className="practice-config">
-  <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{Array.from(new Set([10,20,30,40,50,availableQuestionCount].filter(n => n > 0 && n <= availableQuestionCount))).sort((a,b) => a-b).map(n=><button key={n} className={practiceQuestionCount===n?"active":""} onClick={()=>setPracticeQuestionCount(n)}>{n}</button>)}</div><small>{availableQuestionCount ? t(`${availableQuestionCount} verified/active questions अभी उपलब्ध हैं।`,`There are ${availableQuestionCount} active/verified questions available right now.`) : t("इस परीक्षा का question bank अभी उपलब्ध नहीं है।","This exam does not have a question bank yet.")}</small></div>
+  <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{Array.from(new Set([10,20,30,40,50,availableQuestionCount].filter(n => n > 0 && n <= availableQuestionCount))).sort((a,b) => a-b).map(n=><button key={n} className={practiceQuestionCount===n?"active":""} onClick={()=>setPracticeQuestionCount(n)}>{n}</button>)}</div><small>{availableQuestionCount ? t(`${availableQuestionCount} verified/active questions अभी उपलब्ध हैं।`,`There are ${availableQuestionCount} active/verified questions available right now.`) : t("इस परीक्षा का verified question bank अभी उपलब्ध नहीं है।","This exam does not have a verified question bank yet.")}</small></div>
   <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60].map(n=><button key={n} className={practiceDuration===n?"active":""} onClick={()=>setPracticeDuration(n)}>{n}m</button>)}</div></div>
   <div className="config-block device-security"><b>{t("SIM / डिवाइस सुरक्षा","SIM / Device security")}</b><div className="config-options"><button onClick={requestNativeSimPermission}>{nativeSimStatus === "sim-ready" ? t("SIM चालू ✓","SIM active ✓") : t("SIM अनुमति दें","Allow SIM")}</button>{user && <button onClick={createRecoveryCode}>{t("नए फोन के लिए recovery code","Create recovery code")}</button>}</div><small>{t("Recovery code केवल trusted device से बनता है, 15 मिनट में expire होता है और एक बार इस्तेमाल होता है।","A recovery code can only be created on the trusted device, expires in 15 minutes, and works once.")}</small></div>
 </div>
