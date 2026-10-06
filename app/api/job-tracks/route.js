@@ -33,11 +33,12 @@ export async function GET() {
 
   const examIds = [...examsBySlug.values()].map((exam) => exam.id);
   const verifiedCounts = new Map();
+  const sourceCounts = new Map();
 
   if (examIds.length) {
     const { data: questions, error: questionError } = await client
       .from("question_bank")
-      .select("exam_id")
+      .select("exam_id,source_type")
       .in("exam_id", examIds)
       .eq("active", true)
       .eq("verified", true);
@@ -46,6 +47,8 @@ export async function GET() {
 
     for (const question of questions || []) {
       verifiedCounts.set(question.exam_id, (verifiedCounts.get(question.exam_id) || 0) + 1);
+      const key = `${question.exam_id}:${question.source_type || "unknown"}`;
+      sourceCounts.set(key, (sourceCounts.get(key) || 0) + 1);
     }
   }
 
@@ -60,6 +63,9 @@ export async function GET() {
       verified_question_count: verifiedQuestionCount,
       required_question_count: requiredQuestionCount,
       question_bank_ready: questionBankReady,
+      pyq_question_count: sourceCounts.get(`${exam?.id}:pyq`) || 0,
+      official_question_count: sourceCounts.get(`${exam?.id}:official`) || 0,
+      practice_question_count: sourceCounts.get(`${exam?.id}:curated`) || 0,
       effective_status: questionBankReady ? "question_bank_ready" : track.status,
     };
   });
