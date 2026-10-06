@@ -192,3 +192,154 @@
   .job-copy>b{font-size:10.5px}
   .job-copy>span{font-size:8.5px}
 }
+
+
+/* ===== ExamPrep visual refresh v2 ===== */
+:root{
+  --ui-bg:#080a0f;
+  --ui-surface:#11141c;
+  --ui-surface-2:#151923;
+  --ui-border:#262c39;
+  --ui-text:#f3f4f8;
+  --ui-muted:#8f97aa;
+  --ui-accent:#9b87ff;
+  --ui-accent-soft:#201a38;
+  --ui-green:#68d7a0;
+}
+.content{max-width:1180px}
+.content:has(.job-section) > .section-heading:has(+ .job-section){display:none}
+
+/* Cleaner dashboard hierarchy */
+.welcome-row{margin-bottom:26px}
+.welcome-row h1{font-size:clamp(28px,3vw,42px);line-height:1.12;letter-spacing:-.7px}
+.welcome-row .intro{max-width:620px;font-size:13px;color:#9299aa}
+.stats-grid{gap:12px;margin-bottom:30px}
+.stat-card{border-radius:16px;background:linear-gradient(145deg,#151922,#0f1219);border:1px solid var(--ui-border);box-shadow:0 12px 30px #0004}
+.stat-top>span{font-size:10px}
+.stat-value{font-size:30px}
+.stat-foot{font-size:10px}
+.job-section{margin-top:0}
+.job-heading{padding:0 2px;margin-bottom:16px}
+.job-heading h2{font-size:21px;letter-spacing:-.25px}
+.job-heading p{font-size:12px}
+.exam-toolbar{padding:10px;border:1px solid var(--ui-border);background:#0d1017;border-radius:14px}
+.exam-search{height:42px;border-radius:10px;background:#151923;border-color:#303746}
+.exam-search input{font-size:13px}
+.exam-filters button{height:34px;font-size:10px;border-radius:9px}
+.exam-groups{gap:12px}
+.exam-group{
+  padding:12px;
+  border-radius:16px;
+  background:linear-gradient(145deg,#131722,#0d1017);
+  border-color:#292f3c;
+  box-shadow:0 12px 28px #0004;
+}
+.exam-group:before{display:none}
+.exam-group-heading{
+  min-height:48px;
+  margin:0;
+  padding:3px 2px;
+}
+.exam-group-heading>span{border:0;background:transparent;padding:0}
+.exam-group-title{display:flex!important;align-items:center;gap:11px}
+.exam-group-title>span:last-child{display:grid;gap:3px}
+.exam-group-title b{font-size:15px}
+.exam-group-title small{font-size:10px}
+.exam-group-icon{
+  width:38px;height:38px;border-radius:11px;font-size:19px;
+  box-shadow:none;transform:none;
+}
+.group-heading-right{gap:9px}
+.group-heading-right em{
+  font-size:8px;padding:6px 9px;
+  border-color:#28533f;background:#10221b;
+}
+.group-heading-right svg{width:18px;height:18px}
+.exam-group-heading.open{margin-bottom:12px}
+.job-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.job-card{
+  min-height:112px;
+  padding:14px 14px 13px 48px;
+  border-radius:13px;
+  background:linear-gradient(145deg,#171b25,#10131a);
+  box-shadow:0 8px 20px #0004;
+}
+.job-card:hover{transform:translateY(-2px);box-shadow:0 14px 28px #0006}
+.job-number{left:12px;top:12px;font-size:8px}
+.job-3d-icon{left:12px;bottom:12px;width:27px;height:27px;box-shadow:none;transform:none}
+.job-copy>b{font-size:13px;line-height:1.3}
+.job-copy>span{font-size:10px;line-height:1.45}
+.job-copy>small{font-size:8px}
+.job-card em{font-size:8px}
+.selected-track{border-radius:10px;padding:10px 12px}
+.practice-config{gap:12px;margin:18px 0}
+.config-block{border-radius:14px;background:#11141c;border-color:var(--ui-border)}
+.config-block>b{font-size:12px}
+.config-options button{font-size:10px;padding:9px 13px}
+.config-block small{font-size:9px}
+.feature-grid{gap:12px}
+.feature-card{border-radius:16px}
+
+/* Mobile app layout: readable, calm, not cramped */
+@media(max-width:760px){
+  .content{padding:18px 14px 28px}
+  .topbar{height:54px}
+  .welcome-row{margin:5px 0 18px}
+  .welcome-row h1{font-size:27px;letter-spacing:-.4px}
+  .welcome-row .intro{font-size:11px;line-height:1.6;max-width:100%}
+  .hero-emblem{width:70px;height:76px}
+  .stats-grid{grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:22px}
+  .stat-card{padding:11px 9px;border-radius:12px}
+  .stat-top>span{font-size:7.5px}
+  .stat-value{font-size:21px;margin:8px 0 4px}
+  .stat-foot{font-size:7.5px}
+  .job-heading{margin-bottom:11px}
+  .job-heading h2{font-size:18px}
+  .job-heading p{font-size:10px}
+  .exam-toolbar{padding:8px;border-radius:12px;margin-bottom:10px}
+  .exam-search{height:40px}
+  .exam-search input{font-size:13px}
+  .exam-filters button{height:32px;font-size:9px}
+  .exam-group{padding:10px;border-radius:14px}
+  .exam-group-heading{min-height:52px}
+  .exam-group-title{gap:9px}
+  .exam-group-title b{font-size:14px}
+  .exam-group-title small{font-size:9px}
+  .exam-group-icon{width:34px;height:34px;font-size:17px}
+  .group-heading-right em{font-size:7px;padding:5px 7px}
+  .group-heading-right svg{width:16px;height:16px}
+  .job-grid{grid-template-columns:1fr;gap:7px}
+  .job-card{
+    min-height:82px;
+    padding:11px 12px 11px 48px;
+    border-radius:11px;
+  }
+  .job-number{left:12px;top:11px;font-size:7px}
+  .job-3d-icon{left:11px;bottom:11px;width:26px;height:26px}
+  .job-copy>b{font-size:12px}
+  .job-copy>span{font-size:9px;line-height:1.4;-webkit-line-clamp:2}
+  .job-copy>small{font-size:7px}
+  .job-card em{font-size:7px}
+  .practice-config{gap:8px;margin:14px 0}
+  .config-block{padding:12px}
+  .config-block>b{font-size:11px}
+  .config-options button{font-size:9px;padding:8px 11px}
+  .config-block small{font-size:8px}
+  .feature-grid{grid-template-columns:1fr;gap:9px}
+  .feature-card{min-height:0;padding:15px}
+  .feature-card h3{font-size:14px}
+  .feature-card>p{font-size:9px}
+  .auth-panel{border-radius:13px}
+}
+
+/* Small phones: preserve readability */
+@media(max-width:390px){
+  .content{padding-left:10px;padding-right:10px}
+  .stats-grid{gap:5px}
+  .stat-card{padding:9px 7px}
+  .stat-top>span{font-size:7px}
+  .stat-value{font-size:19px}
+  .job-copy>b{font-size:11px}
+  .job-copy>span{font-size:8.5px}
+  .job-copy>small{font-size:6.8px}
+}
