@@ -97,6 +97,25 @@ export default function HomePage() {
     const text = `${track.name_hi || ""} ${track.name_en || ""} ${track.description_hi || ""} ${track.description_en || ""}`.toLowerCase();
     return categoryMatch && (!needle || text.includes(needle));
   });
+  const examGroups = [
+    { key: "MPESB", labelHi: "MPESB", labelEn: "MPESB", icon: "🏛️" },
+    { key: "SSC", labelHi: "SSC", labelEn: "SSC", icon: "📝" },
+    { key: "RPF", labelHi: "RPF", labelEn: "RPF", icon: "🛡️" },
+    { key: "RRB", labelHi: "RRB / रेलवे", labelEn: "RRB / Railway", icon: "🚆" },
+    { key: "OTHER", labelHi: "अन्य परीक्षाएँ", labelEn: "Other Exams", icon: "🎯" }
+  ];
+  const getExamGroup = (track) => {
+    const board = String(track.exam_board || "").toUpperCase();
+    if (board.includes("MPESB") || board.includes("ESB")) return "MPESB";
+    if (board.includes("SSC")) return "SSC";
+    if (board.includes("RPF")) return "RPF";
+    if (board.includes("RRB") || board.includes("RAILWAY")) return "RRB";
+    const slug = String(track.slug || "").toLowerCase();
+    if (slug.startsWith("rpf-")) return "RPF";
+    if (slug.startsWith("rrb-")) return "RRB";
+    if (slug.startsWith("ssc-")) return "SSC";
+    return "OTHER";
+  };
 
   useEffect(() => {
     if (!supabaseBrowser) return undefined;
@@ -316,14 +335,22 @@ export default function HomePage() {
       setAuthMessage(t("Login सेवा अभी उपलब्ध नहीं है।","Login service is not available right now."));
       return;
     }
-    const normalized = phone.replace(/\s+/g, "");
-    if (!/^\+[1-9]\d{7,14}$/.test(normalized)) {
-      setAuthMessage(t("मोबाइल नंबर +91XXXXXXXXXX जैसे लिखें।","Enter the number in international format, e.g. +91XXXXXXXXXX."));
+    const digits = phone.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+    const normalized = `+91${digits}`;
+    if (!/^\+91\d{10}$/.test(normalized)) {
+      setAuthMessage(t("10 अंकों का भारतीय मोबाइल नंबर दर्ज करें।","Enter a valid 10-digit Indian mobile number."));
       return;
     }
     setAuthMessage(t("OTP भेजा जा रहा है…","Sending OTP…"));
     const { error } = await supabaseBrowser.auth.signInWithOtp({ phone: normalized, options: { channel: "sms" } });
-    if (error) setAuthMessage(error.message);
+    if (error) {
+      const message = String(error.message || "");
+      if (/unsupported phone provider/i.test(message) || /sms provider/i.test(message)) {
+        setAuthMessage(t("SMS OTP सेवा अभी configured नहीं है। Supabase में SMS provider (जैसे Twilio/MessageBird/Vonage) configure करना होगा।","SMS OTP is not configured yet. Configure an SMS provider such as Twilio, MessageBird, or Vonage in Supabase Auth."));
+      } else {
+        setAuthMessage(message);
+      }
+    }
     else { setAuthStep("otp"); setOtp(""); setOtpCooldown(60); setAuthMessage(t("OTP भेज दिया गया है। 60 सेकंड बाद फिर भेज सकते हैं।","OTP sent. You can request another OTP after 60 seconds.")); }
   }
 
@@ -332,7 +359,8 @@ export default function HomePage() {
       setAuthMessage(t("Login सेवा अभी उपलब्ध नहीं है।","Login service is not available right now."));
       return;
     }
-    const normalized = phone.replace(/\s+/g, "");
+    const digits = phone.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+    const normalized = `+91${digits}`;
     const token = otp.replace(/\s+/g, "");
     if (!/^\d{6}$/.test(token)) {
       setAuthMessage(t("6 अंकों का OTP दर्ज करें।","Enter the 6-digit OTP."));
@@ -508,7 +536,7 @@ export default function HomePage() {
         {view === "home" && <div className="content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
           <div className="auth-panel">
   <div><b>{user ? t("मोबाइल अकाउंट सक्रिय","Mobile account active") : t("मोबाइल से लॉगिन करें","Sign in with mobile")}</b><span>{user ? (user.phone || "") : t("आपके रिज़ल्ट आपके अकाउंट से जुड़े रहेंगे।","Your results stay linked to your account.")}</span></div>
-  {user ? <button onClick={logout}>{t("लॉगआउट","Sign out")}</button> : <div className="auth-actions">{authStep === "phone" ? <><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+91XXXXXXXXXX"/><button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : t("OTP भेजें","Send OTP")}</button></> : authStep === "otp" ? <><input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit OTP")}/><button onClick={verifyOtp}>{t("Verify","Verify")}</button></> : <><input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/><button onClick={recoverTrustedDevice}>{t("Device बदलें","Replace device")}</button></>}</div>}
+  {user ? <button onClick={logout}>{t("लॉगआउट","Sign out")}</button> : <div className="auth-actions">{authStep === "phone" ? <><div className="phone-input"><span>+91</span><input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,"").slice(0,10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर"/></div><button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : t("OTP भेजें","Send OTP")}</button></> : authStep === "otp" ? <><input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit OTP")}/><button onClick={verifyOtp}>{t("Verify","Verify")}</button></> : <><input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/><button onClick={recoverTrustedDevice}>{t("Device बदलें","Replace device")}</button></>}</div>}
   {authMessage && <small>{authMessage}</small>}
 </div>
 <div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("आपके लक्ष्य, आपकी मेहनत","YOUR GOALS. YOUR GRIT.")}</div><h1>{t("नमस्ते, सुभाष","Hello, Subhash")} <span className="wave">✦</span><br/><span className="muted-heading">{t("आज कुछ नया सीखें।","Ready to level up today?")}</span></h1><p className="intro">{t("अपनी तैयारी को परखें, कमज़ोर विषय पहचानें और हर टेस्ट के साथ बेहतर बनें।","Test your knowledge, spot weak areas, and get better with every attempt.")}</p></div><div className="hero-emblem"><div className="emblem-ring"><GraduationCap size={47}/><span>EXAM<br/>READY</span></div><div className="orbit-dot dot-one"/><div className="orbit-dot dot-two"/></div></div>
@@ -520,15 +548,23 @@ export default function HomePage() {
               <div className="exam-search"><Search size={15}/><input value={examQuery} onChange={e => setExamQuery(e.target.value)} placeholder={t("परीक्षा खोजें…","Search exams…")} /></div>
               <div className="exam-filters"><button className={examFilter==="all" ? "active" : ""} onClick={() => setExamFilter("all")}><SlidersHorizontal size={13}/>{t("सभी","All")}</button><button className={examFilter==="recruitment" ? "active" : ""} onClick={() => setExamFilter("recruitment")}>{t("भर्ती","Recruitment")}</button><button className={examFilter==="entrance" ? "active" : ""} onClick={() => setExamFilter("entrance")}>{t("प्रवेश","Entrance")}</button><button className={examFilter==="eligibility" ? "active" : ""} onClick={() => setExamFilter("eligibility")}>{t("पात्रता","Eligibility")}</button></div>
             </div>
-            <div className="job-grid">{jobTracksLoading ? <div className="exam-loading">{t("परीक्षाएँ लोड हो रही हैं…","Loading exams…")}</div> : filteredJobTracks.map((track,index) => <button key={track.slug} className={"job-card " + (selectedJobTrack === track.slug ? "selected" : "") + (track.status === "coming_soon" ? "coming" : "")} onClick={() => { if (track.status !== "question_bank_ready" || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedExam(track.exam_slug); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Number(exam.duration_minutes || 10), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); } }}>
-                <span className="job-number">{String(index + 1).padStart(2,"0")}</span><div className="job-3d-icon"><GraduationCap size={17}/></div>
-                <div className="job-copy"><b>{hi ? track.name_hi : track.name_en}</b><span>{hi ? track.description_hi : track.description_en}</span><small>{track.exam_date_text ? `📅 ${track.exam_date_text}` : "📅 2026"}{track.form_status_text ? ` · ${track.form_status_text}` : ""}</small></div>
-                <em>{track.status === "question_bank_ready" ? t("अभी उपलब्ध","READY") : t("जल्द आएगा","SOON")}</em>
-                {selectedJobTrack === track.slug && <Check className="job-selected-check" size={15}/>}
-              </button>)}</div>
-            {!jobTracksLoading && !filteredJobTracks.length && <div className="exam-empty">{t("कोई परीक्षा नहीं मिली।","No exam found.")}</div>}
-          </div>
-          <div className="practice-config">
+            <div className="exam-groups">{jobTracksLoading ? <div className="exam-loading">{t("परीक्षाएँ लोड हो रही हैं…","Loading exams…")}</div> : examGroups.map(group => {
+  const groupTracks = filteredJobTracks.filter(track => getExamGroup(track) === group.key);
+  if (!groupTracks.length) return null;
+  return <section key={group.key} className="exam-group">
+    <div className="exam-group-heading">
+      <div className="exam-group-title"><span className="exam-group-icon">{group.icon}</span><div><b>{hi ? group.labelHi : group.labelEn}</b><small>{groupTracks.length} {t("परीक्षाएँ","exams")}</small></div></div>
+      <span>{String(groupTracks.filter(track => track.question_bank_ready === true && track.exam_slug).length).padStart(2,"0")} READY</span>
+    </div>
+    <div className="job-grid">{groupTracks.map((track,index) => <button key={track.slug} className={"job-card " + (selectedJobTrack === track.slug ? "selected" : "") + (track.status === "coming_soon" ? "coming" : "")} onClick={() => { if (track.status !== "question_bank_ready" || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedExam(track.exam_slug); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Number(exam.duration_minutes || 10), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); } }}>
+      <span className="job-number">{String(index + 1).padStart(2,"0")}</span><div className="job-3d-icon"><GraduationCap size={17}/></div>
+      <div className="job-copy"><b>{hi ? track.name_hi : track.name_en}</b><span>{hi ? track.description_hi : track.description_en}</span><small>{track.exam_date_text ? `📅 ${track.exam_date_text}` : "📅 2026"}{track.form_status_text ? ` · ${track.form_status_text}` : ""}</small></div>
+      <em>{track.status === "question_bank_ready" ? t("अभी उपलब्ध","READY") : t("जल्द आएगा","SOON")}</em>
+      {selectedJobTrack === track.slug && <Check className="job-selected-check" size={15}/>}
+    </button>)}</div>
+  </section>;
+})}</div>
+<div className="practice-config">
   <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{Array.from(new Set([10,20,30,40,50,availableQuestionCount].filter(n => n > 0 && n <= availableQuestionCount))).sort((a,b) => a-b).map(n=><button key={n} className={practiceQuestionCount===n?"active":""} onClick={()=>setPracticeQuestionCount(n)}>{n}</button>)}</div><small>{availableQuestionCount ? t(`${availableQuestionCount} verified/active questions अभी उपलब्ध हैं।`,`There are ${availableQuestionCount} active/verified questions available right now.`) : t("इस परीक्षा का verified question bank अभी उपलब्ध नहीं है।","This exam does not have a verified question bank yet.")}</small></div>
   <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60].map(n=><button key={n} className={practiceDuration===n?"active":""} onClick={()=>setPracticeDuration(n)}>{n}m</button>)}</div></div>
   <div className="config-block device-security"><b>{t("SIM / डिवाइस सुरक्षा","SIM / Device security")}</b><div className="config-options"><button onClick={requestNativeSimPermission}>{nativeSimStatus === "sim-ready" ? t("SIM चालू ✓","SIM active ✓") : t("SIM अनुमति दें","Allow SIM")}</button>{user && <button onClick={createRecoveryCode}>{t("नए फोन के लिए recovery code","Create recovery code")}</button>}</div><small>{t("Recovery code केवल trusted device से बनता है, 15 मिनट में expire होता है और एक बार इस्तेमाल होता है।","A recovery code can only be created on the trusted device, expires in 15 minutes, and works once.")}</small></div>
