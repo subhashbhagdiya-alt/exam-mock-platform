@@ -472,7 +472,7 @@ export default function HomePage() {
     const readyCount = Number(selectedTrackData?.verified_question_count || availableQuestionCount || 0);
     if (!readyCount) { setAuthMessage(t("इस परीक्षा के verified सवाल अभी उपलब्ध नहीं हैं।","Verified questions are not available for this exam yet.")); return; }
     const requestedCount = Math.min(Number(practiceQuestionCount || 10), readyCount);
-    setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setShowSubmit(false);
+    setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setShowSubmit(false); setTestQuestions([]);
     try {
       const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${requestedCount}`, { cache: "no-store" });
       const payload = await response.json();
@@ -492,7 +492,7 @@ export default function HomePage() {
           sourceYear: item.source_year || null,
           predictionScore: Number(item.prediction_score || 0)
         })).filter(item => item.options.length === 4 && Number.isInteger(item.answer) && item.answer >= 0 && item.answer < 4);
-        if (mapped.length) setTestQuestions(mapped);
+        if (mapped.length) { setTestQuestions(mapped); setView("test"); }
         else {
           setTestQuestions([]);
           setAuthMessage(t("इस परीक्षा के सवाल वैध format में उपलब्ध नहीं हैं।","This exam's questions are not available in a valid format."));
