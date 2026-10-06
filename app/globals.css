@@ -59,3 +59,94 @@
 }
 .auth-divider { display:flex; align-items:center; gap:10px; margin:2px 0; color:#8b8fa3; font-size:11px; font-weight:700; letter-spacing:.08em; }
 .auth-divider::before, .auth-divider::after { content:""; flex:1; height:1px; background:rgba(139,143,163,.22); }
+
+
+/* Mobile-first catalog shell */
+@media(max-width:760px){
+  html,body{width:100%;overflow-x:hidden}
+  body{background:var(--bg)}
+  .shell{display:block;min-height:100dvh;padding-bottom:66px}
+  .sidebar{
+    position:fixed;left:0;right:0;bottom:0;top:auto;width:100%;height:62px;
+    padding:6px 8px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;
+    align-items:center;border-right:0;border-top:1px solid #272b38;
+    background:rgba(10,12,18,.96);backdrop-filter:blur(16px);z-index:50;
+  }
+  .brand,.side-label,.sidebar-bottom{display:none}
+  .nav-item,.nav-item.active{
+    width:100%;height:48px;margin:0;padding:5px 4px;display:flex;
+    flex-direction:column;justify-content:center;align-items:center;gap:3px;
+    border:0;border-radius:10px;font-size:8px!important;letter-spacing:.1px;
+  }
+  .nav-item svg{width:18px;height:18px}
+  .main{margin-left:0;width:100%;min-width:0}
+  .topbar{height:52px;padding:0 12px;position:sticky;top:0;z-index:20;background:rgba(8,10,15,.94);backdrop-filter:blur(14px)}
+  .breadcrumb{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .top-actions{gap:6px}.lang-button{padding:7px 8px;font-size:9px}
+  .content{width:100%;padding:16px 11px 20px}
+  .welcome-row{margin:3px 0 18px;gap:10px;align-items:flex-start}
+  .welcome-row h1{font-size:22px;line-height:1.2;margin:9px 0 7px}
+  .welcome-row .intro{font-size:9px;line-height:1.55}
+  .hero-emblem{width:68px;height:72px}.emblem-ring{width:62px;height:62px}
+  .emblem-ring svg{width:25px}.emblem-ring span{font-size:4.5px;letter-spacing:1px}
+  .orbit-dot{display:none}
+  .stats-grid{grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:20px}
+  .stat-card{padding:9px 8px;border-radius:10px}.stat-top>span{font-size:6.5px}
+  .stat-icon{width:23px;height:23px}.stat-icon svg{width:13px}
+  .stat-value{font-size:19px;margin:7px 0 3px}.stat-value small{font-size:8px}
+  .stat-foot{font-size:7px;line-height:1.3}
+  .section-heading{margin-bottom:9px;gap:8px}.section-heading h2{font-size:13px}
+  .section-heading p{font-size:8px;line-height:1.4}.section-count{font-size:6px}
+  .job-section{margin-bottom:20px}
+  .exam-toolbar{gap:6px;margin-bottom:8px}
+  .exam-search{height:34px;flex-basis:100%;border-radius:9px}
+  .exam-filters{width:100%;gap:5px;scrollbar-width:none}.exam-filters::-webkit-scrollbar{display:none}
+  .exam-filters button{height:29px;padding:0 8px;font-size:7px;border-radius:8px}
+  .exam-groups{gap:9px}
+  .exam-group{padding:9px;border-radius:13px;box-shadow:0 8px 20px #0004}
+  .exam-group-heading{margin-bottom:7px;padding:2px}
+  .exam-group-title{gap:7px}.exam-group-title b{font-size:10px}.exam-group-title small{font-size:6.5px}
+  .exam-group-icon{width:25px;height:25px;border-radius:7px;font-size:13px}
+  .exam-group-heading>span{font-size:5.5px;padding:4px 6px}
+  .job-grid{grid-template-columns:1fr 1fr;gap:6px}
+  .job-card{
+    min-height:78px;padding:9px 8px 8px 31px;border-radius:9px;
+    justify-content:center;gap:4px;box-shadow:0 6px 13px #0004
+  }
+  .job-number{left:7px;top:7px;font-size:6px}.job-3d-icon{
+    left:7px;bottom:7px;width:19px;height:19px;border-radius:6px;box-shadow:2px 3px 0 #090b10
+  }
+  .job-3d-icon svg{width:11px;height:11px}
+  .job-copy>b{font-size:8.5px;line-height:1.25;padding-right:8px}
+  .job-copy>span{font-size:6.5px;line-height:1.3;margin-top:2px;-webkit-line-clamp:1}
+  .job-copy>small{font-size:5.5px;margin-top:2px}
+  .job-card em{font-size:5.5px;letter-spacing:.6px}
+  .job-selected-check{right:6px;top:6px;width:11px}
+  .selected-track{margin-bottom:7px;padding:6px 8px;border-radius:7px}
+  .selected-track span{font-size:6px}.selected-track b{font-size:8px}
+  .auth-panel{margin-bottom:14px;padding:10px;border-radius:12px;gap:8px}
+  .auth-panel>div:first-child{gap:2px}.auth-panel b{font-size:10px}.auth-panel span,.auth-panel small{font-size:8px}
+  .auth-actions{gap:6px}.auth-panel button{padding:8px 10px;font-size:9px}
+  .phone-input{height:34px}.phone-input>span{padding:8px;font-size:9px}.phone-input input{font-size:10px!important}
+  .google-login-button{height:34px}
+  .google-login-button strong{width:19px;height:19px;font-size:12px}
+  .google-login-button span{font-size:9px}.auth-divider{font-size:7px}
+  .practice-config{grid-template-columns:1fr;gap:7px;margin:12px 0}
+  .config-block{padding:10px;border-radius:10px}.config-block>b{font-size:9px;margin-bottom:7px}
+  .config-options{gap:5px}.config-options button{padding:7px 10px;font-size:8px;border-radius:7px}
+  .config-block small{font-size:7px;line-height:1.4}
+  .feature-grid{gap:8px}.feature-card{min-height:155px;padding:12px;border-radius:11px}
+  .feature-top{margin-bottom:9px}.feature-icon{width:30px;height:30px}
+  .feature-card h3{font-size:12px}.feature-card>p{font-size:8px;line-height:1.5;min-height:0;margin-bottom:8px}
+  .feature-meta{font-size:7px;margin-bottom:9px}.primary-button,.secondary-button{padding:8px 9px;font-size:8px}
+  .footer{display:none}
+}
+
+/* Extra-tight phones: keep the exam catalog compact rather than tall */
+@media(max-width:390px){
+  .content{padding-left:8px;padding-right:8px}
+  .stats-grid{gap:4px}.stat-card{padding:8px 6px}
+  .job-grid{gap:5px}.job-card{min-height:72px;padding-left:29px}
+  .job-copy>b{font-size:8px}.job-copy>span{font-size:6px}
+  .exam-group{padding:8px}
+}
