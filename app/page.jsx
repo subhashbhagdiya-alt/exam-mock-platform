@@ -329,6 +329,27 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, [view, seconds, result]);
 
+  async function signInWithGoogle() {
+    if (!supabaseBrowser) {
+      setAuthMessage(t("Login सेवा अभी उपलब्ध नहीं है।","Login service is not available right now."));
+      return;
+    }
+    setAuthMessage(t("Google login शुरू हो रहा है…","Starting Google login…"));
+    const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
+    const { error } = await supabaseBrowser.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo }
+    });
+    if (error) {
+      const message = String(error.message || "");
+      if (/provider.*not enabled|unsupported.*provider|not configured/i.test(message)) {
+        setAuthMessage(t("Google Login अभी Supabase में enable नहीं है। Google OAuth provider configure करना होगा।","Google Login is not enabled in Supabase yet. Configure the Google OAuth provider first."));
+      } else {
+        setAuthMessage(message);
+      }
+    }
+  }
+
   async function sendOtp() {
     if (otpCooldown > 0) return;
     if (!supabaseBrowser) {
@@ -535,9 +556,14 @@ export default function HomePage() {
 
         {view === "home" && <div className="content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
           <div className="auth-panel">
-  <div><b>{user ? t("मोबाइल अकाउंट सक्रिय","Mobile account active") : t("मोबाइल से लॉगिन करें","Sign in with mobile")}</b><span>{user ? (user.phone || "") : t("आपके रिज़ल्ट आपके अकाउंट से जुड़े रहेंगे।","Your results stay linked to your account.")}</span></div>
-  {user ? <button onClick={logout}>{t("लॉगआउट","Sign out")}</button> : <div className="auth-actions">{authStep === "phone" ? <><div className="phone-input"><span>+91</span><input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,"").slice(0,10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर"/></div><button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : t("OTP भेजें","Send OTP")}</button></> : authStep === "otp" ? <><input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit OTP")}/><button onClick={verifyOtp}>{t("Verify","Verify")}</button></> : <><input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/><button onClick={recoverTrustedDevice}>{t("Device बदलें","Replace device")}</button></>}</div>}
+  <div><b>{user ? t("अकाउंट सक्रिय","Account active") : t("लॉगिन करें","Sign in")}</b><span>{user ? (user.email || user.phone || "") : t("Google या मोबाइल से लॉगिन करें। आपके रिज़ल्ट अकाउंट से जुड़े रहेंगे।","Sign in with Google or mobile. Your results stay linked to your account.")}</span></div>
+  {user ? <button onClick={logout}>{t("लॉगआउट","Sign out")}</button> : <div className="auth-actions">
+    <button className="google-login-button" onClick={signInWithGoogle}><strong>G</strong><span>{t("Google से जारी रखें","Continue with Google")}</span></button>
+    <div className="auth-divider"><span>{t("या मोबाइल से","OR MOBILE")}</span></div>
+    {authStep === "phone" ? <><div className="phone-input"><span>+91</span><input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,"").slice(0,10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर"/></div><button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : t("OTP भेजें","Send OTP")}</button></> : authStep === "otp" ? <><input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit OTP")}/><button onClick={verifyOtp}>{t("Verify","Verify")}</button></> : <><input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/><button onClick={recoverTrustedDevice}>{t("Device बदलें","Replace device")}</button></>}
+  </div>}
   {authMessage && <small>{authMessage}</small>}
+</div>
 </div>
 <div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("आपके लक्ष्य, आपकी मेहनत","YOUR GOALS. YOUR GRIT.")}</div><h1>{t("नमस्ते, सुभाष","Hello, Subhash")} <span className="wave">✦</span><br/><span className="muted-heading">{t("आज कुछ नया सीखें।","Ready to level up today?")}</span></h1><p className="intro">{t("अपनी तैयारी को परखें, कमज़ोर विषय पहचानें और हर टेस्ट के साथ बेहतर बनें।","Test your knowledge, spot weak areas, and get better with every attempt.")}</p></div><div className="hero-emblem"><div className="emblem-ring"><GraduationCap size={47}/><span>EXAM<br/>READY</span></div><div className="orbit-dot dot-one"/><div className="orbit-dot dot-two"/></div></div>
           <div className="stats-grid"><div className="stat-card"><div className="stat-top"><span>{t("कुल मॉक टेस्ट","MOCK TESTS")}</span><div className="stat-icon purple"><BookOpen size={18}/></div></div><div className="stat-value">{history.length.toString().padStart(2,"0")}<small> / 50</small></div><div className="stat-foot">{t("हर प्रयास मायने रखता है","Every attempt counts")}</div></div><div className="stat-card"><div className="stat-top"><span>{t("सर्वश्रेष्ठ स्कोर","BEST SCORE")}</span><div className="stat-icon gold"><Trophy size={18}/></div></div><div className="stat-value">{history.length ? (() => { const best = history.reduce((a, h) => Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1)) > Number(a.score || 0) / Math.max(1, Number(a.total_questions || 10) * Number(a.marks_per_question || 1)) ? h : a, history[0]); return best.score; })() : "—"}<small> / {history.length ? (() => { const best = history.reduce((a, h) => Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1)) > Number(a.score || 0) / Math.max(1, Number(a.total_questions || 10) * Number(a.marks_per_question || 1)) ? h : a, history[0]); return Number(best.total_questions || 10) * Number(best.marks_per_question || 1); })() : 0}</small></div><div className="stat-foot">{t("अपना रिकॉर्ड तोड़ें","Beat your personal best")}</div></div><div className="stat-card"><div className="stat-top"><span>{t("औसत सटीकता","AVG. ACCURACY")}</span><div className="stat-icon green"><Target size={18}/></div></div><div className="stat-value">{history.length ? Math.round(history.reduce((a,h)=>a+h.accuracy,0)/history.length) : 0}<small>%</small></div><div className="stat-foot">{t("सही जवाबों का प्रतिशत","Correct answer rate")}</div></div></div>
