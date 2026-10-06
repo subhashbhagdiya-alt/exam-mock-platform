@@ -838,3 +838,12 @@
 @media(max-width:760px){
   .start-hint{font-size:7px;margin-top:6px}
 }
+
+.guest-login-note{
+  padding:10px 12px;
+  border:1px solid #2d3441;
+  border-radius:10px;
+  background:#10151d;
+  color:#9aa3b4;
+  font:700 9px/1.45 Manrope,sans-serif;
+}
