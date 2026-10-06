@@ -95,6 +95,7 @@ export default function HomePage() {
   });
 
   useEffect(() => {
+    if (!supabaseBrowser) return undefined;
     let mounted = true;
     supabaseBrowser.auth.getSession().then(({ data }) => { if (mounted) setUser(data.session?.user || null); });
     const { data: listener } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
