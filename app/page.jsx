@@ -537,7 +537,7 @@ export default function HomePage() {
       try {
         const key = pending ? "exam_prep_offline_results" : "exam_prep_local_history";
         const existing = JSON.parse(localStorage.getItem(key) || "[]");
-        const item = {...summary, created_at: new Date().toISOString(), ...(pending ? {offline_pending:true, pending_user_id: user?.id || null} : {})};
+        const item = {...summary, created_at: new Date().toISOString(), ...(pending ? {offline_pending:true, user_id: user?.id || null} : {})};
         localStorage.setItem(key, JSON.stringify([item, ...existing].slice(0, 50)));
         setHistory(old => [item, ...old].slice(0, 50));
       } catch {}
