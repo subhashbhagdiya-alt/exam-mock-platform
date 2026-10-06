@@ -481,3 +481,44 @@
   .active-board-head h3{font-size:16px}
   .active-board-head>span{font-size:8px}
 }
+
+
+/* ===== Selected exam focus v4 ===== */
+.selected-exam-strip{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:14px 0 8px;
+  padding:12px 14px;
+  border:1px solid #37305e;
+  border-radius:13px;
+  background:linear-gradient(135deg,#17142a,#10131a);
+}
+.selected-exam-strip div{min-width:0;display:grid;gap:4px}
+.selected-exam-strip span{
+  color:#89819f;font:800 7px/1 Manrope,sans-serif;
+  letter-spacing:1.2px;
+}
+.selected-exam-strip b{
+  color:#f3f3f7;font:800 14px/1.25 Manrope,sans-serif;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.selected-exam-strip em{
+  flex:0 0 auto;font:800 8px/1 Manrope,sans-serif;
+  font-style:normal;color:#73dbaa;
+  padding:7px 9px;border-radius:999px;
+  background:#10231b;border:1px solid #28533f;
+}
+.selection-empty{
+  margin-top:12px;padding:15px 12px;text-align:center;
+  border:1px dashed #303746;border-radius:12px;color:#8d95a7;
+  font:700 10px/1.4 Manrope,sans-serif;
+}
+.selection-empty span{display:block;margin-top:4px;color:#676f81;font-size:8px}
+@media(max-width:760px){
+  .selected-exam-strip{margin:10px 0 7px;padding:10px 11px}
+  .selected-exam-strip b{font-size:12px}
+  .selected-exam-strip em{font-size:7px;padding:6px 7px}
+  .selection-empty{margin-top:8px;padding:13px 10px;font-size:9px}
+}
