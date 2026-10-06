@@ -314,23 +314,31 @@ export default function HomePage() {
     let active = true;
     async function loadHistory() {
       try {
-        const key = await ensureSessionKey();
+        const localRaw = typeof window !== "undefined" ? localStorage.getItem("exam_prep_local_history") : "[]";
+        const localHistory = localRaw ? JSON.parse(localRaw) : [];
         const { data: sessionData } = await supabaseBrowser.auth.getSession();
         const accessToken = sessionData.session?.access_token || "";
+
+        if (!accessToken) {
+          if (active) setHistory(Array.isArray(localHistory) ? localHistory.slice(0, 50) : []);
+          return;
+        }
+
+        const key = await ensureSessionKey();
         const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
         const response = await fetch(`/api/results?session_key=${encodeURIComponent(key)}`, {
-          headers: accessToken ? { Authorization: `Bearer ${accessToken}`, ...(deviceKey ? { "x-device-key": deviceKey } : {}) } : {}
+          headers: { Authorization: `Bearer ${accessToken}`, ...(deviceKey ? { "x-device-key": deviceKey } : {}) }
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error || "Could not load saved results");
-        if (active) { setHistory(payload.data || []); setStorageMessage(""); }
+        if (active) { setHistory([...(payload.data || []), ...(Array.isArray(localHistory) ? localHistory : [])].slice(0, 50)); setStorageMessage(""); }
       } catch (error) {
-        if (active) setStorageMessage(error?.message || "Could not load saved results");
+        if (active) setHistory(old => old.length ? old : []);
       }
     }
     loadHistory();
     return () => { active = false; };
-  }, []);
+  }, [user]);;
 
   useEffect(() => {
     if (view !== "test" || result) return;
@@ -524,22 +532,41 @@ export default function HomePage() {
     const accuracy = Math.round(correctCount / Math.max(1, testQuestions.length) * 100);
     const summary = { practice_mode: true, exam_id: examId, question_ids: Object.fromEntries(testQuestions.map(item => [String(item.id), item.sourceId]).filter(([, sourceId]) => sourceId)), correct: correctCount, wrong: wrongCount, unanswered: unansweredCount, score: netScore, gross_score: grossMarks, negative_score: negativeMarks, accuracy, answers: {...answers}, review_ids: [...review], language, total_questions: testQuestions.length, marks_per_question: Number(examConfig.marks_per_question || 1), negative_marks_per_question: Number(examConfig.negative_marks || 0), passing_percentage: Number(examConfig.passing_percentage || 33), test_name: examName };
     setResult(summary); setView("result"); setShowSubmit(false);
+
+    const saveLocal = (pending = false) => {
+      try {
+        const key = pending ? "exam_prep_offline_results" : "exam_prep_local_history";
+        const existing = JSON.parse(localStorage.getItem(key) || "[]");
+        const item = {...summary, created_at: new Date().toISOString(), ...(pending ? {offline_pending:true} : {})};
+        localStorage.setItem(key, JSON.stringify([item, ...existing].slice(0, 50)));
+        setHistory(old => [item, ...old].slice(0, 50));
+      } catch {}
+    };
+
     try {
       const sessionKey = await ensureSessionKey();
       const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
-       const body = { session_key: sessionKey, practice_mode: true, requested_total_questions: practiceQuestionCount, requested_duration_minutes: practiceDuration, user_id: user?.id || null, device_key: deviceKey, ...summary };
+      const body = { session_key: sessionKey, practice_mode: true, requested_total_questions: practiceQuestionCount, requested_duration_minutes: practiceDuration, user_id: user?.id || null, device_key: deviceKey, ...summary };
+
       if (!navigator.onLine) {
-        const pending = JSON.parse(localStorage.getItem("exam_prep_offline_results") || "[]");
-        localStorage.setItem("exam_prep_offline_results", JSON.stringify([...pending, body].slice(-20)));
+        saveLocal(true);
         setStorageMessage(t("ऑफलाइन रिज़ल्ट सुरक्षित है; इंटरनेट आते ही sync होगा।","Result saved offline; it will sync automatically when you are back online."));
-        setHistory(old => [{...summary, created_at: new Date().toISOString(), offline_pending: true}, ...old].slice(0, 50));
         return;
       }
+
       const { data: sessionData } = await supabaseBrowser.auth.getSession();
       const accessToken = sessionData.session?.access_token || "";
+
+      // Guest practice is intentionally local-only. Cloud history requires an authenticated account.
+      if (!accessToken) {
+        saveLocal(false);
+        setStorageMessage(t("Guest result इस device पर सुरक्षित है। Cloud sync के लिए login करें।","Guest result is saved on this device. Login to sync it to the cloud."));
+        return;
+      }
+
       const response = await fetch("/api/results", {
         method: "POST",
-        headers: { "content-type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+        headers: { "content-type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify(body)
       });
       const payload = await response.json();
@@ -547,8 +574,8 @@ export default function HomePage() {
       setHistory(old => [payload.data, ...old].slice(0, 50));
       setStorageMessage("");
     } catch (error) {
+      saveLocal(false);
       setStorageMessage(error?.message || "Result could not be saved to cloud");
-      setHistory(old => [{...summary, created_at: new Date().toISOString()}, ...old].slice(0, 50));
     }
   }
   finishTestRef.current = finishTest;
