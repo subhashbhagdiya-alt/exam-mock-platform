@@ -565,8 +565,8 @@ export default function HomePage() {
           <div className="auth-panel">
   <div><b>{user ? t("अकाउंट सक्रिय","Account active") : t("लॉगिन करें","Sign in")}</b><span>{user ? (user.email || user.phone || "") : t("Google या मोबाइल से लॉगिन करें। आपके रिज़ल्ट अकाउंट से जुड़े रहेंगे।","Sign in with Google or mobile. Your results stay linked to your account.")}</span></div>
   {user ? <button onClick={logout}>{t("लॉगआउट","Sign out")}</button> : <div className="auth-actions">
-    <button className="google-login-button" onClick={signInWithGoogle}><strong>G</strong><span>{t("Google से जारी रखें","Continue with Google")}</span></button>
-    <div className="auth-divider"><span>{t("या मोबाइल से","OR MOBILE")}</span></div>
+    <div className="guest-login-note">{t("Guest Practice Mode — login के बिना भी mock test शुरू कर सकते हैं।","Guest Practice Mode — you can start mock tests without signing in.")}</div>
+    <div className="auth-divider"><span>{t("वैकल्पिक मोबाइल लॉगिन","OPTIONAL MOBILE LOGIN")}</span></div>
     {authStep === "phone" ? <><div className="phone-input"><span>+91</span><input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,"").slice(0,10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर"/></div><button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : t("OTP भेजें","Send OTP")}</button></> : authStep === "otp" ? <><input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit OTP")}/><button onClick={verifyOtp}>{t("Verify","Verify")}</button></> : <><input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/><button onClick={recoverTrustedDevice}>{t("Device बदलें","Replace device")}</button></>}
   </div>}
   {authMessage && <small>{authMessage}</small>}
