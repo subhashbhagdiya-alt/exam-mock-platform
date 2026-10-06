@@ -77,6 +77,7 @@ export default function HomePage() {
   const [user, setUser] = useState(null);
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  const [otpCooldown, setOtpCooldown] = useState(0);
   const [recoveryCode, setRecoveryCode] = useState("");
   const [authStep, setAuthStep] = useState("phone");
   const [authMessage, setAuthMessage] = useState("");
@@ -162,6 +163,12 @@ export default function HomePage() {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (otpCooldown <= 0) return undefined;
+    const timer = setInterval(() => setOtpCooldown(value => Math.max(0, value - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
 
   useEffect(() => {
     if (!supabaseBrowser || typeof window === "undefined") return;
@@ -294,6 +301,7 @@ export default function HomePage() {
   }, [view, seconds, result]);
 
   async function sendOtp() {
+    if (otpCooldown > 0) return;
     if (!supabaseBrowser) {
       setAuthMessage(t("Login सेवा अभी उपलब्ध नहीं है।","Login service is not available right now."));
       return;
@@ -306,7 +314,7 @@ export default function HomePage() {
     setAuthMessage(t("OTP भेजा जा रहा है…","Sending OTP…"));
     const { error } = await supabaseBrowser.auth.signInWithOtp({ phone: normalized, options: { channel: "sms" } });
     if (error) setAuthMessage(error.message);
-    else { setAuthStep("otp"); setOtp(""); setAuthMessage(t("OTP भेज दिया गया है।","OTP sent.")); }
+    else { setAuthStep("otp"); setOtp(""); setOtpCooldown(60); setAuthMessage(t("OTP भेज दिया गया है। 60 सेकंड बाद फिर भेज सकते हैं।","OTP sent. You can request another OTP after 60 seconds.")); }
   }
 
   async function verifyOtp() {
@@ -481,7 +489,7 @@ export default function HomePage() {
         {view === "home" && <div className="content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
           <div className="auth-panel">
   <div><b>{user ? t("मोबाइल अकाउंट सक्रिय","Mobile account active") : t("मोबाइल से लॉगिन करें","Sign in with mobile")}</b><span>{user ? (user.phone || "") : t("आपके रिज़ल्ट आपके अकाउंट से जुड़े रहेंगे।","Your results stay linked to your account.")}</span></div>
-  {user ? <button onClick={logout}>{t("लॉगआउट","Sign out")}</button> : <div className="auth-actions">{authStep === "phone" ? <><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+91XXXXXXXXXX"/><button onClick={sendOtp}>{t("OTP भेजें","Send OTP")}</button></> : authStep === "otp" ? <><input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit OTP")}/><button onClick={verifyOtp}>{t("Verify","Verify")}</button></> : <><input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/><button onClick={recoverTrustedDevice}>{t("Device बदलें","Replace device")}</button></>}</div>}
+  {user ? <button onClick={logout}>{t("लॉगआउट","Sign out")}</button> : <div className="auth-actions">{authStep === "phone" ? <><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+91XXXXXXXXXX"/><button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : t("OTP भेजें","Send OTP")}</button></> : authStep === "otp" ? <><input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit OTP")}/><button onClick={verifyOtp}>{t("Verify","Verify")}</button></> : <><input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/><button onClick={recoverTrustedDevice}>{t("Device बदलें","Replace device")}</button></>}</div>}
   {authMessage && <small>{authMessage}</small>}
 </div>
 <div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("आपके लक्ष्य, आपकी मेहनत","YOUR GOALS. YOUR GRIT.")}</div><h1>{t("नमस्ते, सुभाष","Hello, Subhash")} <span className="wave">✦</span><br/><span className="muted-heading">{t("आज कुछ नया सीखें।","Ready to level up today?")}</span></h1><p className="intro">{t("अपनी तैयारी को परखें, कमज़ोर विषय पहचानें और हर टेस्ट के साथ बेहतर बनें।","Test your knowledge, spot weak areas, and get better with every attempt.")}</p></div><div className="hero-emblem"><div className="emblem-ring"><GraduationCap size={47}/><span>EXAM<br/>READY</span></div><div className="orbit-dot dot-one"/><div className="orbit-dot dot-two"/></div></div>
