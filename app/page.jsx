@@ -84,6 +84,8 @@ export default function HomePage() {
   const [authMessage, setAuthMessage] = useState("");
   const [practiceQuestionCount, setPracticeQuestionCount] = useState(10);
   const [practiceDuration, setPracticeDuration] = useState(10);
+  const [selectedSubject, setSelectedSubject] = useState("all");
+  const [selectedTopic, setSelectedTopic] = useState("all");
   const [availableQuestionCount, setAvailableQuestionCount] = useState(0);
   const [questionBankLoading, setQuestionBankLoading] = useState(false);
   const [questionLoadError, setQuestionLoadError] = useState("");
@@ -120,6 +122,8 @@ export default function HomePage() {
     return categoryMatch && (!needle || text.includes(needle));
   });
   const selectedTrackData = jobTracks.find(track => track.slug === selectedJobTrack) || null;
+  const subjectOptions = Array.from(new Set((selectedTrackData?.subjects || []).map(item => String(item).trim()).filter(Boolean)));
+  const topicOptions = Array.from(new Set((selectedTrackData?.topics || []).map(item => String(item).trim()).filter(Boolean)));
   const examGroups = [
     { key: "MPESB", labelHi: "MPESB", labelEn: "MPESB", icon: "🏛️" },
     { key: "SSC", labelHi: "SSC", labelEn: "SSC", icon: "📝" },
@@ -502,7 +506,7 @@ export default function HomePage() {
     const requestedCount = Math.min(Number(practiceQuestionCount || 10), readyCount);
     setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setShowSubmit(false); setTestQuestions([]);
     try {
-      const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${requestedCount}`, { cache: "no-store" });
+      const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${requestedCount}${selectedSubject !== "all" ? `&subject=${encodeURIComponent(selectedSubject)}` : ""}${selectedTopic !== "all" ? `&topic=${encodeURIComponent(selectedTopic)}` : ""}`, { cache: "no-store" });
       const payload = await response.json();
       if (response.ok && payload.exam) { const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(Number(config.duration_minutes || practiceDuration || 10) * 60); } else { setSeconds(Number(examConfig.duration_minutes || 10) * 60); }
       if (response.ok && Array.isArray(payload.data) && payload.data.length) {
@@ -668,6 +672,7 @@ export default function HomePage() {
           </div>
           {selectedTrackData?.status === "question_bank_ready" && selectedTrackData?.exam_slug ? <>
 <div className="selected-exam-strip"><div><span>{t("चयनित परीक्षा","SELECTED EXAM")}</span><b>{hi ? selectedTrackData.name_hi : selectedTrackData.name_en}</b></div><em>{availableQuestionCount > 0 ? "✓ " + availableQuestionCount + " " + t("सवाल तैयार","QUESTIONS READY") : t("बैंक जाँच रहे हैं…","CHECKING BANK…")}</em></div>
+<div className="subject-chapter-panel"><div className="section-heading"><div><h2>{t("विषय और अध्याय चुनें","Choose subject & chapter")}</h2><p>{t("पूरे exam की जगह किसी एक subject/topic पर focused practice करें।","Practice a specific subject or topic instead of the full exam.")}</p></div><span className="section-count">FOCUSED PRACTICE</span></div><div className="subject-selector"><button className={selectedSubject==="all"?"active":""} onClick={()=>{setSelectedSubject("all");setSelectedTopic("all")}}>{t("सभी विषय","All subjects")}</button>{subjectOptions.map(subject=><button key={subject} className={selectedSubject===subject?"active":""} onClick={()=>{setSelectedSubject(subject);setSelectedTopic("all")}}>{subject}</button>)}</div>{selectedSubject!=="all" && topicOptions.length>0 && <div className="topic-selector"><span>{t("अध्याय","CHAPTER")}</span><button className={selectedTopic==="all"?"active":""} onClick={()=>setSelectedTopic("all")}>{t("सभी अध्याय","All chapters")}</button>{topicOptions.map(topic=><button key={topic} className={selectedTopic===topic?"active":""} onClick={()=>setSelectedTopic(topic)}>{topic}</button>)}</div>}</div>
 <div className="practice-config">
   <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{Array.from(new Set([10,20,30,40,50,availableQuestionCount].filter(n => n > 0 && n <= availableQuestionCount))).sort((a,b) => a-b).map(n=><button key={n} className={practiceQuestionCount===n?"active":""} onClick={()=>setPracticeQuestionCount(n)}>{n}</button>)}</div><small>{availableQuestionCount ? t(availableQuestionCount + " verified/active questions अभी उपलब्ध हैं।","There are " + availableQuestionCount + " active/verified questions right now.") : t("Verified question bank जाँच में है।","The verified question bank is being checked.")}</small></div>
   <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60,120].map(n=><button key={n} className={practiceDuration===n?"active":""} onClick={()=>setPracticeDuration(n)}>{n}m</button>)}</div></div>
