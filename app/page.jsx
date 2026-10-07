@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Target, Trophy, X } from "lucide-react";
+import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Target, Trophy, X } from "lucide-react";
 
 const supabaseBrowser = (
   typeof window !== "undefined" &&
@@ -591,11 +591,12 @@ export default function HomePage() {
         <button className={"nav-item " + (view === "home" ? "active" : "")} onClick={() => setView("home")}><Home size={18}/>{t("डैशबोर्ड","Dashboard")}</button>
         <button className={"nav-item " + (view !== "home" ? "active" : "")} onClick={startTest}><BookOpen size={18}/>{t("मॉक टेस्ट","Mock test")}</button>
         <button className="nav-item" onClick={() => setView("history")}><Award size={18}/>{t("मेरे रिज़ल्ट","My results")}</button>
+        <button className={"nav-item " + (view === "sources" ? "active" : "")} onClick={() => setView("sources")}><Download size={18}/>{t("Source PDFs","Source PDFs")}</button>
         <div className="sidebar-bottom"><div className="daily-card"><div className="daily-icon"><Flame size={17}/></div><b>{t("लगातार अभ्यास करें","Keep your streak")}</b><p>{t("रोज़ थोड़ा अभ्यास, बेहतर रैंक।","Small daily practice. Better ranks.")}</p><div className="streak-dots"><i/><i/><i/><i/><i/><i/><i/></div></div><div className="profile"><div className="avatar">S</div><div><b>Subhash</b><span>{t("परीक्षा अभ्यर्थी","Exam candidate")}</span></div><ShieldCheck size={17} className="profile-check"/></div></div>
       </aside>
 
       <section className="main">
-        <header className="topbar"><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button></div></header>
+        <header className="topbar"><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : view === "sources" ? t("Source PDFs","Source PDFs") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button></div></header>
 
         {view === "home" && <div className="content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
           <div className="auth-panel" aria-label={t("वैकल्पिक लॉगिन","Optional login")}>
@@ -710,6 +711,27 @@ export default function HomePage() {
           <div className="result-actions"><button className="secondary-button" onClick={() => setView("home")}><Home size={17}/>{t("डैशबोर्ड","Dashboard")}</button><button className="primary-button" onClick={startTest}><RotateCcw size={17}/>{t("फिर से टेस्ट दें","Retake test")}</button></div>
         </div>}
 
+
+        {view === "sources" && <div className="content">
+          <div className="eyebrow"><span className="eyebrow-line"/> SOURCE LIBRARY</div>
+          <h1>{t("Source PDFs","Source PDFs")}</h1>
+          <p className="intro">{t("हर परीक्षा के मूल/स्रोत question-paper pages यहाँ मिलेंगे। PDF खोलकर सीधे डाउनलोड कर सकते हैं।","Open the original source-paper page for each exam and download the PDF directly.")}</p>
+          <div className="feature-grid">
+            <article className="feature-card featured"><div className="feature-top"><div className="feature-icon"><Download size={22}/></div><span className="tag">OFFICIAL</span></div><h3>MPESB Source Papers</h3><p>{t("MPESB की official question paper और candidate-response library.","Official MPESB question-paper and candidate-response library.")}</p><a className="primary-button" href="https://esb.mp.gov.in/Question%20Paper%20and%20Candidate%20Responses/Question_Objection.asp" target="_blank" rel="noreferrer">{t("PDF Library खोलें","Open PDF Library")}<Download size={17}/></a></article>
+            <article className="feature-card"><div className="feature-top"><div className="feature-icon green-icon"><Download size={22}/></div><span className="tag tag-green">RPF</span></div><h3>RPF Constable 2025</h3><p>{t("23 shift-wise question-paper PDFs.","23 shift-wise question-paper PDFs.")}</p><a className="secondary-button" href="https://docs.aglasem.com/org/railway/rpf-constable/question-paper" target="_blank" rel="noreferrer">{t("Papers देखें","View papers")}<Download size={16}/></a></article>
+            <article className="feature-card"><div className="feature-top"><div className="feature-icon blue-icon"><Download size={22}/></div><span className="tag tag-blue">RRB</span></div><h3>RRB ALP / Railway</h3><p>{t("RRB ALP और Railway previous-paper libraries.","RRB ALP and Railway previous-paper libraries.")}</p><a className="secondary-button" href="https://testbook.com/rrb-alp/previous-year-papers" target="_blank" rel="noreferrer">{t("ALP papers देखें","View ALP papers")}<Download size={16}/></a></article>
+          </div>
+          <div className="job-section">
+            <div className="section-heading"><div><h2>{t("बाकी source libraries","More source libraries")}</h2><p>{t("इन pages से original PDF डाउनलोड करें; ExamPrep केवल source index रखता है।","Use these source pages to download the original PDFs; ExamPrep keeps the source index.")}</p></div><span className="section-count">SOURCE INDEX</span></div>
+            <div className="job-grid">
+              <a className="job-card" href="https://career.aglasem.com/index.php/railway/rrb-group-d/previous-papers/2025" target="_blank" rel="noreferrer"><div className="job-copy"><b>RRB Group D 2025</b><span>Shift-wise previous-year PDFs</span></div><em>PDF ↗</em></a>
+              <a className="job-card" href="https://career.aglasem.com/index.php/railway/rrb-ntpc/previous-papers/2025" target="_blank" rel="noreferrer"><div className="job-copy"><b>RRB NTPC 2025</b><span>Graduate + Undergraduate papers</span></div><em>PDF ↗</em></a>
+              <a className="job-card" href="https://career.aglasem.com/ssc/ssc-gd/previous-papers/" target="_blank" rel="noreferrer"><div className="job-copy"><b>SSC GD</b><span>Previous-year / shift-wise papers</span></div><em>PDF ↗</em></a>
+              <a className="job-card" href="https://esb.mp.gov.in/Old_Question_Papers/old_question_papers.htm" target="_blank" rel="noreferrer"><div className="job-copy"><b>MPESB Old Papers</b><span>Official archive</span></div><em>PDF ↗</em></a>
+            </div>
+          </div>
+          <div className="bottom-note"><div className="note-icon"><ShieldCheck size={18}/></div><div><b>{t("Source integrity","Source integrity")}</b><p>{t("Third-party copyrighted PDFs को हम अपनी site पर copy/re-host नहीं करते; original source/download page पर भेजते हैं।","We link to third-party original/download pages instead of copying or re-hosting copyrighted PDFs.")}</p></div></div>
+        </div>}
 
         {view === "history" && <div className="content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}<div className="eyebrow"><span className="eyebrow-line"/> YOUR JOURNEY</div><h1>{t("आपके रिज़ल्ट","Your results")}</h1><p className="intro">{t("आपके हाल के मॉक टेस्ट और प्रगति यहाँ दिखाई देंगे।","Your recent mock test attempts and progress appear here.")}</p>{history.length ? <div className="history-list">{history.map((h,i)=><div className="history-item" key={i}><div className="history-icon"><Award size={21}/></div><div className="history-main"><b>{h.test_name || t("क्विक मॉक टेस्ट","Quick mock test")}</b><span>{t("प्रयास","Attempt")} {history.length-i} · {h.accuracy}% {t("सटीकता","accuracy")}</span></div><strong>{h.score}/{Number(h.total_questions || 10) * Number(h.marks_per_question || 1)}</strong><span className="history-grade">{(Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1))) >= 0.8?t("बहुत अच्छा","Great"):(Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1))) >= 0.5?t("अच्छा प्रयास","Good effort"):t("अभ्यास जारी रखें","Keep practicing")}</span></div>)}</div> : <div className="empty-state"><div className="empty-icon"><BookOpen size={28}/></div><h2>{t("आपका पहला टेस्ट इंतज़ार कर रहा है","Your first test is waiting")}</h2><p>{t("टेस्ट पूरा करने के बाद आपका स्कोर और विश्लेषण यहाँ दिखाई देगा।","Complete a mock test to see your score and analysis here.")}</p><button className="primary-button" disabled={!availableQuestionCount} onClick={startTest}>{t("पहला टेस्ट शुरू करें","Start your first test")}<ArrowRight size={17}/></button></div>}</div>}
 
