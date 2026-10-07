@@ -42,10 +42,15 @@ export async function GET(request) {
     .limit(poolSize);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const selected = shuffle(data || []).slice(0, Math.min(limit, (data || []).length));
+  const rows = data || [];
+  // Prefer real previous-year/official questions over curated practice items.
+  const trusted = rows.filter((row) => row.source_type === "pyq" || row.source_type === "official");
+  const practice = rows.filter((row) => row.source_type === "curated");
+  const prioritized = [...trusted, ...practice];
+  const selected = shuffle(prioritized).slice(0, Math.min(limit, prioritized.length));
   return NextResponse.json({
     exam: examRow,
     data: selected,
-    meta: { requested: limit, available: data?.length || 0, selection: "verified prediction-ranked pool + shuffle" }
+    meta: { requested: limit, available: rows.length, selection: "PYQ/official first, then verified practice; shuffle within priority" }
   });
 }
