@@ -89,12 +89,15 @@ export default function HomePage() {
   const [questionLoadError, setQuestionLoadError] = useState("");
   const [nativeSimStatus, setNativeSimStatus] = useState("web");
   const [trustedDeviceVerified, setTrustedDeviceVerified] = useState(false);
-  const [themeMode, setThemeMode] = useState("light");
+  const [themeMode, setThemeMode] = useState("dark");
+  const [splashVisible, setSplashVisible] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = localStorage.getItem("exam_prep_theme");
     if (saved === "light" || saved === "dark" || saved === "system") setThemeMode(saved);
+    const timer = window.setTimeout(() => setSplashVisible(false), 1800);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -602,6 +605,7 @@ export default function HomePage() {
 
   return (
     <main className={"shell theme-" + effectiveTheme}>
+      {splashVisible && <div className="splash-screen" aria-label="ExamPrep loading"><div className="splash-orbit splash-orbit-one"/><div className="splash-orbit splash-orbit-two"/><div className="splash-logo"><GraduationCap size={54}/></div><h1>EXAM <span>PREP</span></h1><p>Study Smarter • Score Higher</p><div className="splash-loader"><span/></div><small>Loading…</small></div>}
       <aside className="sidebar">
         <div className="brand"><div className="brand-icon"><GraduationCap size={23}/></div><span>Exam<span className="brand-accent">Prep</span><small>YOUR NEXT RANK STARTS HERE</small></span></div>
         <div className="side-label">{t("वर्कस्पेस","WORKSPACE")}</div>
@@ -613,7 +617,7 @@ export default function HomePage() {
       </aside>
 
       <section className="main">
-        <header className="topbar"><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : view === "sources" ? t("Source PDFs","Source PDFs") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button><button className="theme-toggle" onClick={() => setThemeMode(themeMode === "light" ? "dark" : themeMode === "dark" ? "system" : "light")} title={themeMode === "light" ? "Night mode" : themeMode === "dark" ? "System mode" : "Day mode"}>{themeMode === "light" ? "☀️" : themeMode === "dark" ? "🌙" : "◐"}<span>{themeMode === "light" ? t("दिन","Day") : themeMode === "dark" ? t("रात","Night") : t("सिस्टम","System")}</span></button><button className="menu-button" onClick={() => setMenuOpen(v=>!v)} aria-label="Menu"><SlidersHorizontal size={18}/></button>{menuOpen && <div className="menu-popover"><b>{t("दिखावट","Appearance")}</b><button onClick={() => {setThemeMode("light");setMenuOpen(false)}}>☀️ {t("Day Mode","Day Mode")}</button><button onClick={() => {setThemeMode("dark");setMenuOpen(false)}}>🌙 {t("Night Mode","Night Mode")}</button><button onClick={() => {setThemeMode("system");setMenuOpen(false)}}>◐ {t("System","System")}</button><hr/><button onClick={() => {setView("home");setMenuOpen(false)}}>{t("डैशबोर्ड","Dashboard")}</button><button onClick={() => {setView("history");setMenuOpen(false)}}>{t("मेरे रिज़ल्ट","My results")}</button><button onClick={() => {setView("sources");setMenuOpen(false)}}>Source PDFs</button></div>}</div></header>
+        <header className="topbar"><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : view === "sources" ? t("Source PDFs","Source PDFs") : view === "about" ? t("ऐप के बारे में","About") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button><button className="theme-toggle" onClick={() => setThemeMode(themeMode === "light" ? "dark" : themeMode === "dark" ? "system" : "light")} title={themeMode === "light" ? "Night mode" : themeMode === "dark" ? "System mode" : "Day mode"}>{themeMode === "light" ? "☀️" : themeMode === "dark" ? "🌙" : "◐"}<span>{themeMode === "light" ? t("दिन","Day") : themeMode === "dark" ? t("रात","Night") : t("सिस्टम","System")}</span></button><button className="menu-button" onClick={() => setMenuOpen(v=>!v)} aria-label="Menu"><SlidersHorizontal size={18}/></button>{menuOpen && <div className="menu-popover"><b>{t("दिखावट","Appearance")}</b><button onClick={() => {setThemeMode("light");setMenuOpen(false)}}>☀️ {t("Day Mode","Day Mode")}</button><button onClick={() => {setThemeMode("dark");setMenuOpen(false)}}>🌙 {t("Night Mode","Night Mode")}</button><button onClick={() => {setThemeMode("system");setMenuOpen(false)}}>◐ {t("System","System")}</button><hr/><button onClick={() => {setView("home");setMenuOpen(false)}}>{t("डैशबोर्ड","Dashboard")}</button><button onClick={() => {setView("history");setMenuOpen(false)}}>{t("मेरे रिज़ल्ट","My results")}</button><button onClick={() => {setView("sources");setMenuOpen(false)}}>Source PDFs</button><button onClick={() => {setView("about");setMenuOpen(false)}}>{t("ऐप के बारे में","About ExamPrep")}</button></div>}</div></header>
 
         {view === "home" && <div className="content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
           <div className="auth-panel" aria-label={t("वैकल्पिक लॉगिन","Optional login")}>
