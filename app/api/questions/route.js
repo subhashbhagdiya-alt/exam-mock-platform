@@ -18,6 +18,8 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const exam = searchParams.get("exam") || "mpesb";
   const requestedLimit = searchParams.get("limit");
+  const subject = searchParams.get("subject") || "";
+  const topic = searchParams.get("topic") || "";
   const client = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 
   const { data: examRow, error: examError } = await client
@@ -38,6 +40,8 @@ export async function GET(request) {
     .eq("active", true)
     .eq("verified", true)
     .eq("exam_id", examRow.id)
+    .match(subject ? { subject } : {})
+    .match(topic ? { topic } : {})
     .order("prediction_score", { ascending: false })
     .limit(poolSize);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
