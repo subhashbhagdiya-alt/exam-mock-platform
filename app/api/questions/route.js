@@ -44,7 +44,7 @@ export async function GET(request) {
 
   const rows = data || [];
   // Prefer real previous-year/official questions over curated practice items.
-  const trusted = rows.filter((row) => row.source_type === "pyq" || row.source_type === "official");
+  const trusted = rows.filter((row) => row.source_type === "pyq" || row.source_type === "official" || row.source_type === "memory_based");
   const practice = rows.filter((row) => row.source_type === "curated");
   const prioritized = [...trusted, ...practice];
   const selected = shuffle(prioritized).slice(0, Math.min(limit, prioritized.length));
