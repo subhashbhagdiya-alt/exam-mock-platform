@@ -34,11 +34,13 @@ export async function GET() {
   const examIds = [...examsBySlug.values()].map((exam) => exam.id);
   const verifiedCounts = new Map();
   const sourceCounts = new Map();
+  const subjectSets = new Map();
+  const topicSets = new Map();
 
   if (examIds.length) {
     const { data: questions, error: questionError } = await client
       .from("question_bank")
-      .select("exam_id,source_type")
+      .select("exam_id,source_type,subject,topic")
       .in("exam_id", examIds)
       .eq("active", true)
       .eq("verified", true);
@@ -49,6 +51,10 @@ export async function GET() {
       verifiedCounts.set(question.exam_id, (verifiedCounts.get(question.exam_id) || 0) + 1);
       const key = `${question.exam_id}:${question.source_type || "unknown"}`;
       sourceCounts.set(key, (sourceCounts.get(key) || 0) + 1);
+      if (!subjectSets.has(question.exam_id)) subjectSets.set(question.exam_id, new Set());
+      if (!topicSets.has(question.exam_id)) topicSets.set(question.exam_id, new Set());
+      if (question.subject) subjectSets.get(question.exam_id).add(question.subject);
+      if (question.topic) topicSets.get(question.exam_id).add(question.topic);
     }
   }
 
@@ -66,6 +72,8 @@ export async function GET() {
       pyq_question_count: sourceCounts.get(`${exam?.id}:pyq`) || 0,
       official_question_count: sourceCounts.get(`${exam?.id}:official`) || 0,
       practice_question_count: sourceCounts.get(`${exam?.id}:curated`) || 0,
+      subjects: exam ? [...(subjectSets.get(exam.id) || new Set())].sort() : [],
+      topics: exam ? [...(topicSets.get(exam.id) || new Set())].sort() : [],
       effective_status: questionBankReady ? "question_bank_ready" : track.status,
     };
   });
