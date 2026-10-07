@@ -897,3 +897,60 @@ undefined
 .shell.theme-light .exam-board-tab.active,.shell.theme-light .config-options button.active,.shell.theme-light .exam-filters button.active{background:#d8d3ef!important;border-color:#aaa0dc!important;color:#4f4691!important}
 .shell.theme-light .shell:before{opacity:.12!important}.shell.theme-light .shell:after{opacity:.08!important}
 .shell.theme-light .auth-panel:before,.shell.theme-light .feature-card.featured:before,.shell.theme-light .selected-exam-strip:before{opacity:.08!important}
+
+/* ===== Canva-inspired dashboard refinement v10 ===== */
+.shell.theme-light .content{color:#252936!important}
+.shell.theme-light .welcome-row h1,.shell.theme-light .section-heading h2,.shell.theme-light .section-heading h3,.shell.theme-light .active-board-head h3,.shell.theme-light .job-copy b,.shell.theme-light .stat-value,.shell.theme-light .feature-card h3{color:#252936!important}
+.shell.theme-light .intro,.shell.theme-light .section-heading p,.shell.theme-light .job-copy span,.shell.theme-light .job-copy small,.shell.theme-light .stat-foot,.shell.theme-light .active-board-kicker{color:#686e7b!important}
+.shell.theme-light .exam-board-tabs{gap:12px}
+.shell.theme-light .exam-board-tab{
+  min-height:104px!important;
+  background:linear-gradient(145deg,#e7e8ec,#dfe0e5)!important;
+  border:1px solid #c7cad2!important;
+  color:#303442!important;
+  box-shadow:0 8px 18px rgba(38,43,55,.08)!important;
+  transform:translateZ(0);
+}
+.shell.theme-light .exam-board-tab:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(38,43,55,.12)!important}
+.shell.theme-light .exam-board-tab.active{
+  background:linear-gradient(145deg,#ddd8f0,#d5d0e9)!important;
+  border-color:#aaa0d8!important;
+  color:#4f4691!important;
+  box-shadow:0 12px 26px rgba(82,70,145,.14)!important;
+}
+.shell.theme-light .board-tab-copy b{color:#303442!important}
+.shell.theme-light .board-tab-copy small{color:#747a87!important}
+.shell.theme-light .exam-board-tab.active .board-tab-copy b{color:#4f4691!important}
+.shell.theme-light .exam-board-tab.active .board-tab-copy small{color:#7770a0!important}
+.shell.theme-light .exam-board-tab em{color:#6b7280!important}
+.shell.theme-light .exam-board-tab.active em{color:#3f8a6b!important}
+.shell.theme-light .exam-toolbar{
+  background:linear-gradient(145deg,#e7e8ec,#dfe0e5)!important;
+  border:1px solid #c9cbd2!important;
+  box-shadow:0 10px 24px rgba(38,43,55,.07)!important;
+}
+.shell.theme-light .exam-search input{color:#303442!important}
+.shell.theme-light .exam-search input::placeholder{color:#777d89!important}
+.shell.theme-light .active-board-head{color:#303442!important}
+.shell.theme-light .job-grid{gap:12px}
+.shell.theme-light .job-card{
+  background:linear-gradient(145deg,#e7e8ec,#dfe0e5)!important;
+  border:1px solid #c7cad2!important;
+  color:#303442!important;
+  box-shadow:0 8px 20px rgba(38,43,55,.08)!important;
+}
+.shell.theme-light .job-card:hover{transform:translateY(-2px);box-shadow:0 14px 26px rgba(38,43,55,.12)!important}
+.shell.theme-light .job-card.selected{
+  background:linear-gradient(145deg,#ddd8f0,#d6d1e9)!important;
+  border-color:#aaa0d8!important;
+}
+.shell.theme-light .job-number{color:#6d7280!important}
+.shell.theme-light .job-card em{color:#3f8a6b!important}
+.shell.theme-light .job-card.coming em{color:#8a7380!important}
+.shell.theme-light .job-3d-icon{background:#302b55!important;color:#b9abff!important;box-shadow:0 7px 15px rgba(48,43,85,.18)!important}
+.shell.theme-light .selected-exam-strip{background:linear-gradient(145deg,#ddd8f0,#d5d0e8)!important;border-color:#aaa0d8!important;color:#3e3a55!important}
+.shell.theme-light .selection-empty{color:#656b78!important}
+@media(max-width:760px){
+  .shell.theme-light .exam-board-tab{min-height:94px!important}
+  .shell.theme-light .job-card{min-height:122px}
+}
