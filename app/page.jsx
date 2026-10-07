@@ -105,7 +105,8 @@ export default function HomePage() {
   const effectiveTheme = themeMode === "system"
     ? (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light")
     : themeMode;
-\n  const hi = language === "hi";
+
+  const hi = language === "hi";
   const t = (h, e) => hi ? h : e;
   const q = testQuestions[current];
   const answered = Object.keys(answers).length;
