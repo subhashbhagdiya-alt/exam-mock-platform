@@ -1987,3 +1987,105 @@ button{cursor:pointer}
 .shell.theme-light .welcome-row + .section-heading::after{
   background:linear-gradient(90deg,rgba(101,70,217,.45),rgba(8,127,155,.16),transparent)!important;
 }
+
+
+/* ============================================================
+   v37 — EXAM BOARD SELECTION CLARITY
+   Make the current board and selected exam unmistakable on mobile.
+   ============================================================ */
+.dashboard-content .exam-board-tabs{
+  position:relative!important;
+  padding:9px!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(12,15,30,.28))!important;
+  box-shadow:0 18px 42px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.08)!important;
+}
+.dashboard-content .exam-board-tab{
+  min-height:64px!important;
+  border-radius:17px!important;
+  overflow:hidden!important;
+}
+.dashboard-content .exam-board-tab.active{
+  border-width:1.5px!important;
+}
+.dashboard-content .exam-board-tab.active::after{
+  content:""!important;
+  position:absolute!important;
+  left:10%!important;
+  right:10%!important;
+  bottom:-7px!important;
+  height:10px!important;
+  border-radius:50%!important;
+  background:rgba(124,88,246,.34)!important;
+  filter:blur(8px)!important;
+  transform:translateZ(-10px)!important;
+  pointer-events:none!important;
+}
+.dashboard-content .active-board-head{
+  padding:14px 16px!important;
+  border-radius:19px!important;
+  background:linear-gradient(135deg,rgba(139,92,246,.12),rgba(34,211,238,.045))!important;
+  border:1px solid rgba(139,92,246,.18)!important;
+}
+.dashboard-content .active-board-kicker{
+  font-weight:900!important;
+  letter-spacing:.08em!important;
+}
+.dashboard-content .job-card.selected{
+  position:relative!important;
+  border-width:1.5px!important;
+  box-shadow:
+    0 22px 0 rgba(77,49,155,.18),
+    0 34px 70px rgba(0,0,0,.32),
+    0 0 34px rgba(139,92,246,.14),
+    inset 0 1px rgba(255,255,255,.20)!important;
+}
+.dashboard-content .job-card.selected::after{
+  content:"SELECTED"!important;
+  position:absolute!important;
+  top:10px!important;
+  right:11px!important;
+  padding:4px 7px!important;
+  border-radius:999px!important;
+  background:rgba(139,92,246,.18)!important;
+  border:1px solid rgba(179,154,255,.32)!important;
+  color:#c9b9ff!important;
+  font:900 6px/1 Manrope,sans-serif!important;
+  letter-spacing:1px!important;
+  pointer-events:none!important;
+}
+.shell.theme-light .dashboard-content .active-board-head{
+  background:linear-gradient(135deg,rgba(101,70,217,.08),rgba(8,127,155,.035))!important;
+  border-color:rgba(101,70,217,.16)!important;
+}
+.shell.theme-light .dashboard-content .job-card.selected::after{
+  color:#5b3fc0!important;
+  background:rgba(101,70,217,.08)!important;
+  border-color:rgba(101,70,217,.22)!important;
+}
+@media(max-width:760px){
+  .dashboard-content .exam-board-tabs{
+    gap:8px!important;
+    padding:7px!important;
+  }
+  .dashboard-content .exam-board-tab{
+    min-height:60px!important;
+    padding:9px 8px!important;
+  }
+  .dashboard-content .board-tab-copy b{
+    font-size:10px!important;
+    line-height:1.15!important;
+  }
+  .dashboard-content .board-tab-copy small{
+    font-size:7.5px!important;
+  }
+  .dashboard-content .exam-board-tab em{
+    font-size:6.5px!important;
+  }
+  .dashboard-content .active-board-head{
+    padding:12px!important;
+  }
+  .dashboard-content .job-card.selected::after{
+    top:8px!important;
+    right:8px!important;
+  }
+}
