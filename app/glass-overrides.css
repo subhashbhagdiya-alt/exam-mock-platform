@@ -2089,3 +2089,92 @@ button{cursor:pointer}
     right:8px!important;
   }
 }
+
+
+/* ============================================================
+   v38 — EXAM DETAIL ACTION-FIRST HIERARCHY
+   Turn the selected exam panel into a clear launch surface.
+   ============================================================ */
+.dashboard-content .exam-detail-panel{
+  position:relative!important;
+  overflow:hidden!important;
+  background:
+    radial-gradient(circle at 88% 12%,rgba(139,92,246,.14),transparent 34%),
+    linear-gradient(145deg,rgba(27,30,57,.94),rgba(10,13,26,.92))!important;
+}
+.dashboard-content .exam-detail-panel::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  pointer-events:none!important;
+  border-radius:inherit!important;
+  background:linear-gradient(125deg,rgba(255,255,255,.06),transparent 30%,transparent 72%,rgba(34,211,238,.035))!important;
+}
+.dashboard-content .exam-detail-head{
+  position:relative!important;
+  z-index:1!important;
+}
+.dashboard-content .exam-detail-stats{
+  position:relative!important;
+  z-index:1!important;
+}
+.dashboard-content .exam-detail-stats>div{
+  border:1px solid rgba(139,92,246,.16)!important;
+  background:rgba(255,255,255,.035)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.07),0 10px 24px rgba(0,0,0,.12)!important;
+}
+.dashboard-content .exam-detail-stats>div>b{
+  font-size:17px!important;
+  font-weight:950!important;
+}
+.dashboard-content .exam-detail-actions{
+  position:relative!important;
+  z-index:1!important;
+  margin-top:18px!important;
+  padding:12px!important;
+  border-radius:16px!important;
+  border:1px solid rgba(139,92,246,.16)!important;
+  background:rgba(5,8,20,.30)!important;
+}
+.dashboard-content .exam-detail-actions .primary-button{
+  min-height:46px!important;
+  padding:0 18px!important;
+  font-weight:900!important;
+  letter-spacing:.01em!important;
+  box-shadow:0 14px 28px rgba(82,51,191,.28),inset 0 1px rgba(255,255,255,.22)!important;
+}
+.shell.theme-light .dashboard-content .exam-detail-panel{
+  background:
+    radial-gradient(circle at 88% 12%,rgba(101,70,217,.10),transparent 34%),
+    linear-gradient(145deg,#ffffff,#f5f6fb)!important;
+}
+.shell.theme-light .dashboard-content .exam-detail-stats>div{
+  border-color:rgba(101,70,217,.14)!important;
+  background:#f7f8fc!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.9),0 8px 20px rgba(42,54,84,.08)!important;
+}
+.shell.theme-light .dashboard-content .exam-detail-actions{
+  background:#f0f2f8!important;
+  border-color:rgba(101,70,217,.14)!important;
+}
+@media(max-width:760px){
+  .dashboard-content .exam-detail-stats{
+    gap:7px!important;
+  }
+  .dashboard-content .exam-detail-stats>div{
+    min-height:66px!important;
+    padding:9px 7px!important;
+  }
+  .dashboard-content .exam-detail-stats>div>b{
+    font-size:15px!important;
+  }
+  .dashboard-content .exam-detail-actions{
+    gap:10px!important;
+    margin-top:12px!important;
+    padding:10px!important;
+  }
+  .dashboard-content .exam-detail-actions .primary-button{
+    width:100%!important;
+    min-height:44px!important;
+  }
+}
