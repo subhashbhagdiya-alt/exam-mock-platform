@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./glass-overrides.css";
 
 export const metadata = {
   title: "ExamPrep — Mock Test Platform",
