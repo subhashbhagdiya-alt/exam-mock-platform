@@ -21,6 +21,14 @@ async function hashRecoveryCode(code) {
   return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function getUserDisplayName(authUser) {
+  const metadata = authUser?.user_metadata || {};
+  const name = metadata.full_name || metadata.name || metadata.display_name;
+  if (name && String(name).trim()) return String(name).trim();
+  if (authUser?.email) return String(authUser.email).split("@")[0];
+  return "अभ्यर्थी";
+}
+
 async function ensureSessionKey() {
   if (typeof window === "undefined") throw new Error("Browser session is not available");
   let key = window.localStorage.getItem("exam_prep_session_key");
@@ -77,6 +85,7 @@ export default function HomePage() {
   const [examQuery, setExamQuery] = useState("");
   const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
   const [user, setUser] = useState(null);
+  const [profileName, setProfileName] = useState("");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [otpCooldown, setOtpCooldown] = useState(0);
@@ -148,9 +157,19 @@ export default function HomePage() {
   useEffect(() => {
     if (!supabaseBrowser) return undefined;
     let mounted = true;
-    supabaseBrowser.auth.getSession().then(({ data }) => { if (mounted) setUser(data.session?.user || null); });
+    supabaseBrowser.auth.getSession().then(({ data }) => {
+      if (mounted) {
+        const nextUser = data.session?.user || null;
+        setUser(nextUser);
+        setProfileName(getUserDisplayName(nextUser) === "अभ्यर्थी" ? "" : getUserDisplayName(nextUser));
+      }
+    });
     const { data: listener } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
-      if (mounted) setUser(session?.user || null);
+      if (mounted) {
+        const nextUser = session?.user || null;
+        setUser(nextUser);
+        setProfileName(getUserDisplayName(nextUser) === "अभ्यर्थी" ? "" : getUserDisplayName(nextUser));
+      }
     });
     return () => { mounted = false; listener?.subscription?.unsubscribe(); };
   }, []);
@@ -443,6 +462,22 @@ export default function HomePage() {
     else setAuthMessage(t("OTP सही है। Trusted device की जाँच हो रही है…","OTP verified. Checking trusted device…"));
   }
 
+  async function saveProfileName() {
+    const name = profileName.trim();
+    if (!supabaseBrowser || !user || !name) {
+      setAuthMessage(t("अपना नाम दर्ज करें।","Enter your name."));
+      return;
+    }
+    const { data, error } = await supabaseBrowser.auth.updateUser({ data: { full_name: name, display_name: name } });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setUser(data.user);
+    setProfileName(name);
+    setAuthMessage(t("नाम सेव हो गया।","Your name has been saved."));
+  }
+
   async function createRecoveryCode() {
     if (!supabaseBrowser || !user || typeof window === "undefined") return;
     const deviceKey = localStorage.getItem("exam_prep_device_key") || "";
@@ -631,7 +666,7 @@ export default function HomePage() {
         <button className={"nav-item " + (view !== "home" ? "active" : "")} onClick={startTest}><BookOpen size={18}/>{t("मॉक टेस्ट","Mock test")}</button>
         <button className="nav-item" onClick={() => setView("history")}><Award size={18}/>{t("मेरे रिज़ल्ट","My results")}</button>
         <button className={"nav-item " + (view === "sources" ? "active" : "")} onClick={() => setView("sources")}><Download size={18}/>{t("Source PDFs","Source PDFs")}</button>
-        <div className="sidebar-bottom"><div className="daily-card"><div className="daily-icon"><Flame size={17}/></div><b>{t("लगातार अभ्यास करें","Keep your streak")}</b><p>{t("रोज़ थोड़ा अभ्यास, बेहतर रैंक।","Small daily practice. Better ranks.")}</p><div className="streak-dots"><i/><i/><i/><i/><i/><i/><i/></div></div><div className="profile"><div className="avatar">S</div><div><b>Subhash</b><span>{t("परीक्षा अभ्यर्थी","Exam candidate")}</span></div><ShieldCheck size={17} className="profile-check"/></div></div>
+        <div className="sidebar-bottom"><div className="daily-card"><div className="daily-icon"><Flame size={17}/></div><b>{t("लगातार अभ्यास करें","Keep your streak")}</b><p>{t("रोज़ थोड़ा अभ्यास, बेहतर रैंक।","Small daily practice. Better ranks.")}</p><div className="streak-dots"><i/><i/><i/><i/><i/><i/><i/></div></div><div className="profile"><div className="avatar">{(getUserDisplayName(user).charAt(0) || "अ").toUpperCase()}</div><div><b>{getUserDisplayName(user)}</b><span>{t("परीक्षा अभ्यर्थी","Exam candidate")}</span></div><ShieldCheck size={17} className="profile-check"/></div></div>
       </aside>
 
       <section className="main">
@@ -647,7 +682,7 @@ export default function HomePage() {
   </div>}
   {authMessage && <small>{authMessage}</small>}
 </div>
-<div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("आपके लक्ष्य, आपकी मेहनत","YOUR GOALS. YOUR GRIT.")}</div><h1>{t("नमस्ते, सुभाष","Hello, Subhash")} <span className="wave">✦</span><br/><span className="muted-heading">{t("आज कुछ नया सीखें।","Ready to level up today?")}</span></h1><p className="intro">{t("अपनी तैयारी को परखें, कमज़ोर विषय पहचानें और हर टेस्ट के साथ बेहतर बनें।","Test your knowledge, spot weak areas, and get better with every attempt.")}</p></div><div className="hero-emblem"><div className="emblem-ring"><GraduationCap size={47}/><span>EXAM<br/>READY</span></div><div className="orbit-dot dot-one"/><div className="orbit-dot dot-two"/></div></div>
+<div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("आपके लक्ष्य, आपकी मेहनत","YOUR GOALS. YOUR GRIT.")}</div><h1>{t("नमस्ते, " + getUserDisplayName(user),"Hello, " + getUserDisplayName(user))} <span className="wave">✦</span><br/><span className="muted-heading">{t("आज कुछ नया सीखें।","Ready to level up today?")}</span></h1><p className="intro">{t("अपनी तैयारी को परखें, कमज़ोर विषय पहचानें और हर टेस्ट के साथ बेहतर बनें।","Test your knowledge, spot weak areas, and get better with every attempt.")}</p></div><div className="hero-emblem"><div className="emblem-ring"><GraduationCap size={47}/><span>EXAM<br/>READY</span></div><div className="orbit-dot dot-one"/><div className="orbit-dot dot-two"/></div></div>
           <div className="stats-grid"><div className="stat-card"><div className="stat-top"><span>{t("कुल मॉक टेस्ट","MOCK TESTS")}</span><div className="stat-icon purple"><BookOpen size={18}/></div></div><div className="stat-value">{history.length.toString().padStart(2,"0")}<small> / 50</small></div><div className="stat-foot">{t("हर प्रयास मायने रखता है","Every attempt counts")}</div></div><div className="stat-card"><div className="stat-top"><span>{t("सर्वश्रेष्ठ स्कोर","BEST SCORE")}</span><div className="stat-icon gold"><Trophy size={18}/></div></div><div className="stat-value">{history.length ? (() => { const best = history.reduce((a, h) => Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1)) > Number(a.score || 0) / Math.max(1, Number(a.total_questions || 10) * Number(a.marks_per_question || 1)) ? h : a, history[0]); return best.score; })() : "—"}<small> / {history.length ? (() => { const best = history.reduce((a, h) => Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1)) > Number(a.score || 0) / Math.max(1, Number(a.total_questions || 10) * Number(a.marks_per_question || 1)) ? h : a, history[0]); return Number(best.total_questions || 10) * Number(best.marks_per_question || 1); })() : 0}</small></div><div className="stat-foot">{t("अपना रिकॉर्ड तोड़ें","Beat your personal best")}</div></div><div className="stat-card"><div className="stat-top"><span>{t("औसत सटीकता","AVG. ACCURACY")}</span><div className="stat-icon green"><Target size={18}/></div></div><div className="stat-value">{history.length ? Math.round(history.reduce((a,h)=>a+h.accuracy,0)/history.length) : 0}<small>%</small></div><div className="stat-foot">{t("सही जवाबों का प्रतिशत","Correct answer rate")}</div></div></div>
           <div className="section-heading"><div><h2>{t("अपनी तैयारी शुरू करें","Pick up where you want to grow")}</h2><p>{t("छोटे कदम, बड़ी सफलता।","Focused practice makes progress.")}</p></div><span className="section-count">01 — 03</span></div>
           <div className="job-section">
@@ -710,7 +745,7 @@ export default function HomePage() {
           <div className="result-hero">
             <div className="result-trophy"><Trophy size={37}/></div>
             <div className="eyebrow"><span className="eyebrow-line"/> SESSION COMPLETE</div>
-            <h1>{t("शानदार प्रयास, सुभाष!","Great effort, Subhash!")}</h1>
+            <h1>{t("शानदार प्रयास, " + getUserDisplayName(user) + "!","Great effort, " + getUserDisplayName(user) + "!")}</h1>
             <p>{t("हर टेस्ट आपको आपके लक्ष्य के और करीब ले जाता है।","Every attempt takes you one step closer to your goal.")}</p>
             <p>{t("नेट स्कोर:","Net score:")} <b>{result.score}</b> · {t("कटौती:","Negative:")} <b>{result.negative_score}</b></p>
             <div className="score-circle"><div><strong>{result.score}<small>/{Number(result.total_questions || 0) * Number(result.marks_per_question || 1)}</small></strong><span>{t("आपका स्कोर","YOUR SCORE")}</span></div></div>
