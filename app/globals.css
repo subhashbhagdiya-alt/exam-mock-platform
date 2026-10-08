@@ -1653,3 +1653,105 @@ undefined
 .shell,.shell *{transition:background-color .22s ease,border-color .22s ease,color .18s ease,box-shadow .22s ease}
 @media (prefers-reduced-motion:reduce){.shell,.shell *{transition:none}}
 
+
+
+/* ===== Day/Night visual personalities v16 ===== */
+.shell.theme-dark{
+  --bg:#06080d;--panel:#10131c;--panel2:#151a26;--line:#2b3040;--text:#f7f9ff;--muted:#aeb6c8;
+  background:
+    radial-gradient(circle at 82% -8%,rgba(116,76,255,.18),transparent 31%),
+    radial-gradient(circle at 8% 35%,rgba(0,174,255,.07),transparent 28%),
+    #06080d;
+}
+.shell.theme-dark .main{background:transparent}
+.shell.theme-dark .topbar{
+  background:rgba(8,10,17,.64);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-color:rgba(143,151,181,.18);box-shadow:0 1px 0 rgba(255,255,255,.025),0 12px 40px rgba(0,0,0,.12)
+}
+.shell.theme-dark .sidebar{
+  background:linear-gradient(180deg,rgba(10,12,20,.94),rgba(7,9,14,.97));
+  border-color:rgba(143,151,181,.16);box-shadow:14px 0 45px rgba(0,0,0,.28)
+}
+.shell.theme-dark .stat-card,.shell.theme-dark .feature-card,.shell.theme-dark .question-panel,
+.shell.theme-dark .question-nav,.shell.theme-dark .history-item,.shell.theme-dark .review-panel{
+  background:linear-gradient(145deg,rgba(24,28,41,.88),rgba(11,14,22,.92));
+  border-color:rgba(151,160,193,.20);box-shadow:0 18px 45px rgba(0,0,0,.20),inset 0 1px rgba(255,255,255,.035)
+}
+.shell.theme-dark .stat-card:hover,.shell.theme-dark .feature-card:hover{
+  transform:translateY(-2px);border-color:rgba(158,140,255,.42);box-shadow:0 22px 55px rgba(0,0,0,.28),0 0 28px rgba(132,111,255,.07)
+}
+.shell.theme-dark .intro,.shell.theme-dark .section-heading p,.shell.theme-dark .feature-card>p,
+.shell.theme-dark .stat-foot,.shell.theme-dark .question-hint{color:#b3bbcc}
+.shell.theme-dark .option{background:rgba(19,23,34,.92);border-color:#353c4e;color:#e4e8f2}
+.shell.theme-dark .option:hover{background:#202638;border-color:#7568bd}
+.shell.theme-dark .secondary-button{background:rgba(27,32,45,.88);color:#e5e9f3;border-color:#3b4355}
+.shell.theme-dark .theme-toggle{background:rgba(26,29,42,.88);border-color:#41485b;color:#f1f3f8}
+
+/* Day mode intentionally changes surfaces, depth and spacing—not just colors. */
+.shell.theme-light{
+  --bg:#e9eef6;--panel:#f7f9fc;--panel2:#ffffff;--line:#c9d3e2;--text:#172033;--muted:#526078;
+  background:
+    radial-gradient(circle at 88% -8%,rgba(91,81,211,.13),transparent 28%),
+    radial-gradient(circle at 6% 30%,rgba(0,151,207,.09),transparent 25%),
+    linear-gradient(145deg,#edf2f8,#e6ecf5);
+}
+.shell.theme-light .main{background:transparent}
+.shell.theme-light .topbar{
+  background:rgba(246,249,253,.84);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-color:#cbd5e2;box-shadow:0 8px 28px rgba(45,58,82,.07)
+}
+.shell.theme-light .sidebar{
+  background:rgba(239,244,250,.94);border-color:#c5d0de;
+  box-shadow:12px 0 32px rgba(47,61,84,.10)
+}
+.shell.theme-light .brand-icon{box-shadow:0 8px 24px rgba(82,70,190,.20)}
+.shell.theme-light .nav-item{border-radius:12px;padding:13px 14px;color:#46546c}
+.shell.theme-light .nav-item:hover{background:#e1e8f2;transform:translateX(2px)}
+.shell.theme-light .nav-item.active{
+  background:linear-gradient(100deg,#e1e3fb,#e9f2fb);border-color:#aab4dc;
+  box-shadow:inset 3px 0 #665bd0,0 7px 18px rgba(75,76,155,.08)
+}
+.shell.theme-light .content{padding-top:45px}
+.shell.theme-light .welcome-row{margin-bottom:38px}
+.shell.theme-light .stat-card,.shell.theme-light .feature-card,.shell.theme-light .question-panel,
+.shell.theme-light .question-nav,.shell.theme-light .history-item,.shell.theme-light .review-panel{
+  background:rgba(249,251,254,.78);border-color:#c8d3e1;border-radius:17px;
+  box-shadow:0 12px 30px rgba(49,65,90,.09),inset 0 1px rgba(255,255,255,.95)
+}
+.shell.theme-light .stat-card:hover,.shell.theme-light .feature-card:hover{
+  transform:translateY(-3px);border-color:#9da8cf;
+  box-shadow:0 18px 38px rgba(49,65,90,.13)
+}
+.shell.theme-light .stat-value{color:#172033}
+.shell.theme-light .intro,.shell.theme-light .section-heading p,.shell.theme-light .feature-card>p,
+.shell.theme-light .stat-foot,.shell.theme-light .question-hint{color:#4f5d73}
+.shell.theme-light .section-heading h2,.shell.theme-light .feature-card h3,
+.shell.theme-light .question-panel h2{color:#172033}
+.shell.theme-light .option{
+  background:#f5f8fb;border-color:#b9c6d6;color:#26354c;border-radius:12px;padding:14px 15px
+}
+.shell.theme-light .option:hover{background:#e9eff6;border-color:#7888a5;transform:translateX(2px)}
+.shell.theme-light .option.selected{
+  background:linear-gradient(100deg,#e5e3fb,#edf0ff);color:#29215f;border-color:#6d62d4;
+  box-shadow:0 7px 20px rgba(82,73,183,.10)
+}
+.shell.theme-light .secondary-button{background:#f0f4f8;color:#25344a;border-color:#b8c5d5}
+.shell.theme-light .primary-button{box-shadow:0 9px 24px rgba(77,67,190,.20)}
+.shell.theme-light .theme-toggle{
+  background:#f5f8fc;border-color:#b9c6d6;color:#28364c;
+  box-shadow:0 5px 16px rgba(48,63,88,.08)
+}
+.shell.theme-light .daily-card{
+  background:linear-gradient(145deg,#f7f9fc,#e9eff6);border-color:#c4cfdd;border-radius:16px;
+  box-shadow:0 10px 24px rgba(50,64,88,.08)
+}
+.shell.theme-light .bottom-note{background:rgba(248,251,254,.82);border-color:#c7d1df}
+.shell.theme-light .footer{background:rgba(235,241,247,.38)}
+
+@media (max-width:700px){
+  .shell.theme-light .content{padding-top:28px}
+  .shell.theme-light .stat-card,.shell.theme-light .feature-card,
+  .shell.theme-light .question-panel,.shell.theme-light .question-nav{border-radius:15px}
+  .shell.theme-dark .stat-card,.shell.theme-dark .feature-card,
+  .shell.theme-dark .question-panel,.shell.theme-dark .question-nav{border-radius:14px}
+}
