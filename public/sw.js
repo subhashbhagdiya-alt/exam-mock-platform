@@ -45,7 +45,9 @@ self.addEventListener("fetch", event => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  if (url.pathname.startsWith("/api/questions") || url.pathname.startsWith("/api/job-tracks") || url.pathname.startsWith("/api/exams")) {
+  // Only public exam/question catalog APIs are cacheable. Never cache user-specific
+  // result/history responses in the service worker.
+  if (url.pathname === "/api/questions" || url.pathname === "/api/job-tracks" || url.pathname === "/api/exams") {
     event.respondWith(
       fetch(request)
         .then(response => {
@@ -56,15 +58,25 @@ self.addEventListener("fetch", event => {
           return response;
         })
         .catch(async () => {
-          const cached = await matchQuestionCache(request);
+          if (url.pathname === "/api/questions") {
+            const cached = await matchQuestionCache(request);
+            return cached || new Response(
+              JSON.stringify({ data: [], meta: { available: 0, offline: true } }),
+              { headers: { "content-type": "application/json" } }
+            );
+          }
+          const cached = await caches.match(request);
           return cached || new Response(
-            JSON.stringify({ data: [], meta: { available: 0, offline: true } }),
+            JSON.stringify({ data: [], offline: true }),
             { headers: { "content-type": "application/json" } }
           );
         })
     );
     return;
   }
+
+  // Keep authenticated/user-specific APIs out of the Cache Storage.
+  if (url.pathname === "/api/results" || url.pathname.startsWith("/api/automation/")) return;
 
   event.respondWith(
     fetch(request)
