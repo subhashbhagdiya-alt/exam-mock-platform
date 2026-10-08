@@ -2817,3 +2817,18 @@ undefined
     animation:none!important;
   }
 }
+
+/* =========================================================
+   EXAM ANALYSIS / FORECAST UI
+   ========================================================= */
+.analysis-candidates-panel{margin:18px 0 24px;padding:22px;border:1px solid var(--cg-border,rgba(255,255,255,.12));border-radius:24px;background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.025));box-shadow:0 18px 50px rgba(0,0,0,.16),inset 0 1px rgba(255,255,255,.08);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
+.analysis-candidate-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.analysis-candidate{min-height:86px;padding:14px;border-radius:18px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.045);display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
+.analysis-candidate:hover{transform:translateY(-3px) translateZ(0);border-color:rgba(135,110,255,.42);box-shadow:0 14px 30px rgba(45,25,100,.18)}
+.analysis-candidate>span{font-size:11px;font-weight:800;opacity:.55;letter-spacing:.08em}
+.analysis-candidate b,.analysis-candidate small{display:block}
+.analysis-candidate b{font-size:13px}
+.analysis-candidate small{margin-top:4px;opacity:.62;font-size:11px;line-height:1.25}
+.analysis-candidate em{font-style:normal;font-weight:900;font-size:16px}
+@media(max-width:900px){.analysis-candidate-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.analysis-candidates-panel{padding:16px;border-radius:20px}.analysis-candidate-grid{grid-template-columns:1fr 1fr}.analysis-candidate{min-height:76px;padding:11px}}
