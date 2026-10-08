@@ -876,3 +876,63 @@ button,.job-card,.exam-board-tab,.exam-group,.exam-detail-panel,
   .option.correct,.option.wrong{animation:none!important}
   *,*::before,*::after{transition:none!important}
 }
+
+
+/* ============================================================
+   ExamPrep v31 — instant interaction + lightweight cinematic
+   ============================================================ */
+:root{--ep-ease:cubic-bezier(.16,1,.3,1)}
+/* Keep continuous effects limited to ambient layers only. */
+.dashboard-content .job-card,.dashboard-content .exam-board-tab,.dashboard-content .exam-group,.dashboard-content .exam-detail-panel,
+.option,.number-cell,.primary-button,.secondary-button,.review-button,.lang-button{
+  will-change:transform;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  transform-style:preserve-3d;
+}
+.dashboard-content .job-card,.dashboard-content .exam-board-tab,.dashboard-content .exam-group,.dashboard-content .exam-detail-panel{
+  transition:transform .22s var(--ep-ease),box-shadow .22s ease,border-color .18s ease;
+}
+.option{
+  transition:transform .18s var(--ep-ease),box-shadow .18s ease,border-color .14s ease,background-color .14s ease!important;
+}
+.option:active,.dashboard-content .exam-board-tab:active,.dashboard-content .exam-detail-panel:active,.dashboard-content .job-card:active{
+  transform:translate3d(4px,2px,26px) scale(.985)!important;
+  box-shadow:0 12px 24px rgba(0,0,0,.24),inset 0 2px 5px rgba(0,0,0,.16)!important;
+}
+.option.selected{
+  transition:transform .16s var(--ep-ease),box-shadow .18s ease,border-color .14s ease!important;
+  will-change:transform;
+}
+/* Instant selected state: no delayed animation before the feedback appears. */
+.option.selected .option-letter{
+  animation:epOptionPop .22s var(--ep-ease) 1;
+}
+@keyframes epOptionPop{
+  0%{transform:scale(.9) translateZ(0)}
+  70%{transform:scale(1.08) translateZ(8px)}
+  100%{transform:scale(1) translateZ(0)}
+}
+/* Lightweight loading surface: GPU transform + opacity only. */
+.ep-loading,.loading-screen,.loader{
+  contain:layout paint;
+}
+.ep-loading::before,.loading-screen::before,.loader::before{
+  animation:epLoaderSweep 1.5s linear infinite!important;
+  transform:translate3d(-120%,0,0);
+  will-change:transform;
+}
+@keyframes epLoaderSweep{to{transform:translate3d(120%,0,0)}}
+@media(prefers-reduced-motion:reduce){
+  .option.selected .option-letter,.ep-loading::before,.loading-screen::before,.loader::before{animation:none!important}
+}
+/* Avoid expensive blur/filter on small screens while preserving the 3D look. */
+@media(max-width:760px){
+  .shell::before,.shell::after{filter:blur(20px);opacity:.5}
+  .dashboard-content .welcome-row,.test-content .question-panel,.result-hero,.settings-hero,.about-hero{
+    backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;
+  }
+  .dashboard-content .job-card,.dashboard-content .exam-board-tab,.dashboard-content .exam-group,.dashboard-content .exam-detail-panel,.option{
+    backdrop-filter:blur(7px)!important;-webkit-backdrop-filter:blur(7px)!important;
+  }
+}
