@@ -1515,3 +1515,11 @@ undefined
   .theme-toggle span{display:none}
   .menu-button{width:35px}
 }
+
+
+/* ===== Dynamic profile name v21 ===== */
+.profile-name-row{display:flex;gap:8px;align-items:center;margin-top:10px;width:100%}
+.profile-name-row input{flex:1;min-width:0;height:38px;padding:0 11px;border-radius:11px;border:1px solid rgba(166,143,255,.22);background:rgba(8,13,30,.72);color:#eef0ff;outline:none}
+.profile-name-row input::placeholder{color:#8f96ad}
+.profile-name-row button{height:38px;padding:0 12px;border:1px solid rgba(166,143,255,.28);border-radius:11px;background:linear-gradient(100deg,rgba(105,61,235,.75),rgba(116,79,255,.9));color:#fff;font-weight:800;white-space:nowrap}
+@media(max-width:480px){.profile-name-row{flex-wrap:wrap}.profile-name-row input,.profile-name-row button{width:100%;flex-basis:100%}}
