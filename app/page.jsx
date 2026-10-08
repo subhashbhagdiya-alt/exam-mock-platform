@@ -393,16 +393,6 @@ export default function HomePage() {
     return () => { active = false; };
   }, [user]);;
 
-  useEffect(() => {
-    if (view !== "test" || result) return;
-    if (seconds <= 0) {
-      finishTestRef.current?.();
-      return;
-    }
-    const timer = setTimeout(() => setSeconds(s => s - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [view, seconds, result]);
-
   async function signInWithGoogle() {
     if (!supabaseBrowser) {
       setAuthMessage(t("Login सेवा अभी उपलब्ध नहीं है।","Login service is not available right now."));
