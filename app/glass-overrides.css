@@ -1079,3 +1079,84 @@ button{cursor:pointer}
  .history-card::before,.source-card::before,.about-card::before,.settings-card::before{animation:none!important}
  *,*::before,*::after{transition:none!important}
 }
+
+
+/* ============================================================
+   v32 — STRONG FLOAT SELECT + ZERO-LAG MICRO LOADING
+   ============================================================ */
+.option{
+  transform:translate3d(0,0,16px)!important;
+  transition:transform 160ms cubic-bezier(.2,.9,.2,1),
+              box-shadow 160ms ease,
+              border-color 120ms ease!important;
+  will-change:transform;
+  contain:paint;
+}
+.option:hover{
+  transform:translate3d(10px,-8px,38px)!important;
+  box-shadow:0 26px 44px rgba(0,0,0,.30),0 0 24px rgba(139,92,246,.12),inset 0 1px rgba(255,255,255,.16)!important;
+}
+.option:active{
+  transform:translate3d(4px,1px,24px) scale(.985)!important;
+}
+.option.selected{
+  /* clearly visible floating selection */
+  transform:translate3d(12px,-12px,58px) rotateX(1deg) rotateY(-1deg) scale(1.012)!important;
+  border-color:rgba(164,132,255,.92)!important;
+  box-shadow:
+    0 34px 62px rgba(0,0,0,.38),
+    0 0 0 1px rgba(139,92,246,.28),
+    0 0 38px rgba(139,92,246,.25),
+    inset 0 1px 0 rgba(255,255,255,.24)!important;
+  z-index:5;
+}
+.option.selected .option-letter{
+  transform:translateZ(16px) scale(1.08)!important;
+  box-shadow:0 12px 22px rgba(0,0,0,.28),0 0 18px rgba(139,92,246,.24)!important;
+}
+.option.correct{
+  transform:translate3d(10px,-10px,54px) scale(1.01)!important;
+  box-shadow:0 32px 60px rgba(10,90,45,.30),0 0 34px rgba(34,197,94,.22),inset 0 1px rgba(255,255,255,.2)!important;
+}
+.option.wrong{
+  transform:translate3d(9px,-8px,50px)!important;
+  box-shadow:0 30px 58px rgba(130,25,45,.30),0 0 32px rgba(251,77,103,.22),inset 0 1px rgba(255,255,255,.2)!important;
+}
+/* Remove expensive filter/backdrop work from interactive options. */
+.option{filter:none!important;-webkit-filter:none!important;}
+/* Lightweight loader: one compositor-only pulse, no blur/filter. */
+.loading-screen,.ep-loading,.loader{
+  background:linear-gradient(145deg,#080a14,#101426)!important;
+  contain:strict;
+}
+.loading-screen::before,.ep-loading::before,.loader::before{
+  content:""!important;
+  width:72px!important;height:72px!important;
+  left:50%!important;top:50%!important;
+  margin:-36px 0 0 -36px!important;
+  border-radius:50%!important;
+  border:2px solid rgba(255,255,255,.10)!important;
+  border-top-color:#9b7cff!important;
+  border-right-color:#28d9ed!important;
+  background:transparent!important;
+  box-shadow:0 0 24px rgba(139,92,246,.18)!important;
+  transform:translate3d(0,0,0)!important;
+  animation:epLoaderSpin .75s linear infinite!important;
+  will-change:transform!important;
+}
+.loading-screen::after,.ep-loading::after,.loader::after{
+  content:"EXAMPREP"!important;
+  position:absolute!important;left:50%!important;top:calc(50% + 52px)!important;
+  transform:translateX(-50%)!important;
+  font-size:11px!important;font-weight:800!important;letter-spacing:.28em!important;
+  color:rgba(235,238,255,.72)!important;
+}
+@keyframes epLoaderSpin{to{transform:translate3d(0,0,0) rotate(360deg)}}
+@media(max-width:760px){
+  .option.selected{transform:translate3d(8px,-9px,42px) scale(1.008)!important}
+  .option.correct{transform:translate3d(7px,-8px,40px)!important}
+  .option.wrong{transform:translate3d(7px,-6px,38px)!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .loading-screen::before,.ep-loading::before,.loader::before{animation:none!important}
+}
