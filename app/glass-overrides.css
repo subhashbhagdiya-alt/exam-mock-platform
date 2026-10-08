@@ -1803,3 +1803,106 @@ button{cursor:pointer}
   .shell .section-heading p{font-size:10px!important}
   .shell .board-tab-copy b{font-size:10.5px!important}
 }
+
+
+/* ============================================================
+   v35 — COLLAPSIBLE DASHBOARD OPTIONS
+   Keep the dashboard focused; reveal secondary tools on demand.
+   ============================================================ */
+.dashboard-options-bar{
+  position:relative!important;
+  z-index:30!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  margin:22px 0 14px!important;
+  padding:12px 14px!important;
+  border:1px solid rgba(139,92,246,.28)!important;
+  border-radius:16px!important;
+  background:linear-gradient(145deg,rgba(31,28,59,.94),rgba(11,15,29,.97))!important;
+  box-shadow:0 16px 32px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.10)!important;
+  transform:translateZ(20px)!important;
+}
+.dashboard-options-bar>div{min-width:0!important}
+.dashboard-options-kicker{
+  display:block!important;
+  color:#a995ff!important;
+  font:900 7px/1 Manrope,sans-serif!important;
+  letter-spacing:1.5px!important;
+  margin-bottom:4px!important;
+}
+.dashboard-options-bar b{
+  display:block!important;
+  color:#f7f8ff!important;
+  font-size:12px!important;
+}
+.dashboard-options-toggle{
+  flex:0 0 auto!important;
+  min-height:38px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  padding:0 12px!important;
+  border:1px solid rgba(179,154,255,.38)!important;
+  border-radius:11px!important;
+  color:#eeeaff!important;
+  background:linear-gradient(135deg,#6848dc,#432a9f)!important;
+  box-shadow:0 10px 22px rgba(72,43,164,.28),inset 0 1px rgba(255,255,255,.22)!important;
+  font:800 9px Manrope,'Noto Sans Devanagari',sans-serif!important;
+  cursor:pointer!important;
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease!important;
+}
+.dashboard-options-toggle svg:last-child{
+  transition:transform .18s ease!important;
+}
+.dashboard-options-toggle:hover{
+  transform:translate3d(0,-3px,12px)!important;
+  box-shadow:0 15px 28px rgba(72,43,164,.38),inset 0 1px rgba(255,255,255,.28)!important;
+}
+.dashboard-options-toggle.open{
+  background:linear-gradient(135deg,#8b5cf6,#4b32bd)!important;
+}
+.dashboard-options-toggle.open svg:last-child{
+  transform:rotate(90deg)!important;
+}
+.dashboard-options-panel{
+  position:relative!important;
+  margin-bottom:18px!important;
+  padding:4px!important;
+  border-radius:20px!important;
+  transform-style:preserve-3d!important;
+  animation:dashboardOptionsReveal .24s cubic-bezier(.16,1,.3,1) both!important;
+}
+@keyframes dashboardOptionsReveal{
+  from{opacity:0;transform:translate3d(0,-10px,0) scale(.985)}
+  to{opacity:1;transform:translate3d(0,0,0) scale(1)}
+}
+.shell.theme-light .dashboard-options-bar{
+  background:linear-gradient(145deg,#ffffff,#edf0f8)!important;
+  border-color:rgba(101,70,217,.24)!important;
+  box-shadow:0 16px 32px rgba(42,54,84,.13),inset 0 1px #fff!important;
+}
+.shell.theme-light .dashboard-options-kicker{color:#6546d9!important}
+.shell.theme-light .dashboard-options-bar b{color:#182033!important}
+.shell.theme-light .dashboard-options-toggle{
+  color:#fff!important;
+  background:linear-gradient(135deg,#7547e8,#4f32c6)!important;
+}
+@media(max-width:700px){
+  .dashboard-options-bar{
+    margin:18px 0 11px!important;
+    padding:10px 11px!important;
+    border-radius:14px!important;
+  }
+  .dashboard-options-bar b{font-size:11px!important}
+  .dashboard-options-toggle{
+    min-height:35px!important;
+    padding:0 9px!important;
+    font-size:8px!important;
+  }
+  .dashboard-options-panel{
+    padding:0!important;
+  }
+}
