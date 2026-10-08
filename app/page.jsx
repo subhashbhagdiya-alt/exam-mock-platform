@@ -53,6 +53,7 @@ const formatTime = (seconds) => {
 export default function HomePage() {
   const [language, setLanguage] = useState("hi");
   const [view, setView] = useState("home");
+  const [settingsSection, setSettingsSection] = useState("profile");
   const [answers, setAnswers] = useState({});
   const [review, setReview] = useState([]);
   const [current, setCurrent] = useState(0);
