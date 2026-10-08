@@ -592,8 +592,15 @@ export default function HomePage() {
   async function finishTest() {
     if (result) return;
     const entries = Object.entries(answers);
-    const correctCount = entries.filter(([id, a]) => testQuestions[Number(id)-1]?.answer === a).length;
-    const wrongCount = entries.filter(([id, a]) => testQuestions[Number(id)-1]?.answer !== a).length;
+    const questionById = new Map(testQuestions.map(item => [String(item.id), item]));
+    const correctCount = entries.filter(([id, a]) => {
+      const question = questionById.get(String(id));
+      return question && Number(question.answer) === Number(a);
+    }).length;
+    const wrongCount = entries.filter(([id, a]) => {
+      const question = questionById.get(String(id));
+      return question && Number(question.answer) !== Number(a);
+    }).length;
     const unansweredCount = Math.max(0, testQuestions.length - entries.length);
     const grossMarks = correctCount * Number(examConfig.marks_per_question || 1);
     const negativeMarks = wrongCount * Number(examConfig.negative_marks || 0);
