@@ -345,3 +345,44 @@
 @media(max-width:820px){.settings-layout,.about-grid{grid-template-columns:1fr!important}.settings-profile-card,.security-card,.danger-card{grid-column:auto!important}.settings-hero,.about-hero{align-items:flex-start!important;padding:22px!important;border-radius:23px!important}.settings-orb{width:76px!important;height:76px!important;flex-basis:76px!important}.about-logo{width:60px!important;height:60px!important;flex-basis:60px!important}.history-item{grid-template-columns:auto 1fr auto!important}.history-grade{grid-column:2/-1;justify-self:start!important}.settings-form-row{grid-template-columns:1fr!important}.settings-option-grid{grid-template-columns:1fr 1fr!important}}
 @media(max-width:520px){.settings-hero,.about-hero{display:block!important}.settings-orb{margin:16px 0 0}.about-logo{margin-bottom:15px}.settings-profile-card{flex-wrap:wrap!important}.settings-status{margin-left:86px}.settings-inline-row,.settings-security-row{align-items:flex-start!important;flex-direction:column!important}.settings-inline-row .secondary-button,.settings-security-row .secondary-button{width:100%!important;justify-content:center!important}.settings-option-grid{grid-template-columns:1fr!important}.about-actions{flex-direction:column!important}.about-actions button{width:100%!important;justify-content:center!important}}
 @media(prefers-reduced-motion:reduce){.history-item:hover,.setting-choice:hover{transform:none!important}}
+
+/* ExamPrep final production QA pass v24 */
+:root{--ep-focus:rgba(142,121,255,.42)}
+button,a,input,select{touch-action:manipulation}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ep-focus)!important;outline-offset:3px!important}
+.primary-button,.secondary-button,.nav-item,.exam-board-tab,.exam-group,.job-card,.feature-card,.stat-card,.setting-choice{min-height:44px}
+.intro{max-width:760px!important;line-height:1.65!important}
+.dashboard-content,.instructions-content,.test-content,.result-content,.settings-content,.about-content{width:100%;box-sizing:border-box}
+.test-content,.result-content{overflow-x:clip}
+.history-item{min-height:76px!important}
+.history-item>strong{letter-spacing:-.03em!important}
+.history-main b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shell.theme-dark .settings-hero,.shell.theme-dark .about-hero{box-shadow:0 24px 65px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.10)!important}
+.shell.theme-light .settings-hero,.shell.theme-light .about-hero{box-shadow:0 18px 42px rgba(46,59,82,.10),inset 0 1px #fff!important}
+@media(max-width:760px){
+  .content{padding-left:12px!important;padding-right:12px!important}
+  .section-heading{gap:10px!important}
+  .section-heading h2{font-size:18px!important}
+  .section-count{font-size:8px!important}
+  .primary-button,.secondary-button{min-height:46px!important;padding:11px 14px!important}
+  .job-card,.feature-card,.stat-card{min-height:0!important}
+  .dashboard-content .stat-card:hover,.dashboard-content .feature-card:hover,.dashboard-content .job-card:hover,.dashboard-content .exam-group:hover,.dashboard-content .exam-board-tab:hover,.board-page .board-big-card:hover,.instructions-content .instruction-stat:hover{transform:translate3d(0,-2px,4px)!important}
+  .settings-profile-card{gap:13px!important}
+  .settings-avatar{width:58px!important;height:58px!important;flex-basis:58px!important}
+  .settings-profile-copy h2{font-size:18px!important}
+  .settings-status{font-size:8px!important}
+  .about-card{padding:17px!important}
+}
+@media(max-width:520px){
+  .content{padding-left:9px!important;padding-right:9px!important}
+  .settings-profile-card{display:grid!important;grid-template-columns:auto 1fr!important;align-items:center!important}
+  .settings-status{grid-column:2!important;margin-left:0!important;justify-self:start!important}
+  .settings-profile-copy p{font-size:10px!important}
+  .history-item{gap:10px!important;padding:12px!important}
+  .history-item>strong{font-size:17px!important}
+  .history-main b{font-size:12px!important}
+  .history-main span{font-size:9px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .shell.theme-dark .dashboard-content .stat-card,.shell.theme-dark .dashboard-content .feature-card,.shell.theme-dark .dashboard-content .job-card,.shell.theme-dark .dashboard-content .exam-group,.shell.theme-dark .dashboard-content .exam-board-tab,.shell.theme-dark .dashboard-content .exam-detail-panel,.shell.theme-dark .dashboard-content .subject-chapter-panel,.shell.theme-dark .instructions-content .instructions-hero,.shell.theme-dark .instructions-content .instruction-stat,.shell.theme-dark .question-panel,.shell.theme-dark .question-nav,.shell.theme-dark .review-panel,.shell.theme-dark .result-hero,.shell.theme-dark .result-stat,.shell.theme-light .dashboard-content .stat-card,.shell.theme-light .dashboard-content .feature-card,.shell.theme-light .dashboard-content .job-card,.shell.theme-light .dashboard-content .exam-group,.shell.theme-light .dashboard-content .exam-board-tab,.shell.theme-light .dashboard-content .exam-detail-panel,.shell.theme-light .dashboard-content .subject-chapter-panel,.shell.theme-light .instructions-content .instructions-hero,.shell.theme-light .instructions-content .instruction-stat,.shell.theme-light .question-panel,.shell.theme-light .question-nav,.shell.theme-light .review-panel,.shell.theme-light .result-hero,.shell.theme-light .result-stat{animation:none!important}
+}
