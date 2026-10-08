@@ -2000,3 +2000,146 @@ undefined
   transform:translateY(-4px);
   box-shadow:0 18px 34px rgba(35,43,58,.15)!important;
 }
+
+
+/* ===== Contrast repair v17 — Day UI readability + selected-state hierarchy ===== */
+.shell.theme-light .dashboard-content{
+  color:#141923!important;
+}
+.shell.theme-light .dashboard-content .welcome-row h1{
+  color:#111620!important;
+  text-shadow:none!important;
+}
+.shell.theme-light .dashboard-content .welcome-row h1 span{
+  color:#4b5362!important;
+}
+.shell.theme-light .dashboard-content .eyebrow{
+  color:#4d3d9b!important;
+}
+.shell.theme-light .dashboard-content .intro,
+.shell.theme-light .dashboard-content .section-heading p{
+  color:#4b5566!important;
+}
+.shell.theme-light .dashboard-content .section-count{
+  color:#596374!important;
+}
+.shell.theme-light .dashboard-content .stat-card{
+  background:linear-gradient(145deg,#ffffff,#edf1f6)!important;
+  border-color:#b9c2cf!important;
+}
+.shell.theme-light .dashboard-content .stat-value{
+  color:#10151e!important;
+}
+.shell.theme-light .dashboard-content .stat-foot{
+  color:#4d5767!important;
+}
+.shell.theme-light .dashboard-content .job-card{
+  background:linear-gradient(145deg,#ffffff,#edf1f5)!important;
+  border-color:#b9c2cf!important;
+}
+.shell.theme-light .dashboard-content .job-card.selected{
+  background:linear-gradient(145deg,#7659c7,#6248aa)!important;
+  border-color:#57408f!important;
+  box-shadow:0 15px 32px rgba(72,50,142,.25),inset 0 1px rgba(255,255,255,.18)!important;
+}
+.shell.theme-light .dashboard-content .job-card.selected .job-copy b{
+  color:#ffffff!important;
+}
+.shell.theme-light .dashboard-content .job-card.selected .job-copy span,
+.shell.theme-light .dashboard-content .job-card.selected .job-copy small{
+  color:#eeeaff!important;
+}
+.shell.theme-light .dashboard-content .job-card.selected .job-copy em{
+  color:#72f0bd!important;
+}
+.shell.theme-light .dashboard-content .job-card:not(.selected) .job-copy b{
+  color:#171c26!important;
+}
+.shell.theme-light .dashboard-content .job-card:not(.selected) .job-copy span{
+  color:#4d5868!important;
+}
+.shell.theme-light .dashboard-content .job-card:not(.selected) .job-copy small{
+  color:#687384!important;
+}
+.shell.theme-light .dashboard-content .job-card:not(.selected) .job-copy em{
+  color:#19815b!important;
+}
+.shell.theme-light .dashboard-content .board-tab-copy b{
+  color:#1b202b!important;
+}
+.shell.theme-light .dashboard-content .board-tab-copy small{
+  color:#596475!important;
+}
+.shell.theme-light .dashboard-content .exam-board-tab em{
+  color:#21815e!important;
+}
+.shell.theme-light .dashboard-content .exam-board-tab.active .board-tab-copy b{
+  color:#302563!important;
+}
+.shell.theme-light .dashboard-content .exam-board-tab.active .board-tab-copy small{
+  color:#514b70!important;
+}
+.shell.theme-light .dashboard-content .exam-board-tab.active em{
+  color:#147a57!important;
+}
+.shell.theme-light .dashboard-content .auth-panel{
+  background:linear-gradient(145deg,rgba(250,251,253,.94),rgba(235,239,246,.94))!important;
+  border-color:#b8c2cf!important;
+  box-shadow:0 12px 28px rgba(35,43,58,.12),inset 0 1px rgba(255,255,255,.95)!important;
+}
+.shell.theme-light .dashboard-content .auth-panel>b,
+.shell.theme-light .dashboard-content .auth-panel strong{
+  color:#141923!important;
+}
+.shell.theme-light .dashboard-content .auth-panel>div> b{
+  color:#161b25!important;
+}
+.shell.theme-light .dashboard-content .auth-panel>div>span,
+.shell.theme-light .dashboard-content .guest-login-note{
+  color:#4d5869!important;
+}
+.shell.theme-light .dashboard-content .auth-divider span{
+  color:#596475!important;
+}
+.shell.theme-light .dashboard-content .auth-panel input{
+  color:#171c25!important;
+  background:#ffffff!important;
+  border-color:#aeb9c8!important;
+}
+.shell.theme-light .dashboard-content .auth-panel input::placeholder{
+  color:#687384!important;
+}
+.shell.theme-light .dashboard-content .auth-panel button:not(.primary-button){
+  color:#ffffff!important;
+}
+.shell.theme-light .dashboard-content .exam-toolbar{
+  background:rgba(249,250,252,.92)!important;
+  border-color:#bcc5d2!important;
+}
+.shell.theme-light .dashboard-content .exam-filters button{
+  color:#394353!important;
+  background:#e5e9ef!important;
+  border-color:#b7c1cf!important;
+}
+.shell.theme-light .dashboard-content .exam-filters button.active{
+  color:#ffffff!important;
+  background:linear-gradient(135deg,#6848d7,#7d55e7)!important;
+  border-color:#6141c9!important;
+}
+.shell.theme-light .dashboard-content .exam-search input{
+  color:#171c25!important;
+}
+.shell.theme-light .dashboard-content .exam-search input::placeholder{
+  color:#687384!important;
+}
+
+/* Day has brighter surfaces + crisp elevation; Night retains neon depth. */
+.shell.theme-light .dashboard-content .job-card:hover,
+.shell.theme-light .dashboard-content .stat-card:hover,
+.shell.theme-light .dashboard-content .feature-card:hover{
+  transform:translateY(-4px)!important;
+}
+.shell.theme-dark .dashboard-content .job-card.selected .job-copy b,
+.shell.theme-dark .dashboard-content .job-card.selected .job-copy span{
+  color:#ffffff!important;
+}
