@@ -1557,3 +1557,99 @@ undefined
 .shell.theme-light .dashboard-content h1,.shell.theme-light .boards-content h1,.shell.theme-light .settings-content h1,.shell.theme-light .about-content h1{color:#202337}
 .shell.theme-light .dashboard-content p,.shell.theme-light .boards-content p,.shell.theme-light .settings-content p,.shell.theme-light .about-content p{color:#5c6275}
 .shell.theme-light .search-toolbar,.shell.theme-light .filter-toolbar{background:rgba(247,249,255,.58);border-color:rgba(76,66,145,.13)}
+
+
+/* ===== Adaptive Day/Night visual modes v14 ===== */
+/* Night = deep AMOLED glass, restrained glow, high text contrast */
+.shell.theme-dark{
+  --bg:#06080d;--panel:#0d1119;--panel2:#121722;--line:#2b3140;
+  --text:#f7f8fc;--muted:#aeb5c5;--soft:#d8dce7;
+  background:
+    radial-gradient(900px 500px at 80% -10%,rgba(109,82,255,.16),transparent 62%),
+    radial-gradient(700px 500px at 10% 100%,rgba(0,166,255,.08),transparent 65%),
+    #06080d;
+}
+.shell.theme-dark .content,
+.shell.theme-dark .main{color:var(--text)}
+.shell.theme-dark .intro,
+.shell.theme-dark .section-heading p,
+.shell.theme-dark .feature-card>p,
+.shell.theme-dark .stat-foot,
+.shell.theme-dark .question-hint,
+.shell.theme-dark .question-nav>p,
+.shell.theme-dark .history-main span,
+.shell.theme-dark .review-body>span,
+.shell.theme-dark .review-body p{color:#aeb5c5}
+.shell.theme-dark .feature-card,
+.shell.theme-dark .stat-card,
+.shell.theme-dark .question-panel,
+.shell.theme-dark .question-nav,
+.shell.theme-dark .review-panel,
+.shell.theme-dark .history-item,
+.shell.theme-dark .test-progress{
+  box-shadow:0 16px 45px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.035);
+}
+
+/* Day = soft daylight glass: lighter surfaces, dark typography, less neon */
+.shell.theme-light{
+  --bg:#e8edf5;--panel:#f3f6fb;--panel2:#eaf0f8;--line:#c5cfde;
+  --text:#172033;--muted:#4f5d73;--soft:#253249;
+  background:
+    radial-gradient(800px 420px at 82% -5%,rgba(93,91,255,.12),transparent 60%),
+    radial-gradient(650px 450px at 5% 95%,rgba(0,145,210,.09),transparent 62%),
+    #e8edf5;
+}
+.shell.theme-light .sidebar{
+  background:rgba(239,244,250,.9);border-color:#c6d0df;
+  box-shadow:8px 0 30px rgba(47,65,94,.08);
+}
+.shell.theme-light .topbar{background:rgba(243,247,252,.72);border-color:#c8d2df}
+.shell.theme-light .brand{color:#172033}.shell.theme-light .brand-accent{color:#5549c9}
+.shell.theme-light .brand small,.shell.theme-light .side-label{color:#65738a}
+.shell.theme-light .nav-item{color:#536178}
+.shell.theme-light .nav-item:hover{background:#e4eaf3;color:#182236}
+.shell.theme-light .nav-item.active{background:#dfe5fb;border-color:#aaaee2;color:#4037a2}
+.shell.theme-light .breadcrumb{color:#65738a}.shell.theme-light .breadcrumb b{color:#27344a}
+.shell.theme-light .welcome-row h1,.shell.theme-light .content>h1,
+.shell.theme-light .test-title-row h1,.shell.theme-light .feature-card h3,
+.shell.theme-light .section-heading h2,.shell.theme-light .question-panel h2,
+.shell.theme-light .result-hero h1,.shell.theme-light .confirm-modal h2,
+.shell.theme-light .history-main b{color:#172033}
+.shell.theme-light .intro,
+.shell.theme-light .section-heading p,.shell.theme-light .feature-card>p,
+.shell.theme-light .stat-foot,.shell.theme-light .question-hint,
+.shell.theme-light .question-nav>p,.shell.theme-light .review-body>span,
+.shell.theme-light .review-body p,.shell.theme-light .history-main span,
+.shell.theme-light .profile span{color:#526078}
+.shell.theme-light .feature-card,.shell.theme-light .stat-card,
+.shell.theme-light .question-panel,.shell.theme-light .question-nav,
+.shell.theme-light .review-panel,.shell.theme-light .history-item,
+.shell.theme-light .test-progress{
+  background:rgba(247,249,253,.72);
+  border-color:#c6d0df;
+  box-shadow:0 12px 32px rgba(55,72,101,.10),inset 0 1px rgba(255,255,255,.9);
+  backdrop-filter:blur(18px);
+}
+.shell.theme-light .option{
+  background:#eef2f7;color:#26334a;border-color:#c5cfdd;
+}
+.shell.theme-light .option:hover{background:#e5ebf3;border-color:#8795b0}
+.shell.theme-light .option.selected{background:#e2e0fb;color:#29215f;border-color:#7066d8}
+.shell.theme-light .secondary-button{background:#e8edf4;color:#26344b;border-color:#b9c5d5}
+.shell.theme-light .primary-button{box-shadow:0 7px 20px rgba(77,67,190,.18)}
+.shell.theme-light .timer-card{background:#e8e5fa;border-color:#aaa2df;color:#4b42a8}
+.shell.theme-light .test-progress,.shell.theme-light .bottom-note{background:rgba(241,245,250,.85)}
+.shell.theme-light .footer{border-color:#c6d0df;color:#637188}
+.shell.theme-light .daily-card{background:linear-gradient(145deg,#eef2f8,#e5ebf3);border-color:#c5cfdd}
+.shell.theme-light .daily-card p{color:#58677d}
+.shell.theme-light .profile{border-color:#c6d0df}
+.shell.theme-light .avatar{background:#dce4f2;color:#4037a2}
+.shell.theme-light .live-pill{color:#536078}
+.shell.theme-light .modal-backdrop{background:rgba(30,40,58,.46)}
+.shell.theme-light .confirm-modal{background:#f4f7fb;border-color:#c4cedc;box-shadow:0 25px 70px rgba(30,45,70,.22)}
+.shell.theme-light .confirm-modal p{color:#536078}
+
+/* Theme transition without making the UI sluggish */
+.shell,.shell *{transition:background-color .22s ease,border-color .22s ease,color .18s ease,box-shadow .22s ease}
+@media (prefers-reduced-motion:reduce){.shell,.shell *{transition:none}}
+
