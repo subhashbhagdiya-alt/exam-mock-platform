@@ -348,8 +348,10 @@ export default function HomePage() {
   }
 
   useEffect(() => {
+    if (view !== "boards" || jobTracks.length) return undefined;
     let active = true;
     async function loadJobTracks() {
+      setJobTracksLoading(true);
       try {
         const response = await fetch("/api/job-tracks", { cache: "no-store" });
         const payload = await response.json();
@@ -362,7 +364,7 @@ export default function HomePage() {
     }
     loadJobTracks();
     return () => { active = false; };
-  }, []);
+  }, [view, jobTracks.length]);
 
   useEffect(() => {
     let active = true;
@@ -581,7 +583,9 @@ export default function HomePage() {
   }
   function startTest() {
     setAuthMessage("");
-    if (!selectedTrackData?.exam_slug || !selectedTrackData?.question_bank_ready) {
+    const readySelectedExam = selectedTrackData?.exam_slug && selectedTrackData?.question_bank_ready;
+    const compactDashboardReady = !selectedTrackData && selectedExam && availableQuestionCount > 0;
+    if (!readySelectedExam && !compactDashboardReady) {
       setAuthMessage(t("पहले READY परीक्षा चुनें।","Choose a READY exam first."));
       return;
     }
@@ -662,7 +666,7 @@ export default function HomePage() {
   function navigateTo(nextView) {
     setMenuOpen(false);
     setView(nextView);
-    if (typeof window !== "undefined") window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+    if (typeof window !== "undefined") window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   }
 
   return (
