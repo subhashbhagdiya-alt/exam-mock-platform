@@ -2476,3 +2476,26 @@ button{cursor:pointer}
 .shell.theme-light .setup-summary span,.shell.theme-light .setup-block small{color:#5e6270!important}
 .shell.theme-light .setup-options button{background:#eef0f7!important;color:#202336!important;border-color:#d8dbe7!important}
 .shell.theme-light .login-note{background:#f0effa!important;color:#4f5362!important}
+
+
+/* v44 — MOBILE CINEMATIC PERFORMANCE GUARDRAILS
+   Preserve depth/3D language while avoiding expensive full-screen blur and ambient motion. */
+@media(max-width:760px){
+  .shell .sidebar,.shell .topbar,.shell .dashboard-content .feature-card,.shell .dashboard-content .stat-card,
+  .shell .boards-content .job-card,.shell .boards-content .exam-board-tab,.shell .boards-content .exam-group,
+  .shell .boards-content .exam-detail-panel,.shell .boards-content .exam-toolbar,.shell .setup-card,.shell .login-card,
+  .shell .setup-summary>div{
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+  .shell::before,.shell::after,.shell .hero-emblem,.shell .board-hero-orb,.shell .instruction-orb,
+  .shell .splash-orbit,.shell .shell-orbit,.shell .orbit-dot{animation:none!important}
+  .shell .dashboard-content .feature-card:hover,.shell .dashboard-content .stat-card:hover,
+  .shell .boards-content .job-card:hover,.shell .boards-content .exam-board-tab:hover{transform:none!important}
+  .shell .content h1{font-size:clamp(27px,7vw,34px)!important;line-height:1.16!important}
+  .shell .content h2{font-size:clamp(20px,5.2vw,25px)!important;line-height:1.22!important}
+  .shell .content p,.shell .content .intro{font-size:clamp(12px,3.4vw,15px)!important;line-height:1.55!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .shell *,.shell *::before,.shell *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
