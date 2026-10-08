@@ -1755,3 +1755,248 @@ undefined
   .shell.theme-dark .stat-card,.shell.theme-dark .feature-card,
   .shell.theme-dark .question-panel,.shell.theme-dark .question-nav{border-radius:14px}
 }
+
+
+/* ===== Distinct Day/Night UI + high contrast v14 ===== */
+
+/* NIGHT — deep AMOLED glass with restrained neon depth */
+.shell.theme-dark{
+  --bg:#07090d;
+  --panel:#0f1219;
+  --panel2:#151923;
+  --line:#2a3040;
+  --text:#f7f8fc;
+  --muted:#aeb5c5;
+  background:
+    radial-gradient(ellipse at 82% -12%,rgba(113,82,229,.19),transparent 34%),
+    radial-gradient(ellipse at 15% 110%,rgba(36,118,255,.09),transparent 30%),
+    #07090d!important;
+  color:var(--text)!important;
+}
+.shell.theme-dark .sidebar{
+  background:linear-gradient(180deg,#0b0e15,#080a0e)!important;
+  border-right-color:#292f3d!important;
+}
+.shell.theme-dark .topbar{
+  background:rgba(10,12,18,.82)!important;
+  backdrop-filter:blur(18px)!important;
+  border-bottom-color:#292f3d!important;
+}
+.shell.theme-dark .stat-card,
+.shell.theme-dark .feature-card,
+.shell.theme-dark .job-card,
+.shell.theme-dark .exam-group,
+.shell.theme-dark .question-panel,
+.shell.theme-dark .question-nav,
+.shell.theme-dark .review-panel,
+.shell.theme-dark .result-insight,
+.shell.theme-dark .subject-analysis,
+.shell.theme-dark .empty-state{
+  background:linear-gradient(145deg,rgba(20,24,34,.94),rgba(11,14,21,.96))!important;
+  border-color:#2b3141!important;
+  box-shadow:0 16px 42px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.035)!important;
+}
+.shell.theme-dark .intro,
+.shell.theme-dark .section-heading p,
+.shell.theme-dark .job-copy span,
+.shell.theme-dark .job-copy small,
+.shell.theme-dark .stat-foot{
+  color:#b0b7c7!important;
+}
+.shell.theme-dark .option{
+  background:#151a24!important;
+  border-color:#303747!important;
+  color:#e2e6ef!important;
+}
+.shell.theme-dark .option:hover{background:#1a2030!important;border-color:#6f63a8!important}
+.shell.theme-dark .secondary-button{
+  background:#171c27!important;
+  border-color:#353c4c!important;
+  color:#e1e5ee!important;
+}
+
+/* DAY — genuinely different: soft paper-glass, raised surfaces, less glow */
+.shell.theme-light{
+  --bg:#eef1f6;
+  --panel:#f8f9fb;
+  --panel2:#ffffff;
+  --line:#c5cad5;
+  --text:#171b25;
+  --muted:#555d6d;
+  background:
+    radial-gradient(ellipse at 88% -10%,rgba(111,91,210,.11),transparent 34%),
+    radial-gradient(ellipse at 10% 105%,rgba(61,121,190,.08),transparent 32%),
+    #eef1f6!important;
+  color:#171b25!important;
+}
+.shell.theme-light .sidebar{
+  background:linear-gradient(180deg,#f9fafc,#edf0f5)!important;
+  border-right:1px solid #c7ccd6!important;
+  box-shadow:8px 0 28px rgba(40,48,65,.06)!important;
+}
+.shell.theme-light .topbar{
+  background:rgba(249,250,252,.88)!important;
+  backdrop-filter:blur(18px)!important;
+  border-bottom:1px solid #c9ced8!important;
+  box-shadow:0 4px 20px rgba(40,48,65,.045)!important;
+}
+.shell.theme-light .brand,
+.shell.theme-light .welcome-row h1,
+.shell.theme-light .section-heading h2,
+.shell.theme-light .section-heading h3,
+.shell.theme-light .active-board-head h3,
+.shell.theme-light .job-copy b,
+.shell.theme-light .stat-value,
+.shell.theme-light .feature-card h3,
+.shell.theme-light .question-panel h2,
+.shell.theme-light .result-hero h1,
+.shell.theme-light .review-body>b{
+  color:#171b25!important;
+}
+.shell.theme-light .breadcrumb,
+.shell.theme-light .intro,
+.shell.theme-light .section-heading p,
+.shell.theme-light .job-copy span,
+.shell.theme-light .job-copy small,
+.shell.theme-light .stat-foot,
+.shell.theme-light .active-board-kicker,
+.shell.theme-light .feature-card>p,
+.shell.theme-light .question-hint,
+.shell.theme-light .review-body>span,
+.shell.theme-light .review-body p{
+  color:#596170!important;
+}
+.shell.theme-light .nav-item{color:#4e5666!important}
+.shell.theme-light .nav-item:hover{background:#e3e7ee!important;color:#171b25!important}
+.shell.theme-light .nav-item.active{
+  background:linear-gradient(135deg,#e2ddf7,#d9e3f5)!important;
+  border-color:#aaa4cb!important;
+  color:#443a86!important;
+  box-shadow:0 5px 16px rgba(67,57,135,.10)!important;
+}
+.shell.theme-light .stat-card,
+.shell.theme-light .feature-card,
+.shell.theme-light .job-card,
+.shell.theme-light .exam-group,
+.shell.theme-light .question-panel,
+.shell.theme-light .question-nav,
+.shell.theme-light .review-panel,
+.shell.theme-light .result-insight,
+.shell.theme-light .subject-analysis,
+.shell.theme-light .empty-state{
+  background:linear-gradient(145deg,#ffffff,#eef1f5)!important;
+  border:1px solid #c7ccd6!important;
+  box-shadow:0 12px 28px rgba(35,43,58,.10),inset 0 1px rgba(255,255,255,.9)!important;
+}
+.shell.theme-light .feature-card.featured{
+  background:linear-gradient(145deg,#faf9ff,#edf1f8)!important;
+  border-color:#b8b2d5!important;
+}
+.shell.theme-light .option{
+  background:#f8f9fb!important;
+  border:1px solid #c5cad4!important;
+  color:#252b37!important;
+  box-shadow:0 3px 9px rgba(35,43,58,.045)!important;
+}
+.shell.theme-light .option:hover{
+  background:#eef1f7!important;
+  border-color:#7770aa!important;
+}
+.shell.theme-light .option.selected{
+  background:#e5e0f7!important;
+  border-color:#7267b0!important;
+  color:#292151!important;
+  box-shadow:0 5px 15px rgba(78,67,146,.12)!important;
+}
+.shell.theme-light .option-letter{
+  background:#eef0f4!important;
+  border-color:#b9bfca!important;
+  color:#4d5563!important;
+}
+.shell.theme-light .secondary-button{
+  background:#f1f3f7!important;
+  border-color:#bfc5d0!important;
+  color:#29303d!important;
+  box-shadow:0 4px 12px rgba(35,43,58,.06)!important;
+}
+.shell.theme-light .primary-button{
+  box-shadow:0 7px 18px rgba(92,78,166,.16)!important;
+}
+.shell.theme-light .exam-search,
+.shell.theme-light .exam-toolbar,
+.shell.theme-light .config-block,
+.shell.theme-light .phone-input,
+.shell.theme-light .auth-panel input{
+  background:#f7f8fa!important;
+  border-color:#bdc3ce!important;
+  color:#1d222c!important;
+}
+.shell.theme-light input::placeholder{color:#737b89!important}
+.shell.theme-light .exam-board-tab{
+  background:linear-gradient(145deg,#ffffff,#e9edf3)!important;
+  border-color:#c1c7d2!important;
+  color:#252b37!important;
+  box-shadow:0 9px 20px rgba(35,43,58,.08)!important;
+  transform:translateY(0)!important;
+}
+.shell.theme-light .exam-board-tab:hover{
+  transform:translateY(-3px)!important;
+  box-shadow:0 15px 28px rgba(35,43,58,.13)!important;
+}
+.shell.theme-light .exam-board-tab.active{
+  background:linear-gradient(145deg,#e5e0f7,#dce5f4)!important;
+  border-color:#9c94c9!important;
+  color:#40367f!important;
+  box-shadow:0 13px 26px rgba(67,57,135,.14)!important;
+}
+.shell.theme-light .timer-card{
+  background:#f1eff9!important;
+  border-color:#aaa1d0!important;
+  color:#4b408f!important;
+  box-shadow:0 7px 18px rgba(67,57,135,.09)!important;
+}
+.shell.theme-light .test-progress{
+  background:#fafbfc!important;
+  border-color:#c7ccd6!important;
+}
+.shell.theme-light .progress-track{background:#d5dae2!important}
+.shell.theme-light .question-nav .number-cell{
+  background:#f1f3f7!important;
+  border-color:#c1c6d0!important;
+  color:#555d6b!important;
+}
+.shell.theme-light .question-nav .number-cell.current{
+  background:#e4def8!important;
+  border-color:#877bbd!important;
+  color:#3e347d!important;
+}
+.shell.theme-light .question-nav .number-cell.answered{
+  background:#e0f1e9!important;
+  border-color:#75ad94!important;
+  color:#246247!important;
+}
+.shell.theme-light .bottom-note{
+  background:#f8fafb!important;
+  border-color:#c6ccd5!important;
+}
+.shell.theme-light .footer{border-color:#c8cdd6!important;color:#687180!important}
+
+/* Theme-specific motion: Night floats/glows; Day lifts/shadows. */
+.shell.theme-dark .stat-card,
+.shell.theme-dark .feature-card,
+.shell.theme-dark .job-card{transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.shell.theme-dark .stat-card:hover,
+.shell.theme-dark .feature-card:hover,
+.shell.theme-dark .job-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 20px 48px rgba(0,0,0,.36),0 0 28px rgba(116,95,220,.08)!important;
+}
+.shell.theme-light .stat-card,
+.shell.theme-light .feature-card,
+.shell.theme-light .job-card{transition:transform .22s ease,box-shadow .22s ease}
+.shell.theme-light .stat-card:hover,
+.shell.theme-light .feature-card:hover,
+.shell.theme-light .job-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 18px 34px rgba(35,43,58,.15)!important;
+}
