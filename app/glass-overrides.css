@@ -509,3 +509,183 @@ button,.job-card,.exam-board-tab,.exam-group,.exam-detail-panel,
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}
 }
+
+
+/* ================================================================
+   EXAMPREP CINEMATIC 3D SYSTEM v26
+   Final visual direction: floating + glossy + dimensional
+   ================================================================ */
+:root{
+  --cine-bg:#050711;
+  --cine-panel:rgba(17,21,40,.88);
+  --cine-panel-2:rgba(25,29,52,.94);
+  --cine-line:rgba(255,255,255,.10);
+  --cine-white:#f7f8ff;
+  --cine-muted:#9ea7c2;
+  --cine-violet:#8667ff;
+  --cine-cyan:#36d9ff;
+  --cine-green:#39e6a1;
+  --cine-red:#ff5f72;
+  --cine-shadow:0 24px 60px rgba(0,0,0,.38),0 8px 22px rgba(0,0,0,.25);
+}
+
+.shell{background:
+ radial-gradient(circle at 12% 8%,rgba(134,103,255,.15),transparent 28%),
+ radial-gradient(circle at 88% 18%,rgba(54,217,255,.11),transparent 25%),
+ linear-gradient(145deg,#050711 0%,#080b18 48%,#050711 100%)!important;
+ color:var(--cine-white)!important;
+ perspective:1400px!important;
+ isolation:isolate!important;
+}
+.shell::before{
+ content:"";position:fixed;inset:-15%;pointer-events:none;z-index:-1;
+ background:radial-gradient(circle at 50% 45%,rgba(134,103,255,.07),transparent 38%);
+ animation:cineAtmosphere 12s ease-in-out infinite alternate;
+}
+@keyframes cineAtmosphere{from{transform:scale(1) rotate(0deg)}to{transform:scale(1.08) rotate(2deg)}}
+
+/* shared dimensional surface */
+.dashboard-content,.test-content,.result-content,.settings-content,.about-content,.content{
+ transform-style:preserve-3d!important;
+}
+.dashboard-content .welcome-row,.test-content .question-screen-top,.test-content .question-panel,
+.test-content .question-nav,.result-hero,.result-insight,.subject-analysis,.review-panel,
+.settings-hero,.about-hero,.settings-profile-card,.settings-card,.about-card,.about-note{
+ position:relative!important;
+ overflow:hidden!important;
+ background:linear-gradient(145deg,rgba(30,35,64,.94),rgba(11,15,30,.96))!important;
+ border:1px solid rgba(255,255,255,.10)!important;
+ box-shadow:var(--cine-shadow),inset 0 1px 0 rgba(255,255,255,.08)!important;
+ transform-style:preserve-3d!important;
+}
+.dashboard-content .welcome-row::after,.test-content .question-panel::after,
+.result-hero::after,.settings-hero::after,.about-hero::after{
+ content:"";position:absolute;top:-50%;left:-15%;width:65%;height:220%;
+ background:linear-gradient(100deg,transparent,rgba(255,255,255,.055),transparent);
+ transform:rotate(18deg);pointer-events:none;animation:cineSheen 8s ease-in-out infinite;
+}
+@keyframes cineSheen{0%,58%{transform:translateX(-100%) rotate(18deg)}76%,100%{transform:translateX(220%) rotate(18deg)}}
+
+/* dashboard hero */
+.dashboard-content .welcome-row{
+ min-height:210px!important;padding:34px!important;border-radius:30px!important;
+ transform:rotateX(1.5deg) translateZ(10px)!important;
+}
+.dashboard-content .hero-emblem{
+ width:78px!important;height:78px!important;border-radius:24px!important;
+ background:linear-gradient(145deg,#9a82ff,#5139bd)!important;
+ border:1px solid rgba(255,255,255,.25)!important;
+ box-shadow:0 22px 40px rgba(93,63,220,.35),inset 0 2px 1px rgba(255,255,255,.35)!important;
+ transform:translateZ(35px) rotate(-5deg)!important;
+ animation:cineFloat 4.5s ease-in-out infinite!important;
+}
+@keyframes cineFloat{0%,100%{transform:translate3d(0,0,35px) rotate(-5deg)}50%{transform:translate3d(0,-9px,55px) rotate(2deg)}}
+.dashboard-content .welcome-row h1{font-size:clamp(2rem,4vw,3.25rem)!important;letter-spacing:-.045em!important;text-shadow:0 8px 30px rgba(0,0,0,.35)!important}
+
+/* floating dashboard cards */
+.dashboard-content .job-card,.dashboard-content .exam-board-tab,.dashboard-content .exam-group,
+.dashboard-content .exam-detail-panel,.dashboard-content .config-block{
+ background:linear-gradient(145deg,rgba(30,36,66,.92),rgba(12,16,31,.96))!important;
+ border:1px solid rgba(255,255,255,.095)!important;
+ box-shadow:0 18px 40px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.08)!important;
+ transform-style:preserve-3d!important;
+ transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .35s!important;
+}
+.dashboard-content .job-card:hover,.dashboard-content .exam-board-tab:hover,.dashboard-content .exam-detail-panel:hover{
+ transform:translate3d(0,-8px,24px) rotateX(2deg)!important;
+ box-shadow:0 30px 55px rgba(0,0,0,.38),0 0 30px rgba(134,103,255,.10),inset 0 1px 0 rgba(255,255,255,.12)!important;
+ border-color:rgba(134,103,255,.42)!important;
+}
+.dashboard-content .job-card.selected,.dashboard-content .exam-board-tab.active{
+ background:linear-gradient(145deg,rgba(55,45,105,.96),rgba(19,20,49,.98))!important;
+ border-color:rgba(145,120,255,.7)!important;
+ box-shadow:0 25px 50px rgba(78,51,190,.32),inset 0 1px 0 rgba(255,255,255,.18)!important;
+ transform:translateZ(18px)!important;
+}
+.dashboard-content .primary-button,.primary-button{
+ position:relative!important;overflow:hidden!important;
+ background:linear-gradient(135deg,#987cff 0%,#6545dc 55%,#4d35bd 100%)!important;
+ border:1px solid rgba(255,255,255,.23)!important;
+ box-shadow:0 16px 30px rgba(92,61,220,.30),inset 0 1px 0 rgba(255,255,255,.32),inset 0 -3px 8px rgba(28,16,95,.25)!important;
+ transform:translateZ(12px)!important;
+ transition:transform .25s,box-shadow .25s!important;
+}
+.primary-button:hover{transform:translate3d(0,-4px,22px)!important;box-shadow:0 24px 40px rgba(92,61,220,.40),inset 0 1px 0 rgba(255,255,255,.36)!important}
+.primary-button::after{
+ content:"";position:absolute;inset:-100% 35%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transform:rotate(20deg);animation:cineButtonSheen 4s linear infinite;pointer-events:none;
+}
+@keyframes cineButtonSheen{0%{transform:translateX(-180%) rotate(20deg)}55%,100%{transform:translateX(260%) rotate(20deg)}}
+
+/* test console */
+.test-content .question-screen-top{transform:translateZ(18px)!important;border-radius:26px!important}
+.test-content .timer-card{
+ background:linear-gradient(145deg,#202746,#0b1020)!important;border:1px solid rgba(54,217,255,.25)!important;
+ box-shadow:0 15px 32px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.12),0 0 24px rgba(54,217,255,.07)!important;
+ transform:translateZ(24px)!important;
+}
+.test-content .test-progress{background:rgba(9,13,27,.82)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 14px 30px rgba(0,0,0,.25)!important}
+.test-content .progress-track{height:10px!important;background:#050812!important;border-radius:999px!important;overflow:hidden!important}
+.test-content .progress-fill{background:linear-gradient(90deg,var(--cine-violet),var(--cine-cyan))!important;box-shadow:0 0 18px rgba(54,217,255,.35)!important}
+.test-content .question-panel{transform:rotateX(1deg) translateZ(22px)!important;border-radius:28px!important}
+.test-content .question-nav{transform:translate3d(0,0,12px)!important}
+
+/* cinematic answer options */
+.options{perspective:1000px!important}
+.option{
+ position:relative!important;min-height:70px!important;overflow:hidden!important;
+ background:linear-gradient(145deg,rgba(35,41,72,.94),rgba(13,17,33,.98))!important;
+ border:1px solid rgba(255,255,255,.105)!important;border-radius:20px!important;
+ box-shadow:0 12px 25px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.09),inset 0 -5px 12px rgba(0,0,0,.14)!important;
+ transform:translate3d(0,0,14px) rotateX(0deg)!important;transform-style:preserve-3d!important;
+ transition:transform .32s cubic-bezier(.2,.8,.2,1),box-shadow .32s,border-color .32s,background .32s!important;
+}
+.option::before{display:block!important;content:""!important;position:absolute!important;inset:1px!important;border-radius:19px!important;background:linear-gradient(115deg,rgba(255,255,255,.11),transparent 28%,transparent 70%,rgba(134,103,255,.07))!important;pointer-events:none!important}
+.option:hover{transform:translate3d(8px,-7px,42px) rotateX(2deg) rotateY(-2deg)!important;border-color:rgba(134,103,255,.55)!important;box-shadow:0 25px 45px rgba(0,0,0,.42),0 0 28px rgba(134,103,255,.12),inset 0 1px 0 rgba(255,255,255,.16)!important}
+.option:active{transform:translate3d(3px,2px,8px) scale(.985)!important}
+.option.selected{background:linear-gradient(145deg,#3c3478,#171832)!important;border-color:#a18cff!important;box-shadow:0 24px 48px rgba(91,63,220,.35),0 0 34px rgba(134,103,255,.18),inset 0 1px 0 rgba(255,255,255,.2)!important;animation:cineSelected .7s ease-out!important}
+@keyframes cineSelected{0%{transform:translate3d(0,0,14px) scale(.97)}55%{transform:translate3d(6px,-8px,48px) scale(1.015)}100%{transform:translate3d(0,0,22px) scale(1)}}
+.option-letter{position:relative!important;z-index:2!important;width:40px!important;height:40px!important;border-radius:13px!important;background:linear-gradient(145deg,#273052,#0b1020)!important;border:1px solid rgba(255,255,255,.12)!important;box-shadow:0 8px 16px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.14)!important;transform:translateZ(22px)!important}
+.option.selected .option-letter{background:linear-gradient(145deg,#a38cff,#6041d5)!important;box-shadow:0 12px 22px rgba(98,64,222,.35),inset 0 1px 0 rgba(255,255,255,.35)!important}
+
+/* number palette = floating chips */
+.test-content .number-cell{transform:translateZ(8px)!important;transition:transform .22s,box-shadow .22s,background .22s!important;box-shadow:0 7px 15px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.08)!important}
+.test-content .number-cell:hover{transform:translate3d(0,-5px,24px)!important;box-shadow:0 16px 25px rgba(0,0,0,.35)!important}
+.test-content .number-cell.current{transform:translateZ(28px)!important;box-shadow:0 14px 28px rgba(102,72,220,.3),0 0 20px rgba(134,103,255,.14)!important}
+
+/* result / right-wrong cinematic feedback */
+.score-circle{transform:translateZ(28px)!important;background:radial-gradient(circle,#171632 0 54%,#0a0d19 55%)!important;box-shadow:0 25px 50px rgba(0,0,0,.4),0 0 38px rgba(134,103,255,.18),inset 0 2px 0 rgba(255,255,255,.12)!important;animation:scoreFloat 5s ease-in-out infinite!important}
+@keyframes scoreFloat{0%,100%{transform:translate3d(0,0,28px)}50%{transform:translate3d(0,-8px,42px)}}
+.result-trophy{transform:translateZ(45px) rotate(-4deg)!important;box-shadow:0 20px 35px rgba(0,0,0,.3),0 0 30px rgba(255,205,76,.12)!important}
+.review-question{position:relative!important;overflow:hidden!important;transform:translateZ(8px)!important;transition:transform .3s,box-shadow .3s!important}
+.review-question:hover{transform:translate3d(0,-5px,24px)!important;box-shadow:0 22px 35px rgba(0,0,0,.32)!important}
+.review-status.status-right{background:linear-gradient(145deg,#36e5a0,#138b65)!important;color:#fff!important;box-shadow:0 0 25px rgba(57,230,161,.3),0 10px 22px rgba(0,0,0,.25)!important;animation:correctPulse 1.8s ease-in-out infinite!important}
+.review-status.status-wrong{background:linear-gradient(145deg,#ff6b7d,#a82f43)!important;color:#fff!important;box-shadow:0 0 25px rgba(255,95,114,.26),0 10px 22px rgba(0,0,0,.25)!important;animation:wrongShake .55s ease-out!important}
+@keyframes correctPulse{0%,100%{transform:translateZ(10px) scale(1)}50%{transform:translateZ(24px) scale(1.06)}}
+@keyframes wrongShake{0%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-4px) rotate(-2deg)}50%{transform:translateX(4px) rotate(2deg)}75%{transform:translateX(-2px)}}
+
+/* settings/about floating depth */
+.settings-card,.settings-profile-card,.about-card{transition:transform .3s,box-shadow .3s,border-color .3s!important}
+.settings-card:hover,.settings-profile-card:hover,.about-card:hover{transform:translate3d(0,-7px,22px)!important;box-shadow:0 28px 48px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.10)!important;border-color:rgba(134,103,255,.3)!important}
+
+/* day mode: premium glossy pearl */
+.shell.theme-light{background:radial-gradient(circle at 10% 8%,rgba(117,88,232,.13),transparent 25%),radial-gradient(circle at 90% 18%,rgba(54,190,220,.10),transparent 24%),linear-gradient(145deg,#eef1f7,#f8f9fc 52%,#e9edf5)!important;color:#182033!important}
+.shell.theme-light .dashboard-content .welcome-row,.shell.theme-light .test-content .question-screen-top,.shell.theme-light .test-content .question-panel,.shell.theme-light .test-content .question-nav,.shell.theme-light .result-hero,.shell.theme-light .result-insight,.shell.theme-light .subject-analysis,.shell.theme-light .review-panel,.shell.theme-light .settings-hero,.shell.theme-light .about-hero,.shell.theme-light .settings-card,.shell.theme-light .settings-profile-card,.shell.theme-light .about-card,.shell.theme-light .about-note,.shell.theme-light .dashboard-content .job-card,.shell.theme-light .dashboard-content .exam-board-tab,.shell.theme-light .dashboard-content .exam-group,.shell.theme-light .dashboard-content .exam-detail-panel,.shell.theme-light .dashboard-content .config-block,.shell.theme-light .option{
+ background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(239,242,249,.98))!important;border-color:rgba(28,38,65,.10)!important;box-shadow:0 22px 48px rgba(37,48,76,.15),inset 0 1px 0 #fff!important;color:#182033!important}
+.shell.theme-light .option:hover{box-shadow:0 25px 48px rgba(37,48,76,.22),0 0 24px rgba(118,88,232,.08)!important}
+.shell.theme-light .option.selected{background:linear-gradient(145deg,#eee9ff,#fff)!important;border-color:#8265eb!important;box-shadow:0 25px 50px rgba(100,72,215,.20),0 0 28px rgba(134,103,255,.10)!important}
+.shell.theme-light .test-content .timer-card{background:linear-gradient(145deg,#fff,#e8f4f8)!important;color:#182033!important}
+.shell.theme-light .primary-button{color:#fff!important}
+
+/* mobile: preserve depth without crowding */
+@media(max-width:760px){
+ .dashboard-content,.test-content,.result-content,.settings-content,.about-content{padding-left:14px!important;padding-right:14px!important}
+ .dashboard-content .welcome-row{min-height:185px!important;padding:23px!important;border-radius:24px!important}
+ .dashboard-content .hero-emblem{width:62px!important;height:62px!important;border-radius:19px!important}
+ .dashboard-content .job-card:hover,.dashboard-content .exam-board-tab:hover,.dashboard-content .exam-detail-panel:hover,.settings-card:hover,.settings-profile-card:hover,.about-card:hover{transform:translate3d(0,-4px,12px)!important}
+ .option{min-height:64px!important;transform:translateZ(8px)!important}
+ .option:hover{transform:translate3d(4px,-4px,20px)!important}
+ .option-letter{width:36px!important;height:36px!important}
+ .test-content .question-panel{padding:19px!important;transform:translateZ(10px)!important}
+ .score-circle{transform:translateZ(18px)!important}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.option,.dashboard-content .job-card,.dashboard-content .exam-board-tab{transform:none!important}}
