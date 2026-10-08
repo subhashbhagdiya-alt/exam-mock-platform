@@ -19,6 +19,12 @@ export async function GET(request) {
   const db = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
   const now = new Date().toISOString();
   const tasks = [];
+  const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentTasks } = await db
+    .from("background_manager_tasks")
+    .select("task_type,status,created_at")
+    .gte("created_at", recentCutoff)
+    .in("status", ["queued", "running"]);
 
   const [{ count: questions }, { count: exams }, { count: tracks }, { count: sources }] = await Promise.all([
     db.from("question_bank").select("*", { count: "exact", head: true }).eq("active", true).eq("verified", true),
@@ -45,8 +51,9 @@ export async function GET(request) {
     tasks.push({ task_type: "source_health", priority: 95, payload: { reason: "Official source check failed.", runs: changedSources.filter(item => item.status === "failed").slice(0, 5) } });
   }
 
-  const { data: inserted, error } = tasks.length
-    ? await db.from("background_manager_tasks").insert(tasks).select("id,task_type,priority,status")
+  const dedupedTasks = tasks.filter(task => !(recentTasks || []).some(item => item.task_type === task.task_type));
+  const { data: inserted, error } = dedupedTasks.length
+    ? await db.from("background_manager_tasks").insert(dedupedTasks).select("id,task_type,priority,status")
     : { data: [], error: null };
 
   return NextResponse.json({
@@ -55,6 +62,8 @@ export async function GET(request) {
     checked_at: now,
     metrics: { verified_active_questions: questions || 0, active_exams: exams || 0, active_tracks: tracks || 0, active_sources: sources || 0 },
     tasks_created: inserted?.length || 0,
+    tasks_considered: tasks.length,
+    deduped_recent: tasks.length - dedupedTasks.length,
     tasks: inserted || [],
     error: error?.message || null
   });
