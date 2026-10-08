@@ -936,3 +936,146 @@ button,.job-card,.exam-board-tab,.exam-group,.exam-detail-panel,
     backdrop-filter:blur(7px)!important;-webkit-backdrop-filter:blur(7px)!important;
   }
 }
+
+
+/* ============================================================
+   EXAMPREP FULL PRODUCT UPGRADE v31
+   Global cinematic 3D visual architecture
+   ============================================================ */
+:root{
+ --ep-bg:#060711;--ep-surface:rgba(17,20,38,.72);--ep-line:rgba(255,255,255,.105);
+ --ep-text:#f5f7ff;--ep-muted:#aeb6cf;--ep-purple:#8b5cf6;--ep-cyan:#22d3ee;
+ --ep-green:#31d58b;--ep-red:#ff5c75;
+}
+*{box-sizing:border-box}
+body{background:#060711!important;color:var(--ep-text)}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.shell{min-height:100vh;background:
+ radial-gradient(700px 420px at 78% -4%,rgba(139,92,246,.18),transparent 68%),
+ radial-gradient(620px 420px at -8% 60%,rgba(34,211,238,.10),transparent 68%),
+ linear-gradient(150deg,#05060d 0%,#090b17 48%,#060711 100%)!important}
+.shell .content{max-width:1440px!important;margin:0 auto;perspective:1600px}
+.shell .topbar{height:72px!important;padding:0 clamp(16px,3vw,42px)!important;background:rgba(6,7,17,.72)!important;border-bottom:1px solid var(--ep-line)!important;box-shadow:0 12px 40px rgba(0,0,0,.24)!important}
+.shell .topbar>*{transform:translateZ(18px)}
+.logo,.brand,.app-logo{filter:drop-shadow(0 8px 18px rgba(139,92,246,.24))}
+.dashboard-content,.test-content,.result-content,.settings-content,.about-content,.history-content,.sources-content{padding:clamp(20px,3vw,42px)!important}
+.dashboard-content>*,.test-content>*,.result-content>*,.settings-content>*,.about-content>*,.history-content>*,.sources-content>*{transform-style:preserve-3d}
+
+.section-heading{margin:34px 0 16px!important;display:flex;align-items:end;justify-content:space-between;gap:18px}
+.section-heading h2,.section-heading h3{font-size:clamp(20px,2vw,28px)!important;letter-spacing:-.025em}
+.section-heading p{color:var(--ep-muted);font-size:13px}
+
+.dashboard-content .job-grid,.dashboard-content .exam-groups,.dashboard-content .exam-board-tabs,
+.result-stats,.subject-analysis,.review-panel,.about-grid,.settings-layout{gap:16px!important}
+.dashboard-content .job-card,.dashboard-content .exam-board-tab,.dashboard-content .exam-group,
+.dashboard-content .exam-detail-panel,.dashboard-content .config-block,
+.result-stat,.subject-row,.review-question,.settings-card,.settings-profile-card,.about-card,
+.history-card,.source-card,.feature-card,.stat-card{
+ border-radius:24px!important;
+ border:1px solid var(--ep-line)!important;
+ background:linear-gradient(145deg,rgba(25,29,51,.84),rgba(10,12,24,.74))!important;
+ box-shadow:0 26px 65px rgba(0,0,0,.27),0 8px 20px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.10)!important;
+ backdrop-filter:blur(16px) saturate(130%)!important;
+}
+.dashboard-content .job-card,.dashboard-content .exam-board-tab,.dashboard-content .exam-group,
+.dashboard-content .exam-detail-panel,.dashboard-content .config-block,.history-card,.source-card,.feature-card,.stat-card{
+ transition:transform .42s cubic-bezier(.2,.8,.2,1),box-shadow .42s ease,border-color .3s ease!important;
+ transform:translateZ(10px)!important;
+}
+.dashboard-content .job-card:hover,.dashboard-content .exam-board-tab:hover,.dashboard-content .exam-group:hover,
+.dashboard-content .exam-detail-panel:hover,.dashboard-content .config-block:hover,.history-card:hover,.source-card:hover,.feature-card:hover,.stat-card:hover{
+ transform:translate3d(0,-9px,30px)!important;
+ border-color:rgba(139,92,246,.34)!important;
+ box-shadow:0 36px 78px rgba(0,0,0,.35),0 0 34px rgba(139,92,246,.08),inset 0 1px rgba(255,255,255,.15)!important;
+}
+.dashboard-content .job-card::before,.dashboard-content .exam-detail-panel::before,
+.history-card::before,.source-card::before,.about-card::before,.settings-card::before{
+ content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+ background:linear-gradient(115deg,transparent 22%,rgba(255,255,255,.075) 45%,transparent 62%);
+ transform:translateX(-125%);transition:transform .85s ease;
+}
+.dashboard-content .job-card:hover::before,.dashboard-content .exam-detail-panel:hover::before,
+.history-card:hover::before,.source-card:hover::before,.about-card:hover::before,.settings-card:hover::before{transform:translateX(125%)}
+
+.exam-board-tabs{padding:8px!important;border-radius:22px!important;background:rgba(255,255,255,.035)!important;border:1px solid var(--ep-line)!important}
+.exam-board-tab{min-height:58px!important}
+.exam-board-tab.active,.exam-board-tab.selected{
+ background:linear-gradient(135deg,rgba(139,92,246,.32),rgba(34,211,238,.10))!important;
+ border-color:rgba(139,92,246,.55)!important;
+ box-shadow:0 0 30px rgba(139,92,246,.12),inset 0 1px rgba(255,255,255,.18)!important;
+}
+
+.test-content .test-layout{gap:22px!important;align-items:start}
+.test-content .question-panel{border-radius:28px!important;padding:clamp(20px,3vw,34px)!important}
+.test-content .question-panel h1,.test-content .question-panel h2{font-size:clamp(21px,2.2vw,31px)!important;line-height:1.38!important}
+.test-content .question-controls{position:sticky;bottom:14px;z-index:5}
+.test-content .question-nav{border-radius:24px!important}
+.timer-card{border-radius:20px!important;background:linear-gradient(135deg,rgba(139,92,246,.18),rgba(34,211,238,.07))!important}
+.timer-warning{animation:epTimerPulse 1.15s ease-in-out infinite}
+@keyframes epTimerPulse{50%{box-shadow:0 0 30px rgba(255,92,117,.25)!important;transform:translateZ(32px) scale(1.02)}}
+
+.result-hero{border-radius:30px!important;min-height:280px;display:grid;align-items:center}
+.score-circle{box-shadow:0 0 0 1px rgba(139,92,246,.28),0 0 65px rgba(139,92,246,.20),0 25px 55px rgba(0,0,0,.3)!important}
+.result-stat{min-height:126px!important}
+.review-panel{margin-top:24px!important}
+.review-question{padding:20px!important}
+
+.history-card,.source-card{padding:22px!important}
+.history-card .history-score,.source-card .source-icon{filter:drop-shadow(0 10px 18px rgba(139,92,246,.2))}
+.empty-state{border-radius:28px!important;border:1px dashed rgba(139,92,246,.28)!important;background:rgba(255,255,255,.025)!important;box-shadow:inset 0 1px rgba(255,255,255,.06)!important}
+
+.settings-layout{align-items:start}
+.settings-profile-card{min-height:180px!important}
+.setting-choice{min-height:74px!important;border-radius:18px!important;border:1px solid var(--ep-line)!important;background:rgba(255,255,255,.045)!important;transition:.3s ease!important}
+.setting-choice:hover{transform:translateY(-4px) translateZ(16px)!important;border-color:rgba(139,92,246,.4)!important}
+.setting-choice.active,.setting-choice.selected{background:linear-gradient(135deg,rgba(139,92,246,.23),rgba(34,211,238,.06))!important;border-color:rgba(139,92,246,.5)!important}
+
+.about-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.about-card{min-height:250px!important;padding:24px!important}
+.about-card-icon,.settings-card-icon{box-shadow:0 14px 28px rgba(139,92,246,.2)!important;transform:translateZ(22px)!important}
+
+.primary-button{border-radius:16px!important;background:linear-gradient(135deg,#8b5cf6,#6d45d9)!important;border:1px solid rgba(255,255,255,.20)!important}
+.secondary-button,.review-button,.lang-button{border-radius:16px!important;background:rgba(255,255,255,.055)!important;border:1px solid var(--ep-line)!important}
+
+.footer{max-width:1360px!important;margin:30px auto 0!important;padding:24px clamp(16px,3vw,42px)!important;border-top:1px solid rgba(255,255,255,.07)!important;color:#8e97b2!important}
+
+.shell.theme-light{color:#172033!important;background:
+ radial-gradient(700px 420px at 78% -4%,rgba(139,92,246,.13),transparent 68%),
+ radial-gradient(620px 420px at -8% 60%,rgba(34,211,238,.08),transparent 68%),
+ linear-gradient(150deg,#e9edf5,#f8f9fc 50%,#eef1f7)!important}
+.shell.theme-light .topbar{background:rgba(248,250,253,.76)!important;border-color:rgba(20,30,55,.08)!important}
+.shell.theme-light .dashboard-content .job-card,.shell.theme-light .dashboard-content .exam-board-tab,.shell.theme-light .dashboard-content .exam-group,
+.shell.theme-light .dashboard-content .exam-detail-panel,.shell.theme-light .dashboard-content .config-block,
+.shell.theme-light .result-stat,.shell.theme-light .subject-row,.shell.theme-light .review-question,
+.shell.theme-light .settings-card,.shell.theme-light .settings-profile-card,.shell.theme-light .about-card,
+.shell.theme-light .history-card,.shell.theme-light .source-card,.shell.theme-light .feature-card,.shell.theme-light .stat-card{
+ background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(235,239,247,.90))!important;
+ color:#172033!important;border-color:rgba(30,42,70,.10)!important;
+ box-shadow:0 24px 55px rgba(42,54,84,.15),0 8px 20px rgba(42,54,84,.07),inset 0 1px #fff!important;
+}
+.shell.theme-light .section-heading p,.shell.theme-light .footer{color:#667087!important}
+.shell.theme-light .exam-board-tabs{background:rgba(255,255,255,.55)!important;border-color:rgba(30,42,70,.09)!important}
+.shell.theme-light .setting-choice{background:rgba(255,255,255,.7)!important;border-color:rgba(30,42,70,.09)!important}
+
+@media(max-width:1000px){.about-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.test-content .test-layout{grid-template-columns:1fr!important}}
+@media(max-width:700px){
+ .shell .topbar{height:64px!important}
+ .dashboard-content,.test-content,.result-content,.settings-content,.about-content,.history-content,.sources-content{padding:16px!important}
+ .section-heading{margin:24px 0 13px!important}
+ .section-heading h2,.section-heading h3{font-size:20px!important}
+ .dashboard-content .job-card,.dashboard-content .exam-board-tab,.dashboard-content .exam-group,.dashboard-content .exam-detail-panel,.dashboard-content .config-block,
+ .result-stat,.subject-row,.review-question,.settings-card,.settings-profile-card,.about-card,.history-card,.source-card,.feature-card,.stat-card{border-radius:19px!important}
+ .about-grid{grid-template-columns:1fr!important}
+ .dashboard-content .job-card:hover,.dashboard-content .exam-board-tab:hover,.dashboard-content .exam-group:hover,
+ .dashboard-content .exam-detail-panel:hover,.dashboard-content .config-block:hover,.history-card:hover,.source-card:hover,.feature-card:hover,.stat-card:hover{
+   transform:translate3d(0,-4px,15px)!important;
+ }
+ .test-content .question-controls{position:static}
+ .result-hero{min-height:220px}
+}
+@media(prefers-reduced-motion:reduce){
+ .timer-warning,.dashboard-content .job-card::before,.dashboard-content .exam-detail-panel::before,
+ .history-card::before,.source-card::before,.about-card::before,.settings-card::before{animation:none!important}
+ *,*::before,*::after{transition:none!important}
+}
