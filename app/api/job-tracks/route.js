@@ -36,11 +36,12 @@ export async function GET() {
   const sourceCounts = new Map();
   const subjectSets = new Map();
   const topicSets = new Map();
+  const predictionCandidates = new Map();
 
   if (examIds.length) {
     const { data: questions, error: questionError } = await client
       .from("question_bank")
-      .select("exam_id,source_type,subject,topic")
+      .select("exam_id,source_type,subject,topic,prediction_score,question_hi,question_en")
       .in("exam_id", examIds)
       .eq("active", true)
       .eq("verified", true);
@@ -55,6 +56,8 @@ export async function GET() {
       if (!topicSets.has(question.exam_id)) topicSets.set(question.exam_id, new Set());
       if (question.subject) subjectSets.get(question.exam_id).add(question.subject);
       if (question.topic) topicSets.get(question.exam_id).add(question.topic);
+      if (!predictionCandidates.has(question.exam_id)) predictionCandidates.set(question.exam_id, []);
+      predictionCandidates.get(question.exam_id).push(question);
     }
   }
 
@@ -74,6 +77,10 @@ export async function GET() {
       practice_question_count: sourceCounts.get(`${exam?.id}:curated`) || 0,
       subjects: exam ? [...(subjectSets.get(exam.id) || new Set())].sort() : [],
       topics: exam ? [...(topicSets.get(exam.id) || new Set())].sort() : [],
+      analysis_candidates: exam ? [...(predictionCandidates.get(exam.id) || [])]
+        .sort((a,b) => Number(b.prediction_score || 0) - Number(a.prediction_score || 0))
+        .slice(0,5)
+        .map(q => ({ subject:q.subject, topic:q.topic, prediction_score:Number(q.prediction_score || 0), source_type:q.source_type })) : [],
       effective_status: questionBankReady ? "question_bank_ready" : track.status,
     };
   });
