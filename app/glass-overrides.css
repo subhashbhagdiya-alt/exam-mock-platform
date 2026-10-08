@@ -2176,3 +2176,168 @@ button{cursor:pointer}
     min-height:44px!important;
   }
 }
+
+
+/* ============================================================
+   v42 — MOBILE PERFORMANCE + DASHBOARD / BOARD SPLIT
+   Keep the cinematic 3D language, but remove the expensive visual
+   layers from the mobile dashboard and move exam discovery to its
+   dedicated Boards screen.
+   ============================================================ */
+
+.boards-content{position:relative!important}
+.boards-hero{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:24px!important;
+  margin-bottom:22px!important;
+  padding:22px 24px!important;
+  border:1px solid rgba(139,92,246,.20)!important;
+  border-radius:26px!important;
+  background:
+    radial-gradient(circle at 88% 18%,rgba(54,217,255,.10),transparent 32%),
+    linear-gradient(145deg,rgba(28,31,58,.92),rgba(9,12,25,.96))!important;
+  box-shadow:0 20px 45px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.10)!important;
+}
+.boards-hero h1{margin:5px 0 0!important}
+.boards-hero-badge{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  min-width:100px!important;
+  justify-content:center!important;
+  padding:13px 15px!important;
+  border:1px solid rgba(139,92,246,.24)!important;
+  border-radius:18px!important;
+  background:linear-gradient(145deg,rgba(139,92,246,.18),rgba(34,211,238,.07))!important;
+  color:#d7ccff!important;
+  box-shadow:0 12px 24px rgba(0,0,0,.20),inset 0 1px rgba(255,255,255,.12)!important;
+}
+.boards-hero-badge span{font:900 8px/1.05 Manrope,sans-serif;letter-spacing:1.3px}
+.boards-content .job-section{margin-top:0!important}
+.boards-content .job-card,
+.boards-content .exam-board-tab,
+.boards-content .exam-group,
+.boards-content .exam-detail-panel{
+  will-change:transform!important;
+}
+.shell.theme-light .boards-hero{
+  background:linear-gradient(145deg,#fff,#f4f6fb)!important;
+  border-color:rgba(101,70,217,.16)!important;
+  box-shadow:0 18px 42px rgba(42,54,84,.12),inset 0 1px #fff!important;
+}
+.shell.theme-light .boards-hero-badge{
+  color:#5b3fc0!important;
+  background:linear-gradient(145deg,#f0ebff,#edf8fa)!important;
+}
+
+/* Dashboard keeps the menu-like quick actions; no giant empty card faces. */
+.dashboard-options-panel{
+  contain:layout paint!important;
+  content-visibility:auto!important;
+  contain-intrinsic-size:360px!important;
+}
+.dashboard-options-panel .feature-card{
+  min-height:0!important;
+  height:auto!important;
+  contain:layout paint!important;
+}
+.dashboard-options-panel .feature-card.featured{
+  min-height:0!important;
+}
+.dashboard-content .stats-grid{
+  content-visibility:auto!important;
+  contain-intrinsic-size:160px!important;
+}
+
+/* Mobile: preserve the glossy look without paying for large blur/backdrop layers. */
+@media(max-width:760px){
+  .dashboard-options-panel{
+    gap:12px!important;
+    margin-top:10px!important;
+  }
+  .dashboard-options-panel .feature-card{
+    min-height:0!important;
+    padding:18px!important;
+    border-radius:24px!important;
+    box-shadow:
+      0 12px 0 rgba(0,0,0,.10),
+      0 22px 42px rgba(0,0,0,.22),
+      inset 0 1px rgba(255,255,255,.13)!important;
+  }
+  .dashboard-options-panel .feature-card h3{
+    font-size:18px!important;
+    line-height:1.25!important;
+  }
+  .dashboard-options-panel .feature-card p{
+    font-size:11px!important;
+    line-height:1.55!important;
+  }
+  .dashboard-options-panel .primary-button,
+  .dashboard-options-panel .secondary-button{
+    min-height:44px!important;
+  }
+  .dashboard-content .stats-grid{
+    gap:9px!important;
+    margin-top:14px!important;
+  }
+  .dashboard-content .stat-card{
+    min-height:112px!important;
+    padding:14px!important;
+  }
+
+  /* Expensive glass blur is the biggest mobile compositor cost. */
+  .dashboard-content *,
+  .boards-content *{
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+  .dashboard-content .feature-card,
+  .dashboard-content .stat-card,
+  .dashboard-content .dashboard-options-bar,
+  .boards-content .boards-hero,
+  .boards-content .job-card,
+  .boards-content .exam-board-tab,
+  .boards-content .exam-group,
+  .boards-content .exam-detail-panel{
+    transform-style:flat!important;
+    perspective:none!important;
+  }
+  .dashboard-content .feature-card:hover,
+  .dashboard-content .stat-card:hover,
+  .boards-content .job-card:hover,
+  .boards-content .exam-board-tab:hover{
+    transform:none!important;
+  }
+
+  /* Keep only interaction animations; kill ambient infinite motion on mobile. */
+  .dashboard-content .hero-emblem,
+  .dashboard-content .orbit-dot,
+  .dashboard-content .emblem-ring,
+  .dashboard-content .feature-card::before,
+  .dashboard-content .feature-card::after,
+  .shell::before,
+  .shell::after{
+    animation:none!important;
+  }
+
+  .boards-hero{
+    padding:18px!important;
+    margin-bottom:14px!important;
+    border-radius:22px!important;
+    gap:12px!important;
+  }
+  .boards-hero .intro{font-size:11px!important;line-height:1.55!important}
+  .boards-hero-badge{min-width:76px!important;padding:10px!important}
+  .boards-content .job-section .section-heading{margin-bottom:10px!important}
+}
+
+/* Respect reduced-motion and avoid smooth-scroll work during page switches. */
+@media(prefers-reduced-motion:reduce){
+  .dashboard-content *,
+  .boards-content *{
+    animation:none!important;
+    transition:none!important;
+  }
+}
