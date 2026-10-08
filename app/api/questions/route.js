@@ -47,11 +47,21 @@ export async function GET(request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const rows = data || [];
-  // Prefer real previous-year/official questions over curated practice items.
-  const trusted = rows.filter((row) => row.source_type === "pyq" || row.source_type === "official" || row.source_type === "memory_based");
-  const practice = rows.filter((row) => row.source_type === "curated");
-  const prioritized = [...trusted, ...practice];
-  const selected = shuffle(prioritized).slice(0, Math.min(limit, prioritized.length));
+  // Mix source reliability with the analysis score so forecasted/high-signal questions
+  // actually enter the mock while still guaranteeing some real-source questions.
+  const sourceBoost = { pyq: 8, official: 7, memory_based: 5, curated: 0 };
+  const ranked = [...rows].sort((a, b) =>
+    (Number(b.prediction_score || 0) + (sourceBoost[b.source_type] || 0)) -
+    (Number(a.prediction_score || 0) + (sourceBoost[a.source_type] || 0))
+  );
+  const trusted = ranked.filter((row) => row.source_type === "pyq" || row.source_type === "official" || row.source_type === "memory_based");
+  const predicted = ranked.filter((row) => Number(row.prediction_score || 0) > 0);
+  const guaranteedTrusted = shuffle(trusted).slice(0, Math.min(2, limit, trusted.length));
+  const remainingPool = ranked.filter((row) => !guaranteedTrusted.some((item) => item.id === row.id));
+  const remaining = shuffle(remainingPool.slice(0, Math.min(poolSize, remainingPool.length)));
+  const selected = [...guaranteedTrusted, ...remaining]
+    .sort((a, b) => (Number(b.prediction_score || 0) + (sourceBoost[b.source_type] || 0)) - (Number(a.prediction_score || 0) + (sourceBoost[a.source_type] || 0)))
+    .slice(0, Math.min(limit, ranked.length));
   return NextResponse.json({
     exam: examRow,
     data: selected,
