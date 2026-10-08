@@ -134,3 +134,141 @@
   }
   .option::after{display:none!important}
 }
+
+/* ExamPrep premium dashboard pass v20 */
+.dashboard-content{
+  position:relative!important;
+  overflow:hidden!important;
+  padding-bottom:48px!important;
+}
+.dashboard-content .welcome-row{
+  position:relative!important;
+  padding:34px 34px 30px!important;
+  margin:4px 0 28px!important;
+  border-radius:32px!important;
+  background:
+    radial-gradient(circle at 88% 18%,rgba(116,91,255,.18),transparent 28%),
+    radial-gradient(circle at 8% 90%,rgba(0,186,255,.10),transparent 25%),
+    linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.025))!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.14),0 28px 70px rgba(0,0,0,.25)!important;
+  backdrop-filter:blur(22px)!important;
+  transform-style:preserve-3d!important;
+}
+.dashboard-content .welcome-row::before{
+  content:"";position:absolute;inset:1px;border-radius:31px;pointer-events:none;
+  background:linear-gradient(115deg,rgba(255,255,255,.09),transparent 26%,transparent 70%,rgba(137,111,255,.10));
+}
+.dashboard-content .welcome-row>div:first-child{position:relative;z-index:2;transform:translateZ(20px)}
+.dashboard-content .hero-emblem{position:relative;z-index:2;transform:translateZ(38px) scale(1.03)!important}
+.dashboard-content .welcome-row h1{
+  font-size:clamp(2.1rem,4vw,3.5rem)!important;
+  letter-spacing:-.045em!important;
+  line-height:1.03!important;
+}
+.dashboard-content .intro{max-width:650px!important;font-size:1rem!important;line-height:1.7!important}
+.dashboard-content .section-heading{
+  margin-top:38px!important;
+  margin-bottom:16px!important;
+  padding:0 4px!important;
+}
+.dashboard-content .section-heading h2{
+  font-size:1.35rem!important;
+  letter-spacing:-.025em!important;
+}
+.dashboard-content .job-grid{
+  gap:16px!important;
+}
+.dashboard-content .job-card{
+  min-height:108px!important;
+  border-radius:22px!important;
+  padding:18px!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.085),rgba(255,255,255,.025))!important;
+  border:1px solid rgba(255,255,255,.13)!important;
+  backdrop-filter:blur(18px)!important;
+}
+.dashboard-content .job-card.selected{
+  background:linear-gradient(145deg,rgba(121,92,255,.40),rgba(45,105,255,.15))!important;
+  border-color:rgba(181,163,255,.65)!important;
+  box-shadow:0 20px 45px rgba(55,36,140,.30),inset 0 1px rgba(255,255,255,.20)!important;
+}
+.dashboard-content .exam-board-tabs{
+  gap:14px!important;
+}
+.dashboard-content .exam-board-tab{
+  min-height:88px!important;
+  border-radius:22px!important;
+  padding:15px 18px!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.025))!important;
+  border:1px solid rgba(255,255,255,.13)!important;
+  backdrop-filter:blur(18px)!important;
+}
+.dashboard-content .exam-board-tab.active{
+  background:linear-gradient(145deg,rgba(126,98,255,.36),rgba(47,112,255,.12))!important;
+  border-color:rgba(183,166,255,.70)!important;
+  box-shadow:0 18px 40px rgba(54,35,143,.28),inset 0 1px rgba(255,255,255,.20)!important;
+}
+.dashboard-content .exam-groups{
+  display:grid!important;
+  gap:18px!important;
+}
+.dashboard-content .exam-group{
+  border-radius:26px!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.02))!important;
+  border:1px solid rgba(255,255,255,.11)!important;
+  backdrop-filter:blur(20px)!important;
+}
+.dashboard-content .exam-group-header{
+  padding:20px 22px!important;
+}
+.dashboard-content .exam-group-header h3{font-size:1.05rem!important}
+.dashboard-content .exam-group-header small{opacity:.72!important}
+.dashboard-content .exam-details{
+  padding:0 18px 18px!important;
+}
+.dashboard-content .exam-detail-panel{
+  border-radius:22px!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.018))!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+}
+.dashboard-content .config-block{
+  border-radius:20px!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.02))!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+}
+.dashboard-content .primary-button{
+  border-radius:15px!important;
+  box-shadow:0 12px 28px rgba(92,66,220,.25),inset 0 1px rgba(255,255,255,.22)!important;
+  transform-style:preserve-3d!important;
+  transition:transform .2s,box-shadow .2s!important;
+}
+.dashboard-content .primary-button:hover{
+  transform:translateY(-3px) translateZ(8px)!important;
+  box-shadow:0 18px 34px rgba(92,66,220,.34),inset 0 1px rgba(255,255,255,.25)!important;
+}
+.shell.theme-light .dashboard-content .welcome-row{
+  background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(235,240,247,.88))!important;
+  border-color:#c0c8d5!important;
+  box-shadow:inset 0 1px #fff,0 24px 52px rgba(47,61,87,.13)!important;
+}
+.shell.theme-light .dashboard-content .job-card,
+.shell.theme-light .dashboard-content .exam-board-tab,
+.shell.theme-light .dashboard-content .exam-group,
+.shell.theme-light .dashboard-content .exam-detail-panel,
+.shell.theme-light .dashboard-content .config-block{
+  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(235,240,247,.82))!important;
+  border-color:#c2c9d5!important;
+}
+.shell.theme-light .dashboard-content .job-card.selected,
+.shell.theme-light .dashboard-content .exam-board-tab.active{
+  background:linear-gradient(145deg,#e8e1ff,#dbe8fb)!important;
+  border-color:#8e81c7!important;
+}
+@media(max-width:800px){
+  .dashboard-content .welcome-row{padding:25px 20px 22px!important;border-radius:25px!important}
+  .dashboard-content .hero-emblem{display:none!important}
+  .dashboard-content .welcome-row h1{font-size:2rem!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .dashboard-content .primary-button:hover{transform:none!important}
+}
