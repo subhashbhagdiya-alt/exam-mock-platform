@@ -2143,3 +2143,281 @@ undefined
 .shell.theme-dark .dashboard-content .job-card.selected .job-copy span{
   color:#ffffff!important;
 }
+
+
+/* ===== 3D Glass Motion + distinct Day/Night UI v18 ===== */
+@keyframes epFloat3D{
+  0%,100%{transform:translate3d(0,0,0) rotateX(0deg) rotateY(0deg)}
+  50%{transform:translate3d(0,-5px,0) rotateX(.35deg) rotateY(-.35deg)}
+}
+@keyframes epGlowSweep{
+  0%{transform:translateX(-130%) skewX(-18deg);opacity:0}
+  18%{opacity:.55}
+  55%{opacity:.12}
+  100%{transform:translateX(230%) skewX(-18deg);opacity:0}
+}
+@keyframes epOrbDrift{
+  0%,100%{transform:translate3d(0,0,0) scale(1)}
+  50%{transform:translate3d(14px,-10px,0) scale(1.06)}
+}
+@keyframes epPulseRing{
+  0%,100%{box-shadow:0 0 0 0 rgba(87,160,255,.0),0 18px 45px rgba(0,0,0,.28)}
+  50%{box-shadow:0 0 0 7px rgba(87,160,255,.035),0 24px 55px rgba(0,0,0,.34)}
+}
+
+.dashboard-content,.board-page,.instructions-content,.test-content{
+  perspective:1200px;
+}
+.dashboard-content .stat-card,
+.dashboard-content .feature-card,
+.dashboard-content .job-card,
+.dashboard-content .exam-group,
+.dashboard-content .exam-board-tab,
+.dashboard-content .exam-detail-panel,
+.dashboard-content .subject-chapter-panel,
+.board-page .board-hero,
+.board-page .board-big-card,
+.instructions-content .instructions-hero,
+.instructions-content .instruction-stat,
+.question-panel,.question-nav,.review-panel,.result-hero,.result-stat{
+  position:relative;
+  overflow:hidden;
+  transform-style:preserve-3d;
+  isolation:isolate;
+}
+.dashboard-content .stat-card::after,
+.dashboard-content .feature-card::after,
+.dashboard-content .job-card::after,
+.dashboard-content .exam-group::after,
+.dashboard-content .exam-board-tab::after,
+.dashboard-content .exam-detail-panel::after,
+.dashboard-content .subject-chapter-panel::after,
+.board-page .board-hero::after,
+.board-page .board-big-card::after,
+.instructions-content .instructions-hero::after,
+.instructions-content .instruction-stat::after,
+.question-panel::after,.question-nav::after,.review-panel::after,
+.result-hero::after,.result-stat::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  width:38%;
+  pointer-events:none;
+  z-index:0;
+  background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,.11) 48%,transparent 100%);
+  transform:translateX(-140%) skewX(-18deg);
+  animation:epGlowSweep 8s ease-in-out infinite;
+}
+.dashboard-content .stat-card>*,
+.dashboard-content .feature-card>*,
+.dashboard-content .job-card>*,
+.dashboard-content .exam-group>*,
+.dashboard-content .exam-board-tab>*,
+.dashboard-content .exam-detail-panel>*,
+.dashboard-content .subject-chapter-panel>*,
+.board-page .board-hero>*,
+.board-page .board-big-card>*,
+.instructions-content .instructions-hero>*,
+.instructions-content .instruction-stat>*,
+.question-panel>*,.question-nav>*,.review-panel>*,
+.result-hero>*,.result-stat>*{
+  position:relative;
+  z-index:1;
+}
+
+.shell.theme-dark .dashboard-content .stat-card,
+.shell.theme-dark .dashboard-content .feature-card,
+.shell.theme-dark .dashboard-content .job-card,
+.shell.theme-dark .dashboard-content .exam-group,
+.shell.theme-dark .dashboard-content .exam-board-tab,
+.shell.theme-dark .dashboard-content .exam-detail-panel,
+.shell.theme-dark .dashboard-content .subject-chapter-panel,
+.shell.theme-dark .instructions-content .instructions-hero,
+.shell.theme-dark .instructions-content .instruction-stat,
+.shell.theme-dark .question-panel,
+.shell.theme-dark .question-nav,
+.shell.theme-dark .review-panel,
+.shell.theme-dark .result-hero,
+.shell.theme-dark .result-stat{
+  box-shadow:0 20px 55px rgba(0,0,0,.34),0 0 32px rgba(89,91,255,.055),inset 0 1px rgba(255,255,255,.055)!important;
+  animation:epFloat3D 7s ease-in-out infinite;
+}
+.shell.theme-dark .dashboard-content .stat-card:nth-child(2n),
+.shell.theme-dark .dashboard-content .feature-card:nth-child(2n),
+.shell.theme-dark .dashboard-content .job-card:nth-child(2n){
+  animation-delay:-2.2s;
+}
+.shell.theme-dark .dashboard-content .stat-card:nth-child(3n),
+.shell.theme-dark .dashboard-content .feature-card:nth-child(3n),
+.shell.theme-dark .dashboard-content .job-card:nth-child(3n){
+  animation-delay:-4.1s;
+}
+.shell.theme-dark .dashboard-content::before,
+.shell.theme-dark .board-page::before,
+.shell.theme-dark .instructions-content::before{
+  content:"";
+  position:absolute;
+  width:260px;height:260px;
+  left:-90px;top:80px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(0,174,255,.10),transparent 68%);
+  filter:blur(8px);
+  pointer-events:none;
+  animation:epOrbDrift 9s ease-in-out infinite;
+}
+.shell.theme-dark .dashboard-content::after,
+.shell.theme-dark .board-page::after,
+.shell.theme-dark .instructions-content::after{
+  content:"";
+  position:absolute;
+  width:320px;height:320px;
+  right:-130px;top:180px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(132,66,255,.11),transparent 67%);
+  filter:blur(10px);
+  pointer-events:none;
+  animation:epOrbDrift 11s ease-in-out infinite reverse;
+}
+.shell.theme-dark .hero-emblem,
+.shell.theme-dark .board-hero-orb,
+.shell.theme-dark .instruction-orb{
+  transform-style:preserve-3d;
+  animation:epPulseRing 4.5s ease-in-out infinite,epFloat3D 6s ease-in-out infinite;
+  filter:drop-shadow(0 18px 25px rgba(89,63,220,.24));
+}
+.shell.theme-dark .job-3d-icon{
+  transform:translateZ(12px) rotateX(4deg);
+  box-shadow:0 12px 26px rgba(82,48,180,.28),inset 0 1px rgba(255,255,255,.16)!important;
+}
+
+.shell.theme-light .dashboard-content .stat-card,
+.shell.theme-light .dashboard-content .feature-card,
+.shell.theme-light .dashboard-content .job-card,
+.shell.theme-light .dashboard-content .exam-group,
+.shell.theme-light .dashboard-content .exam-board-tab,
+.shell.theme-light .dashboard-content .exam-detail-panel,
+.shell.theme-light .dashboard-content .subject-chapter-panel,
+.shell.theme-light .instructions-content .instructions-hero,
+.shell.theme-light .instructions-content .instruction-stat,
+.shell.theme-light .question-panel,
+.shell.theme-light .question-nav,
+.shell.theme-light .review-panel,
+.shell.theme-light .result-hero,
+.shell.theme-light .result-stat{
+  box-shadow:0 16px 34px rgba(45,58,82,.13),inset 0 1px rgba(255,255,255,.96),inset 0 -1px rgba(92,108,135,.06)!important;
+  animation:epFloat3D 9s ease-in-out infinite;
+}
+.shell.theme-light .dashboard-content .stat-card:nth-child(2n),
+.shell.theme-light .dashboard-content .feature-card:nth-child(2n),
+.shell.theme-light .dashboard-content .job-card:nth-child(2n){
+  animation-delay:-2.8s;
+}
+.shell.theme-light .dashboard-content .stat-card:nth-child(3n),
+.shell.theme-light .dashboard-content .feature-card:nth-child(3n),
+.shell.theme-light .dashboard-content .job-card:nth-child(3n){
+  animation-delay:-5s;
+}
+.shell.theme-light .dashboard-content::before,
+.shell.theme-light .board-page::before,
+.shell.theme-light .instructions-content::before{
+  content:"";
+  position:absolute;
+  width:280px;height:280px;
+  left:-110px;top:60px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(47,132,214,.075),transparent 68%);
+  filter:blur(10px);
+  pointer-events:none;
+  animation:epOrbDrift 12s ease-in-out infinite;
+}
+.shell.theme-light .dashboard-content::after,
+.shell.theme-light .board-page::after,
+.shell.theme-light .instructions-content::after{
+  content:"";
+  position:absolute;
+  width:300px;height:300px;
+  right:-110px;top:150px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(105,82,204,.075),transparent 68%);
+  filter:blur(10px);
+  pointer-events:none;
+  animation:epOrbDrift 14s ease-in-out infinite reverse;
+}
+.shell.theme-light .hero-emblem,
+.shell.theme-light .board-hero-orb,
+.shell.theme-light .instruction-orb{
+  transform-style:preserve-3d;
+  animation:epPulseRing 5s ease-in-out infinite,epFloat3D 8s ease-in-out infinite;
+  filter:drop-shadow(0 14px 24px rgba(72,79,125,.18));
+}
+.shell.theme-light .job-3d-icon{
+  transform:translateZ(10px) rotateX(3deg);
+  box-shadow:0 11px 24px rgba(72,79,125,.16),inset 0 1px rgba(255,255,255,.92)!important;
+}
+
+/* Hover = stronger 3D interaction; keyboard/focus remains readable. */
+.dashboard-content .stat-card:hover,
+.dashboard-content .feature-card:hover,
+.dashboard-content .job-card:hover,
+.dashboard-content .exam-group:hover,
+.dashboard-content .exam-board-tab:hover,
+.board-page .board-big-card:hover,
+.instructions-content .instruction-stat:hover{
+  transform:translate3d(0,-7px,18px) rotateX(1deg)!important;
+}
+.dashboard-content .job-card.selected{
+  transform:translate3d(0,-3px,12px)!important;
+}
+.dashboard-content .exam-board-tab.active{
+  transform:translate3d(0,-3px,10px)!important;
+}
+
+/* Keep the glass depth visible without washing out text. */
+.shell.theme-dark .dashboard-content .stat-card b,
+.shell.theme-dark .dashboard-content .feature-card h3,
+.shell.theme-dark .dashboard-content .job-copy b,
+.shell.theme-dark .dashboard-content .section-heading h2{
+  text-shadow:0 1px 12px rgba(150,140,255,.08);
+}
+.shell.theme-light .dashboard-content .stat-card b,
+.shell.theme-light .dashboard-content .feature-card h3,
+.shell.theme-light .dashboard-content .job-copy b,
+.shell.theme-light .dashboard-content .section-heading h2{
+  text-shadow:none;
+}
+
+/* Mobile: preserve depth but reduce motion and visual load. */
+@media(max-width:700px){
+  .dashboard-content .stat-card,
+  .dashboard-content .feature-card,
+  .dashboard-content .job-card,
+  .dashboard-content .exam-group,
+  .dashboard-content .exam-board-tab,
+  .dashboard-content .exam-detail-panel,
+  .dashboard-content .subject-chapter-panel,
+  .instructions-content .instructions-hero,
+  .instructions-content .instruction-stat,
+  .question-panel,.question-nav,.review-panel,.result-hero,.result-stat{
+    animation-duration:11s!important;
+  }
+  .dashboard-content .stat-card:hover,
+  .dashboard-content .feature-card:hover,
+  .dashboard-content .job-card:hover,
+  .dashboard-content .exam-group:hover,
+  .dashboard-content .exam-board-tab:hover,
+  .board-page .board-big-card:hover,
+  .instructions-content .instruction-stat:hover{
+    transform:translate3d(0,-3px,8px)!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .dashboard-content .stat-card,.dashboard-content .feature-card,.dashboard-content .job-card,
+  .dashboard-content .exam-group,.dashboard-content .exam-board-tab,.dashboard-content .exam-detail-panel,
+  .dashboard-content .subject-chapter-panel,.board-page .board-hero,.board-page .board-big-card,
+  .instructions-content .instructions-hero,.instructions-content .instruction-stat,
+  .question-panel,.question-nav,.review-panel,.result-hero,.result-stat,
+  .shell.theme-dark .hero-emblem,.shell.theme-dark .board-hero-orb,.shell.theme-dark .instruction-orb,
+  .shell.theme-light .hero-emblem,.shell.theme-light .board-hero-orb,.shell.theme-light .instruction-orb{
+    animation:none!important;
+  }
+}
