@@ -86,6 +86,7 @@ export default function HomePage() {
   const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
   const [user, setUser] = useState(null);
   const [profileName, setProfileName] = useState("");
+  const [needsProfileName, setNeedsProfileName] = useState(false);
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [otpCooldown, setOtpCooldown] = useState(0);
@@ -161,14 +162,18 @@ export default function HomePage() {
       if (mounted) {
         const nextUser = data.session?.user || null;
         setUser(nextUser);
-        setProfileName(getUserDisplayName(nextUser) === "अभ्यर्थी" ? "" : getUserDisplayName(nextUser));
+        const nextName = getUserDisplayName(nextUser);
+        setProfileName(nextName === "अभ्यर्थी" ? "" : nextName);
+        setNeedsProfileName(Boolean(nextUser) && nextName === "अभ्यर्थी");
       }
     });
     const { data: listener } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
       if (mounted) {
         const nextUser = session?.user || null;
         setUser(nextUser);
-        setProfileName(getUserDisplayName(nextUser) === "अभ्यर्थी" ? "" : getUserDisplayName(nextUser));
+        const nextName = getUserDisplayName(nextUser);
+        setProfileName(nextName === "अभ्यर्थी" ? "" : nextName);
+        setNeedsProfileName(Boolean(nextUser) && nextName === "अभ्यर्थी");
       }
     });
     return () => { mounted = false; listener?.subscription?.unsubscribe(); };
@@ -475,6 +480,7 @@ export default function HomePage() {
     }
     setUser(data.user);
     setProfileName(name);
+    setNeedsProfileName(false);
     setAuthMessage(t("नाम सेव हो गया।","Your name has been saved."));
   }
 
@@ -675,7 +681,7 @@ export default function HomePage() {
         {view === "home" && <div className="content dashboard-content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
           <div className="auth-panel" aria-label={t("वैकल्पिक लॉगिन","Optional login")}>
   <div><b>{user ? t("अकाउंट सक्रिय","Account active") : t("Guest Practice Mode","Guest Practice Mode")}</b><span>{user ? (user.email || user.phone || "") : t("लॉगिन जरूरी नहीं है। मॉक टेस्ट सीधे शुरू करें।","Login is optional. Start the mock test directly.")}</span></div>
-  {user ? <button onClick={logout}>{t("लॉगआउट","Sign out")}</button> : <div className="auth-actions">
+  {user ? <>{needsProfileName ? <div className="auth-actions"><div className="guest-login-note">{t("लॉगिन हो गया है। अपना नाम दर्ज करें, यही नाम आपके डैशबोर्ड पर दिखेगा।","Login successful. Enter your name; this name will appear on your dashboard.")}</div><input value={profileName} onChange={e=>setProfileName(e.target.value.slice(0,60))} autoComplete="name" placeholder={t("आपका नाम","Your name")} /><button onClick={saveProfileName}>{t("नाम सेव करें","Save name")}</button></div> : <button onClick={logout}>{t("लॉगआउट","Sign out")}</button>}</> : <div className="auth-actions">
     <div className="guest-login-note">{t("लॉगिन optional है — नीचे मोबाइल लॉगिन केवल रिज़ल्ट cloud में sync करने के लिए है।","Login is optional — mobile login is only for syncing results to the cloud.")}</div>
     <div className="auth-divider"><span>{t("मोबाइल लॉगिन (वैकल्पिक)","OPTIONAL MOBILE LOGIN")}</span></div>
     {authStep === "phone" ? <><div className="phone-input"><span>+91</span><input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,"").slice(0,10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर"/></div><button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : t("OTP भेजें","Send OTP")}</button></> : authStep === "otp" ? <><input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit OTP")}/><button onClick={verifyOtp}>{t("Verify","Verify")}</button></> : <><input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/><button onClick={recoverTrustedDevice}>{t("Device बदलें","Replace device")}</button></>}
