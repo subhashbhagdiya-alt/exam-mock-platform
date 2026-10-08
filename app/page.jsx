@@ -627,7 +627,7 @@ export default function HomePage() {
       <aside className="sidebar">
         <div className="brand"><div className="brand-icon"><GraduationCap size={23}/></div><span>Exam<span className="brand-accent">Prep</span><small>YOUR NEXT RANK STARTS HERE</small></span></div>
         <div className="side-label">{t("वर्कस्पेस","WORKSPACE")}</div>
-        <button className={"nav-item " + (view === "home" ? "active" : "")} onClick={() => setView("home")}><Home size={18}/>{t("डैशबोर्ड","Dashboard")}</button><button className={"nav-item " + (view === "boards" ? "active" : "")} onClick={() => setView("boards")}><GraduationCap size={18}/>{t("परीक्षा बोर्ड","Exam boards")}</button>
+        <button className={"nav-item " + (view === "home" ? "active" : "")} onClick={() => setView("home")}><Home size={18}/>{t("डैशबोर्ड","Dashboard")}</button><button className={"nav-item " + (view === "boards" ? "active" : "")} onClick={() => setView("boards")}><GraduationCap size={18}/>{t("परीक्षा बोर्ड","Exam boards")}</button><button className={"nav-item " + (view === "settings" ? "active" : "")} onClick={() => setView("settings")}><Settings size={18}/>{t("प्रोफाइल / सेटिंग्स","Profile / Settings")}</button>
         <button className={"nav-item " + (view !== "home" ? "active" : "")} onClick={startTest}><BookOpen size={18}/>{t("मॉक टेस्ट","Mock test")}</button>
         <button className="nav-item" onClick={() => setView("history")}><Award size={18}/>{t("मेरे रिज़ल्ट","My results")}</button>
         <button className={"nav-item " + (view === "sources" ? "active" : "")} onClick={() => setView("sources")}><Download size={18}/>{t("Source PDFs","Source PDFs")}</button>
