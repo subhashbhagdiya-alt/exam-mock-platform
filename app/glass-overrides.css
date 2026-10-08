@@ -689,3 +689,190 @@ button,.job-card,.exam-board-tab,.exam-group,.exam-detail-panel,
  .score-circle{transform:translateZ(18px)!important}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.option,.dashboard-content .job-card,.dashboard-content .exam-board-tab{transform:none!important}}
+
+
+/* ============================================================
+   ExamPrep CINEMATIC 3D SYSTEM v30
+   Final visual layer: replace flat/glass stacking with depth
+   ============================================================ */
+:root{
+  --ep-v:#8b5cf6;
+  --ep-v2:#c4b5fd;
+  --ep-c:#22d3ee;
+  --ep-ok:#22c55e;
+  --ep-bad:#fb4d67;
+  --ep-ink:#eef2ff;
+  --ep-night:#070914;
+  --ep-night2:#0d1020;
+  --ep-day:#eef2f8;
+  --ep-day2:#ffffff;
+  --ep-shadow:0 28px 70px rgba(0,0,0,.34),0 10px 22px rgba(0,0,0,.22);
+}
+.shell{
+  isolation:isolate;
+  overflow-x:hidden;
+  background:
+    radial-gradient(900px 520px at 84% 4%,rgba(139,92,246,.18),transparent 62%),
+    radial-gradient(720px 480px at 8% 72%,rgba(34,211,238,.11),transparent 64%),
+    linear-gradient(145deg,var(--ep-night),var(--ep-night2) 55%,#080a13);
+}
+.shell::before,.shell::after{
+  content:"";position:fixed;z-index:-2;border-radius:999px;pointer-events:none;
+  filter:blur(12px);opacity:.7;
+}
+.shell::before{width:260px;height:260px;right:-70px;top:12%;background:radial-gradient(circle,rgba(139,92,246,.42),transparent 68%);animation:epFloatOrb 11s ease-in-out infinite;}
+.shell::after{width:220px;height:220px;left:-90px;bottom:8%;background:radial-gradient(circle,rgba(34,211,238,.22),transparent 70%);animation:epFloatOrb 14s ease-in-out infinite reverse;}
+@keyframes epFloatOrb{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(18px,-20px,0) scale(1.08)}}
+.shell .topbar{
+  background:linear-gradient(180deg,rgba(9,11,24,.84),rgba(9,11,24,.52))!important;
+  border-bottom:1px solid rgba(255,255,255,.08)!important;
+  box-shadow:0 16px 40px rgba(0,0,0,.18);
+  backdrop-filter:blur(20px)!important;
+}
+.shell .content{perspective:1400px;transform-style:preserve-3d;}
+.dashboard-content,.test-content,.result-content,.settings-content,.about-content{
+  transform-style:preserve-3d;
+}
+.dashboard-content .welcome-row,.test-content .question-panel,.result-hero,.settings-hero,.about-hero{
+  position:relative;overflow:hidden;
+  border:1px solid rgba(255,255,255,.12)!important;
+  background:
+    linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.035) 44%,rgba(139,92,246,.08))!important;
+  box-shadow:var(--ep-shadow),inset 0 1px 0 rgba(255,255,255,.16)!important;
+  backdrop-filter:blur(14px) saturate(130%)!important;
+  transform:translateZ(24px);
+}
+.dashboard-content .welcome-row::before,.test-content .question-panel::before,.result-hero::before,.settings-hero::before,.about-hero::before{
+  content:"";position:absolute;inset:-1px;
+  background:linear-gradient(120deg,transparent 20%,rgba(255,255,255,.16) 42%,transparent 58%);
+  transform:translateX(-120%);animation:epSheen 7s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes epSheen{0%,62%{transform:translateX(-120%)}78%,100%{transform:translateX(120%)}}
+
+.dashboard-content .job-grid,.dashboard-content .exam-groups,.result-stats,.subject-analysis,.review-panel,.settings-layout,.about-grid{
+  transform-style:preserve-3d;
+}
+.dashboard-content .job-card,.dashboard-content .exam-board-tab,.dashboard-content .exam-group,.dashboard-content .exam-detail-panel,.dashboard-content .config-block,
+.result-stat,.subject-row,.review-question,.settings-card,.settings-profile-card,.about-card{
+  position:relative;
+  border:1px solid rgba(255,255,255,.10)!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.105),rgba(255,255,255,.03))!important;
+  box-shadow:0 22px 48px rgba(0,0,0,.24),0 8px 18px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.13)!important;
+  transform:translate3d(0,0,0) translateZ(12px);
+  transition:transform .45s cubic-bezier(.2,.8,.2,1),box-shadow .45s ease,border-color .3s ease,filter .3s ease;
+}
+.dashboard-content .job-card:hover,.dashboard-content .exam-board-tab:hover,.dashboard-content .exam-group:hover,.dashboard-content .exam-detail-panel:hover,
+.result-stat:hover,.subject-row:hover,.review-question:hover,.settings-card:hover,.settings-profile-card:hover,.about-card:hover{
+  transform:translate3d(0,-10px,34px) rotateX(1.2deg) rotateY(-1deg);
+  box-shadow:0 34px 70px rgba(0,0,0,.34),0 12px 26px rgba(76,48,150,.18),inset 0 1px 0 rgba(255,255,255,.2)!important;
+  border-color:rgba(139,92,246,.34)!important;
+}
+.dashboard-content .hero-emblem,.settings-orb,.about-logo,.result-trophy{
+  transform:translateZ(44px);
+  filter:drop-shadow(0 18px 26px rgba(139,92,246,.26));
+  animation:epHover 5.5s ease-in-out infinite;
+}
+@keyframes epHover{0%,100%{transform:translate3d(0,0,44px)}50%{transform:translate3d(0,-9px,54px)}}
+
+.option{
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.11)!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.035))!important;
+  box-shadow:0 18px 34px rgba(0,0,0,.24),0 7px 16px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.13)!important;
+  transform:perspective(900px) translateZ(18px) rotateX(0deg);
+  transition:transform .32s cubic-bezier(.2,.85,.2,1),box-shadow .32s ease,border-color .25s ease,background .25s ease;
+}
+.option::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(115deg,transparent 28%,rgba(255,255,255,.18) 45%,transparent 62%);
+  transform:translateX(-120%);transition:transform .65s ease;pointer-events:none;
+}
+.option:hover{transform:perspective(900px) translate3d(9px,-8px,34px) rotateY(-2deg) rotateX(1deg)!important;box-shadow:0 28px 52px rgba(0,0,0,.32),0 0 26px rgba(139,92,246,.11),inset 0 1px 0 rgba(255,255,255,.18)!important}
+.option:hover::after{transform:translateX(120%)}
+.option.selected{
+  border-color:rgba(139,92,246,.75)!important;
+  background:linear-gradient(145deg,rgba(139,92,246,.28),rgba(95,72,180,.12))!important;
+  box-shadow:0 28px 58px rgba(65,37,145,.38),0 0 36px rgba(139,92,246,.20),inset 0 1px 0 rgba(255,255,255,.22)!important;
+  transform:perspective(900px) translate3d(8px,-7px,40px) rotateY(-1deg)!important;
+}
+.option.correct{
+  border-color:rgba(34,197,94,.68)!important;
+  background:linear-gradient(145deg,rgba(34,197,94,.20),rgba(34,197,94,.045))!important;
+  box-shadow:0 28px 60px rgba(16,110,54,.28),0 0 26px rgba(34,197,94,.17),inset 0 1px rgba(255,255,255,.18)!important;
+  animation:epCorrect .65s ease-out 1;
+}
+.option.wrong{
+  border-color:rgba(251,77,103,.72)!important;
+  background:linear-gradient(145deg,rgba(251,77,103,.20),rgba(251,77,103,.045))!important;
+  box-shadow:0 28px 60px rgba(140,30,52,.30),0 0 28px rgba(251,77,103,.18),inset 0 1px rgba(255,255,255,.18)!important;
+  animation:epWrong .42s ease-out 1;
+}
+@keyframes epCorrect{0%{transform:translateZ(18px) scale(.985)}45%{transform:translate3d(0,-8px,42px) scale(1.02)}100%{transform:translateZ(22px) scale(1)}}
+@keyframes epWrong{0%,100%{transform:translateZ(18px)}20%{transform:translate3d(-7px,0,30px)}40%{transform:translate3d(7px,0,30px)}60%{transform:translate3d(-4px,0,24px)}80%{transform:translate3d(4px,0,24px)}}
+
+.number-cell{
+  background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.025))!important;
+  box-shadow:0 10px 18px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.12)!important;
+  transform:translateZ(8px);
+  transition:transform .22s ease,box-shadow .22s ease;
+}
+.number-cell:hover{transform:translate3d(0,-4px,22px) scale(1.04)}
+.number-cell.current{box-shadow:0 0 0 2px rgba(139,92,246,.5),0 12px 26px rgba(88,53,170,.25)!important}
+.number-cell.correct{background:linear-gradient(145deg,rgba(34,197,94,.34),rgba(34,197,94,.09))!important}
+.number-cell.wrong{background:linear-gradient(145deg,rgba(251,77,103,.34),rgba(251,77,103,.09))!important}
+
+.primary-button,.secondary-button,.review-button,.lang-button{
+  position:relative;overflow:hidden;
+  transform:translateZ(22px);
+  box-shadow:0 16px 30px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.2)!important;
+  transition:transform .22s ease,box-shadow .22s ease,filter .22s ease;
+}
+.primary-button::after,.secondary-button::after,.review-button::after,.lang-button::after{
+  content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.30),transparent 68%);
+  transform:translateX(-120%);transition:transform .7s ease;
+}
+.primary-button:hover,.secondary-button:hover,.review-button:hover,.lang-button:hover{transform:translate3d(0,-5px,32px) scale(1.01);box-shadow:0 24px 44px rgba(0,0,0,.30),inset 0 1px rgba(255,255,255,.22)!important}
+.primary-button:hover::after,.secondary-button:hover::after,.review-button:hover::after,.lang-button:hover::after{transform:translateX(120%)}
+.primary-button:active,.secondary-button:active,.review-button:active,.lang-button:active{transform:translate3d(0,2px,12px) scale(.985)}
+
+.score-circle{transform:translateZ(48px);filter:drop-shadow(0 24px 32px rgba(139,92,246,.26));}
+.timer-card{transform:translateZ(28px);box-shadow:0 18px 34px rgba(0,0,0,.26),inset 0 1px rgba(255,255,255,.14)!important}
+.progress-track{box-shadow:inset 0 2px 8px rgba(0,0,0,.24),0 8px 18px rgba(0,0,0,.14)!important}
+.progress-track>*,.performance-meter>*{box-shadow:0 0 18px rgba(139,92,246,.22)}
+
+.shell.theme-light{
+  background:
+    radial-gradient(820px 480px at 86% 0%,rgba(139,92,246,.14),transparent 62%),
+    radial-gradient(680px 480px at 4% 72%,rgba(34,211,238,.09),transparent 64%),
+    linear-gradient(145deg,var(--ep-day),#f8f9fd 52%,var(--ep-day2));
+  color:#152033;
+}
+.shell.theme-light .topbar{background:linear-gradient(180deg,rgba(255,255,255,.86),rgba(247,249,253,.70))!important;border-color:rgba(20,30,55,.08)!important}
+.shell.theme-light .dashboard-content .job-card,.shell.theme-light .dashboard-content .exam-board-tab,.shell.theme-light .dashboard-content .exam-group,.shell.theme-light .dashboard-content .exam-detail-panel,.shell.theme-light .dashboard-content .config-block,
+.shell.theme-light .test-content .question-panel,.shell.theme-light .result-hero,.shell.theme-light .result-stat,.shell.theme-light .subject-row,.shell.theme-light .review-question,.shell.theme-light .settings-hero,.shell.theme-light .about-hero,.shell.theme-light .settings-card,.shell.theme-light .settings-profile-card,.shell.theme-light .about-card,.shell.theme-light .option{
+  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(238,242,249,.84))!important;
+  color:#152033!important;border-color:rgba(24,34,60,.09)!important;
+  box-shadow:0 24px 48px rgba(42,54,84,.16),0 10px 20px rgba(42,54,84,.08),inset 0 1px 0 #fff!important;
+}
+.shell.theme-light .option.selected{background:linear-gradient(145deg,#eee8ff,#fff)!important;border-color:#8b5cf6!important;box-shadow:0 24px 50px rgba(111,80,205,.20),0 0 28px rgba(139,92,246,.10)!important}
+.shell.theme-light .option.correct{background:linear-gradient(145deg,#e9fbee,#fff)!important;border-color:#34b86a!important}
+.shell.theme-light .option.wrong{background:linear-gradient(145deg,#fff0f3,#fff)!important;border-color:#ed6479!important}
+
+@media(max-width:760px){
+  .content{padding-left:14px!important;padding-right:14px!important}
+  .dashboard-content .welcome-row,.test-content .question-panel,.result-hero,.settings-hero,.about-hero{transform:translateZ(14px)}
+  .dashboard-content .job-card,.dashboard-content .exam-board-tab,.dashboard-content .exam-group,.dashboard-content .exam-detail-panel,.dashboard-content .config-block,.result-stat,.subject-row,.review-question,.settings-card,.settings-profile-card,.about-card{transform:translateZ(7px)}
+  .dashboard-content .job-card:hover,.dashboard-content .exam-board-tab:hover,.dashboard-content .exam-group:hover,.dashboard-content .exam-detail-panel:hover,.result-stat:hover,.subject-row:hover,.review-question:hover,.settings-card:hover,.settings-profile-card:hover,.about-card:hover{transform:translate3d(0,-5px,18px)!important}
+  .option{transform:translateZ(10px)!important}
+  .option:hover{transform:translate3d(5px,-5px,24px)!important}
+  .option.selected{transform:translate3d(4px,-4px,26px)!important}
+  .primary-button,.secondary-button,.review-button,.lang-button{min-height:46px}
+}
+@media(prefers-reduced-motion:reduce){
+  .shell::before,.shell::after,.dashboard-content .hero-emblem,.settings-orb,.about-logo,.result-trophy,
+  .dashboard-content .welcome-row::before,.test-content .question-panel::before,.result-hero::before,.settings-hero::before,.about-hero::before,
+  .option.correct,.option.wrong{animation:none!important}
+  *,*::before,*::after{transition:none!important}
+}
