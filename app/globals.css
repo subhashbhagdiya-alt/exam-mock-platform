@@ -2832,3 +2832,137 @@ undefined
 .analysis-candidate em{font-style:normal;font-weight:900;font-size:16px}
 @media(max-width:900px){.analysis-candidate-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.analysis-candidates-panel{padding:16px;border-radius:20px}.analysis-candidate-grid{grid-template-columns:1fr 1fr}.analysis-candidate{min-height:76px;padding:11px}}
+
+
+/* ExamPrep theme repair: keep Day and Night visually distinct and readable. */
+.shell {
+  --ui-radius: 22px;
+  isolation: isolate;
+}
+.shell.theme-light {
+  color: #20243a !important;
+  background:
+    radial-gradient(ellipse at 12% 8%, rgba(124, 104, 245, .15), transparent 34%),
+    radial-gradient(ellipse at 88% 18%, rgba(57, 186, 157, .12), transparent 30%),
+    linear-gradient(145deg, #f7f8ff 0%, #edf1fb 52%, #f7f9ff 100%) !important;
+}
+.shell.theme-light .topbar,
+.shell.theme-light .sidebar {
+  background: rgba(255,255,255,.82) !important;
+  color: #272b40 !important;
+  border-color: rgba(114,123,158,.20) !important;
+  box-shadow: 0 14px 36px rgba(44,54,95,.08) !important;
+  backdrop-filter: blur(22px);
+}
+.shell.theme-light .content,
+.shell.theme-light .content h1,
+.shell.theme-light .content h2,
+.shell.theme-light .content h3,
+.shell.theme-light .content b,
+.shell.theme-light .content strong,
+.shell.theme-light .content label {
+  color: #24283d !important;
+}
+.shell.theme-light .intro,
+.shell.theme-light .content p,
+.shell.theme-light .content small,
+.shell.theme-light .content span,
+.shell.theme-light .content .muted {
+  color: #626a82;
+}
+.shell.theme-light .stat-card,
+.shell.theme-light .feature-card,
+.shell.theme-light .job-card,
+.shell.theme-light .exam-group,
+.shell.theme-light .question-panel,
+.shell.theme-light .question-nav,
+.shell.theme-light .review-panel,
+.shell.theme-light .result-insight,
+.shell.theme-light .subject-analysis,
+.shell.theme-light .empty-state,
+.shell.theme-light .auth-panel,
+.shell.theme-light .login-card,
+.shell.theme-light .setup-card,
+.shell.theme-light .rules-card,
+.shell.theme-light .settings-card,
+.shell.theme-light .instruction-stat,
+.shell.theme-light .result-stat,
+.shell.theme-light .review-question {
+  color: #252940 !important;
+  background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(239,242,252,.88)) !important;
+  border: 1px solid rgba(120,130,169,.22) !important;
+  box-shadow: 0 16px 36px rgba(42,52,91,.09), inset 0 1px 0 rgba(255,255,255,.92) !important;
+}
+.shell.theme-light .option,
+.shell.theme-light .secondary-button,
+.shell.theme-light .exam-board-tab,
+.shell.theme-light .exam-filters button,
+.shell.theme-light .config-options button,
+.shell.theme-light .setting-choice,
+.shell.theme-light .number-cell {
+  color: #353b56 !important;
+  background: linear-gradient(145deg, #ffffff, #edf0fa) !important;
+  border-color: rgba(111,121,161,.26) !important;
+}
+.shell.theme-light .option.selected,
+.shell.theme-light .exam-board-tab.active,
+.shell.theme-light .exam-filters button.active,
+.shell.theme-light .config-options button.active,
+.shell.theme-light .setting-choice.active,
+.shell.theme-light .number-cell.current {
+  color: #4436a4 !important;
+  background: linear-gradient(135deg, #e8e4ff, #dcd7ff) !important;
+  border-color: #a99cfb !important;
+  box-shadow: 0 8px 22px rgba(103,83,216,.18) !important;
+}
+.shell.theme-light input,
+.shell.theme-light select,
+.shell.theme-light textarea,
+.shell.theme-light .exam-search,
+.shell.theme-light .phone-input {
+  color: #252940 !important;
+  background: rgba(255,255,255,.92) !important;
+  border-color: rgba(111,121,161,.28) !important;
+}
+.shell.theme-light input::placeholder,
+.shell.theme-light textarea::placeholder {
+  color: #838aa0 !important;
+}
+.shell.theme-light .footer {
+  color: #707790 !important;
+}
+.shell.theme-dark {
+  color: #f1f2ff;
+  background:
+    radial-gradient(ellipse at 12% 8%, rgba(124, 92, 255, .15), transparent 34%),
+    radial-gradient(ellipse at 88% 18%, rgba(34, 211, 176, .08), transparent 30%),
+    linear-gradient(145deg, #070913 0%, #101326 54%, #090c18 100%);
+}
+.shell.theme-dark .stat-card,
+.shell.theme-dark .feature-card,
+.shell.theme-dark .job-card,
+.shell.theme-dark .exam-group,
+.shell.theme-dark .question-panel,
+.shell.theme-dark .question-nav,
+.shell.theme-dark .review-panel,
+.shell.theme-dark .result-insight,
+.shell.theme-dark .subject-analysis,
+.shell.theme-dark .empty-state,
+.shell.theme-dark .auth-panel,
+.shell.theme-dark .login-card,
+.shell.theme-dark .setup-card,
+.shell.theme-dark .rules-card,
+.shell.theme-dark .settings-card {
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 44px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.035);
+}
+@media (max-width: 640px) {
+  .shell .content { padding-left: 16px !important; padding-right: 16px !important; }
+  .shell .content h1 { font-size: clamp(1.65rem, 7vw, 2.25rem) !important; line-height: 1.15; }
+  .shell .content h2 { font-size: clamp(1.15rem, 5vw, 1.5rem); }
+  .shell .stat-card, .shell .feature-card, .shell .job-card,
+  .shell .question-panel, .shell .question-nav, .shell .settings-card {
+    border-radius: 18px !important;
+  }
+  .shell .primary-button, .shell .secondary-button { min-height: 44px; }
+}
