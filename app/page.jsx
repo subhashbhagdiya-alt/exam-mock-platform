@@ -693,7 +693,9 @@ export default function HomePage() {
     }
   }
   useEffect(() => {
-    if (view === "test" && seconds === 0 && testQuestions.length && !result) finishTest();
+    if (view !== "test" || seconds !== 0 || !testQuestions.length || result) return undefined;
+    const timer = window.setTimeout(() => { void finishTest(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [view, seconds, testQuestions.length, result, finishTest]);
 
   function chooseAnswer(index) { setAnswers(old => ({ ...old, [q.id]: index })); }
