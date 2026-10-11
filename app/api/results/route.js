@@ -59,8 +59,11 @@ async function cleanResult(body, client, authUserId = null) {
   if (total < 1 || correct + wrong + unanswered !== total) throw new Error("Invalid question counts");
 
   const practiceMode = body.practice_mode === true;
+  const fullExamMode = body.full_exam_mode === true;
   if (!practiceMode && Number(exam.total_questions) !== total) throw new Error("Question count does not match exam rules");
-  if (practiceMode && total > 50) throw new Error("Practice test is limited to 50 questions");
+  if (practiceMode && total > 50 && !(fullExamMode && total === Number(exam.total_questions))) {
+    throw new Error("Practice tests are limited to 50 questions unless this is the full configured exam.");
+  }
 
   const marks = Number(exam.marks_per_question || 1);
   const negativePer = Number(exam.negative_marks || 0);
