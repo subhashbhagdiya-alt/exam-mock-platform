@@ -256,7 +256,10 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!supabaseBrowser || typeof window === "undefined") return;
+    let flushing = false;
     async function flushOfflineResults() {
+      if (flushing || !navigator.onLine) return;
+      flushing = true;
       try {
         const raw = localStorage.getItem("exam_prep_offline_results");
         const pending = raw ? JSON.parse(raw) : [];
@@ -267,19 +270,26 @@ export default function HomePage() {
         const remaining = [];
         for (const item of pending) {
           if (!item?.device_key || !item?.user_id || item.user_id !== sessionData.session?.user?.id) { remaining.push(item); continue; }
-          const response = await fetch("/api/results", {
-            method: "POST",
-            headers: { "content-type": "application/json", Authorization: `Bearer ${accessToken}` },
-            body: JSON.stringify(item)
-          });
-          if (!response.ok) remaining.push(item);
+          try {
+            const response = await fetch("/api/results", {
+              method: "POST",
+              headers: { "content-type": "application/json", Authorization: `Bearer ${accessToken}` },
+              body: JSON.stringify(item)
+            });
+            if (!response.ok) remaining.push(item);
+          } catch { remaining.push(item); }
         }
         localStorage.setItem("exam_prep_offline_results", JSON.stringify(remaining));
       } catch {}
+      finally { flushing = false; }
     }
+    const { data: authListener } = supabaseBrowser.auth.onAuthStateChange(() => { flushOfflineResults(); });
     flushOfflineResults();
     window.addEventListener("online", flushOfflineResults);
-    return () => window.removeEventListener("online", flushOfflineResults);
+    return () => {
+      window.removeEventListener("online", flushOfflineResults);
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -637,7 +647,9 @@ export default function HomePage() {
       try {
         const key = pending ? "exam_prep_offline_results" : "exam_prep_local_history";
         const existing = JSON.parse(localStorage.getItem(key) || "[]");
-        const item = {...summary, created_at: new Date().toISOString(), ...(pending ? {offline_pending:true, user_id: user?.id || null} : {})};
+        const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
+        const canSync = pending && Boolean(user?.id && deviceKey);
+        const item = {...summary, created_at: new Date().toISOString(), ...(canSync ? {offline_pending:true, user_id:user.id, device_key:deviceKey} : {})};
         localStorage.setItem(key, JSON.stringify([item, ...existing].slice(0, 50)));
         setHistory(old => [item, ...old].slice(0, 50));
       } catch {}
@@ -649,8 +661,12 @@ export default function HomePage() {
       const body = { session_key: sessionKey, practice_mode: true, requested_total_questions: practiceQuestionCount, requested_duration_minutes: practiceDuration, user_id: user?.id || null, device_key: deviceKey, ...summary };
 
       if (!navigator.onLine) {
-        saveLocal(true);
-        setStorageMessage(t("ऑफलाइन रिज़ल्ट सुरक्षित है; इंटरनेट आते ही sync होगा।","Result saved offline; it will sync automatically when you are back online."));
+        const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
+        const canSync = Boolean(user?.id && deviceKey);
+        saveLocal(canSync);
+        setStorageMessage(canSync
+          ? t("ऑफलाइन रिज़ल्ट सुरक्षित है; इंटरनेट आने पर इस trusted account से sync होगा।","Result saved offline; it will sync to this trusted account when you reconnect.")
+          : t("Guest result इस device पर सुरक्षित है। Cloud sync के लिए login करें।","Guest result is saved on this device. Login to sync it to the cloud."));
         return;
       }
 
