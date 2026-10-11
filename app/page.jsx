@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Target, Trophy, X } from "lucide-react";
 
@@ -185,7 +185,6 @@ export default function HomePage() {
     if (!user || !supabaseBrowser || typeof window === "undefined") return;
     const existing = localStorage.getItem("exam_prep_device_key") || crypto.randomUUID();
     localStorage.setItem("exam_prep_device_key", existing);
-    setTrustedDeviceVerified(false);
     (async () => {
       const { data: device, error } = await supabaseBrowser.from("user_devices").select("device_key").eq("user_id", user.id).maybeSingle();
       if (error) {
@@ -241,11 +240,7 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, [view, seconds]);
 
-  useEffect(() => {
-    if (view === "test" && seconds === 0 && testQuestions.length && !result) finishTestRef.current?.();
-  }, [view, seconds, testQuestions.length, result]);
-
-  useEffect(() => {
+   useEffect(() => {
     if (otpCooldown <= 0) return undefined;
     const timer = setInterval(() => setOtpCooldown(value => Math.max(0, value - 1)), 1000);
     return () => clearInterval(timer);
@@ -618,9 +613,7 @@ export default function HomePage() {
     if (typeof window !== "undefined") window.history.replaceState({ view: "setup" }, "", "#exam-setup");
   }
 
-  const finishTestRef = useRef(null);
-
-  async function finishTest() {
+   async function finishTest() {
     if (result) return;
     const entries = Object.entries(answers);
     const questionById = new Map(testQuestions.map(item => [String(item.id), item]));
@@ -699,7 +692,9 @@ export default function HomePage() {
         : error?.message || "Result could not be saved to cloud");
     }
   }
-  useEffect(() => { finishTestRef.current = finishTest; });
+  useEffect(() => {
+    if (view === "test" && seconds === 0 && testQuestions.length && !result) finishTest();
+  }, [view, seconds, testQuestions.length, result, finishTest]);
 
   function chooseAnswer(index) { setAnswers(old => ({ ...old, [q.id]: index })); }
   function toggleReview() { setReview(old => old.includes(q.id) ? old.filter(n => n !== q.id) : [...old, q.id]); }
