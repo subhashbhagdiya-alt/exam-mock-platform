@@ -110,7 +110,7 @@ export default function HomePage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = localStorage.getItem("exam_prep_theme");
-    if (saved === "light" || saved === "dark" || saved === "system") setThemeMode(saved);
+    if (saved === "light" || saved === "dark" || saved === "system") window.setTimeout(() => setThemeMode(saved), 0);
     const timer = window.setTimeout(() => setSplashVisible(false), 1800);
     return () => window.clearTimeout(timer);
   }, []);
@@ -182,10 +182,7 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!user || !supabaseBrowser || typeof window === "undefined") {
-      setTrustedDeviceVerified(false);
-      return;
-    }
+    if (!user || !supabaseBrowser || typeof window === "undefined") return;
     const existing = localStorage.getItem("exam_prep_device_key") || crypto.randomUUID();
     localStorage.setItem("exam_prep_device_key", existing);
     setTrustedDeviceVerified(false);
@@ -290,7 +287,7 @@ export default function HomePage() {
       window.removeEventListener("online", flushOfflineResults);
       authListener?.subscription?.unsubscribe();
     };
-  }, []);
+  }, [trustedDeviceVerified]);
 
   useEffect(() => {
     let active = true;
@@ -655,6 +652,7 @@ export default function HomePage() {
       } catch {}
     };
 
+    let retryableSave = false;
     try {
       const sessionKey = await ensureSessionKey();
       const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
@@ -686,15 +684,22 @@ export default function HomePage() {
         body: JSON.stringify(body)
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || "Result could not be saved to cloud");
+      if (!response.ok) {
+        retryableSave = response.status === 429 || response.status >= 500;
+        throw new Error(payload?.error || "Result could not be saved to cloud");
+      }
       setHistory(old => [payload.data, ...old].slice(0, 50));
       setStorageMessage("");
     } catch (error) {
-      saveLocal(false);
-      setStorageMessage(error?.message || "Result could not be saved to cloud");
+      const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
+      const retryable = Boolean(user?.id && deviceKey) && (retryableSave || /failed to fetch|networkerror|network request failed|load failed|timeout|timed out/i.test(String(error?.message || "")));
+      saveLocal(retryable);
+      setStorageMessage(retryable
+        ? t("Cloud save अभी नहीं हो सका; रिज़ल्ट queue में सुरक्षित है और दोबारा sync होगा।", "Cloud save failed temporarily; the result is queued and will sync again.")
+        : error?.message || "Result could not be saved to cloud");
     }
   }
-  finishTestRef.current = finishTest;
+  useEffect(() => { finishTestRef.current = finishTest; });
 
   function chooseAnswer(index) { setAnswers(old => ({ ...old, [q.id]: index })); }
   function toggleReview() { setReview(old => old.includes(q.id) ? old.filter(n => n !== q.id) : [...old, q.id]); }
