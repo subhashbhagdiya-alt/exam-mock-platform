@@ -78,7 +78,7 @@ export async function GET(request) {
     .insert({ exam_id: examRow.id, question_ids: selected.map((item) => item.id) })
     .select("id")
     .single();
-  if (sessionError || !session) return NextResponse.json({ error: "Could not create a secure test session" }, { status: 503 });
+  if (sessionError || !session) { console.error("mock_test_session_insert_failed", sessionError?.code, sessionError?.message); return NextResponse.json({ error: "Could not create a secure test session" }, { status: 503 }); }
 
   const safeQuestions = selected.map(({ answer_index, explanation_hi, explanation_en, ...question }) => question);
   return NextResponse.json({
