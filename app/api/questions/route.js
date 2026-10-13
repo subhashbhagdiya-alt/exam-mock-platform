@@ -1,9 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function shuffle(items) {
   const copy = [...items];
@@ -15,7 +15,7 @@ function shuffle(items) {
 }
 
 export async function GET(request) {
-  if (!url || !key || !serviceRoleKey) return NextResponse.json({ error: "Secure mock-test service is not configured" }, { status: 503 });
+  if (!url || !key) return NextResponse.json({ error: "Question bank is not configured" }, { status: 503 });
   const { searchParams } = new URL(request.url);
   const exam = searchParams.get("exam") || "mpesb";
   const requestedLimit = searchParams.get("limit");
@@ -72,19 +72,19 @@ export async function GET(request) {
     .slice(0, Math.min(limit, ranked.length));
 
   if (!selected.length) return NextResponse.json({ error: "No verified questions available for this selection" }, { status: 404 });
-  const admin = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
-  await admin.from("mock_test_sessions").delete().lt("expires_at", new Date().toISOString());
-  const { data: session, error: sessionError } = await admin
-    .from("mock_test_sessions")
-    .insert({ exam_id: examRow.id, question_ids: selected.map((item) => item.id) })
-    .select("id")
-    .single();
-  if (sessionError || !session) { console.error("mock_test_session_insert_failed", sessionError?.code, sessionError?.message); return NextResponse.json({ error: "Could not create a secure test session", code: sessionError?.code || "unknown", detail: sessionError?.message || "session insert returned no row" }, { status: 503 }); }
+  const sessionKey = randomUUID();
+  const { data: session, error: sessionError } = await client.rpc("create_mock_test_session", {
+    p_exam_id: examRow.id,
+    p_question_ids: selected.map((item) => item.id),
+    p_session_key: sessionKey
+  });
+  if (sessionError || !session) return NextResponse.json({ error: "Could not create a secure test session" }, { status: 503 });
 
   const safeQuestions = selected.map(({ answer_index, explanation_hi, explanation_en, ...question }) => question);
   return NextResponse.json({
     exam: examRow,
-    test_session_id: session.id,
+    test_session_id: session,
+    test_session_key: sessionKey,
     data: safeQuestions,
     meta: { requested: limit, available: rows.length, selection: "PYQ/official first, then verified practice; shuffle within priority" }
   });
