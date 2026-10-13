@@ -3017,9 +3017,17 @@ undefined
 
 /* Exam list interaction: cards are informational; only Open activates a track. */
 .shell .job-card { cursor: default !important; }
-.shell .job-card:hover,
-.shell.theme-dark .job-card:hover,
-.shell.theme-light .job-card:hover { transform: none !important; }
+.shell .job-card:hover:not(.revealed),
+.shell.theme-dark .job-card:hover:not(.revealed),
+.shell.theme-light .job-card:hover:not(.revealed) { transform: none !important; }
+/* Touch devices can keep :hover latched after tapping; never let that cancel the active card animation. */
+.shell .job-grid .job-card.revealed,
+.shell .job-grid .job-card.revealed:hover,
+.shell.theme-dark .job-grid .job-card.revealed:hover,
+.shell.theme-light .job-grid .job-card.revealed:hover {
+  animation: epCardLiftOnly .52s cubic-bezier(.18,.9,.28,1) both, epCardRollTilt .52s cubic-bezier(.18,.9,.28,1) both !important;
+  transform-style: preserve-3d;
+}
 .shell .job-open-button {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   min-height: 38px; padding: 8px 14px; border-radius: 12px;
