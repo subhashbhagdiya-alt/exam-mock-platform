@@ -26,13 +26,13 @@ export async function POST(request) {
     const admin = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
     const { data: session, error: sessionError } = await admin
       .from("mock_test_sessions")
-      .select("id,exam_id,question_ids,expires_at,submitted_at")
+      .select("id,exam_id,question_ids,expires_at,submitted_at,result")
       .eq("id", sessionId)
       .maybeSingle();
 
     if (sessionError) return NextResponse.json({ error: "Could not load test session" }, { status: 500 });
     if (!session) return NextResponse.json({ error: "Test session not found" }, { status: 404 });
-    if (session.submitted_at) return NextResponse.json({ error: "This test has already been submitted" }, { status: 409 });
+    if (session.submitted_at) return session.result ? NextResponse.json({ data: session.result }) : NextResponse.json({ error: "This test has already been submitted" }, { status: 409 });
     if (new Date(session.expires_at).getTime() < Date.now()) return NextResponse.json({ error: "Test session expired. Start a new test." }, { status: 410 });
 
     const questionIds = Array.isArray(session.question_ids) ? session.question_ids : [];
