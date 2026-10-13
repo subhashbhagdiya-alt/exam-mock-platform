@@ -3049,3 +3049,20 @@ button{cursor:pointer}
     will-change: auto !important;
   }
 }
+
+
+/* Mobile result-screen readability: keep analytics and answer review legible. */
+@media (max-width: 760px) {
+  .shell .result-content { padding-left: 12px; padding-right: 12px; }
+  .shell .result-insight-main p { font-size: 13px; line-height: 1.55; }
+  .shell .result-stat { padding: 12px 10px; min-height: 76px; gap: 7px; }
+  .shell .result-stat span { font-size: 11px; line-height: 1.35; }
+  .shell .result-stat b { font-size: 19px; line-height: 1.25; }
+  .shell .review-panel { padding: 13px; }
+  .shell .review-body > b { font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+  .shell .review-body span,
+  .shell .review-body p { font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+  .shell .review-question { align-items: flex-start; }
+  .shell .result-actions { gap: 10px; }
+  .shell .result-actions button { min-height: 44px; padding: 10px 12px; font-size: 12px; }
+}
