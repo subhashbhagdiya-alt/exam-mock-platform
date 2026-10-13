@@ -2809,3 +2809,132 @@ button{cursor:pointer}
     animation: none !important;
   }
 }
+
+
+/* v30 — site-wide consistency pass: shared surfaces and tactile feedback.
+   Apply the established visual language to secondary screens too, not just exam cards. */
+.shell.theme-dark .auth-panel,
+.shell.theme-dark .bottom-note,
+.shell.theme-dark .dashboard-options-bar,
+.shell.theme-dark .boards-hero,
+.shell.theme-dark .about-hero,
+.shell.theme-dark .settings-hero,
+.shell.theme-dark .analysis-candidates-panel,
+.shell.theme-dark .analysis-candidate,
+.shell.theme-dark .subject-chapter-panel,
+.shell.theme-dark .subject-row,
+.shell.theme-dark .selected-exam-strip,
+.shell.theme-dark .history-item,
+.shell.theme-dark .daily-card,
+.shell.theme-dark .empty-state,
+.shell.theme-dark .security-card,
+.shell.theme-dark .device-security,
+.shell.theme-dark .danger-card,
+.shell.theme-dark .rules-card,
+.shell.theme-dark .instruction-stat,
+.shell.theme-dark .exam-detail-stats>div,
+.shell.theme-dark .setup-summary>div,
+.shell.theme-dark .setup-options button,
+.shell.theme-dark .config-options button,
+.shell.theme-dark .subject-selector button,
+.shell.theme-dark .topic-selector button,
+.shell.theme-dark .setting-choice,
+.shell.theme-dark .login-note,
+.shell.theme-dark .login-success,
+.shell.theme-dark .login-message,
+.shell.theme-dark .setup-message,
+.shell.theme-dark .test-focus-warning,
+.shell.theme-dark .confirm-modal {
+  background: linear-gradient(145deg,rgba(22,22,26,.98),rgba(8,8,9,.99)) !important;
+  border-color: rgba(255,255,255,.10) !important;
+}
+.shell.theme-light .auth-panel,
+.shell.theme-light .bottom-note,
+.shell.theme-light .dashboard-options-bar,
+.shell.theme-light .boards-hero,
+.shell.theme-light .about-hero,
+.shell.theme-light .settings-hero,
+.shell.theme-light .analysis-candidates-panel,
+.shell.theme-light .analysis-candidate,
+.shell.theme-light .subject-chapter-panel,
+.shell.theme-light .subject-row,
+.shell.theme-light .selected-exam-strip,
+.shell.theme-light .history-item,
+.shell.theme-light .daily-card,
+.shell.theme-light .empty-state,
+.shell.theme-light .security-card,
+.shell.theme-light .device-security,
+.shell.theme-light .danger-card,
+.shell.theme-light .rules-card,
+.shell.theme-light .instruction-stat,
+.shell.theme-light .confirm-modal {
+  background:
+    radial-gradient(ellipse at 8% 4%,rgba(224,190,159,.13),transparent 48%),
+    radial-gradient(ellipse at 94% 94%,rgba(162,190,177,.10),transparent 46%),
+    linear-gradient(135deg,#f0ede6 0%,#eeece6 55%,#ece9e4 100%) !important;
+  border-color: rgba(76,73,66,.15) !important;
+  box-shadow: 0 8px 20px rgba(52,49,43,.06),inset 0 1px 0 rgba(255,255,255,.42) !important;
+}
+/* Unified small press response across buttons, tabs, options and clickable cards.
+   It only runs during a real press; it does not leave sticky hover state on phones. */
+.shell button:not(:disabled),
+.shell .job-card,
+.shell .feature-card,
+.shell .stat-card,
+.shell .history-item,
+.shell .analysis-candidate,
+.shell .subject-row,
+.shell .about-card,
+.shell .settings-card,
+.shell .daily-card {
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: none), (pointer: coarse) {
+  .shell button:not(:disabled):active,
+  .shell .job-card:active,
+  .shell .feature-card:active,
+  .shell .stat-card:active,
+  .shell .history-item:active,
+  .shell .analysis-candidate:active,
+  .shell .subject-row:active,
+  .shell .about-card:active,
+  .shell .settings-card:active,
+  .shell .daily-card:active,
+  .shell .option:active {
+    filter: brightness(.985) !important;
+    transition: transform .12s ease, filter .12s ease, box-shadow .12s ease !important;
+  }
+  .shell button:not(:disabled):active {
+    transform: scale(.985);
+  }
+  .shell .job-card:active,
+  .shell .feature-card:active,
+  .shell .stat-card:active,
+  .shell .history-item:active,
+  .shell .analysis-candidate:active,
+  .shell .subject-row:active,
+  .shell .about-card:active,
+  .shell .settings-card:active,
+  .shell .daily-card:active {
+    transform: scale(.992);
+  }
+  /* Keep the Coming Soon reveal in charge after the tap has ended. */
+  .shell .job-grid .job-card.coming.revealed,
+  .shell .job-grid .job-card.coming.revealed:hover {
+    animation: epComingExamTap .72s cubic-bezier(.16,1,.3,1) both !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell button:not(:disabled),
+  .shell .job-card,
+  .shell .feature-card,
+  .shell .stat-card,
+  .shell .history-item,
+  .shell .analysis-candidate,
+  .shell .subject-row,
+  .shell .about-card,
+  .shell .settings-card,
+  .shell .daily-card {
+    transition: none !important;
+  }
+}
