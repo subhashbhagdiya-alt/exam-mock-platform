@@ -3494,3 +3494,42 @@ undefined
   68% { rotate: z 1.2deg; }
   100% { rotate: z 0deg; }
 }
+
+
+/* Match the exam card reveal to the exact Open-button pop: 3D rise, blur, bounce and final card tilt. */
+.shell .job-grid .job-card.revealed,
+.shell .job-grid .job-card.revealed:hover,
+.shell.theme-dark .job-grid .job-card.revealed:hover,
+.shell.theme-light .job-grid .job-card.revealed:hover {
+  animation: epExamCardOpenPop .62s cubic-bezier(.16,1,.3,1) both !important;
+  transform-origin: center center;
+  transform-style: preserve-3d;
+  will-change: transform, filter;
+}
+@keyframes epExamCardOpenPop {
+  0% {
+    transform: perspective(700px) translate3d(0,24px,0) rotateX(-28deg) rotateY(8deg) scale(.78);
+    filter: blur(3px) brightness(1.4);
+  }
+  52% {
+    transform: perspective(700px) translate3d(5px,-5px,18px) rotateX(12deg) rotateY(-10deg) scale(1.06);
+    filter: blur(0) brightness(1.18);
+  }
+  76% {
+    transform: perspective(700px) translate3d(-2px,2px,8px) rotateX(-5deg) rotateY(5deg) scale(.99);
+    filter: brightness(1.08);
+  }
+  100% {
+    transform: perspective(900px) translate3d(0,-5px,16px) rotateX(2.5deg) rotateY(-5.5deg) scale(1.008);
+    filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell .job-grid .job-card.revealed,
+  .shell .job-grid .job-card.revealed:hover,
+  .shell.theme-dark .job-grid .job-card.revealed:hover,
+  .shell.theme-light .job-grid .job-card.revealed:hover {
+    animation: none !important;
+    will-change: auto;
+  }
+}
