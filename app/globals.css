@@ -3447,3 +3447,9 @@ undefined
 .shell .job-grid .job-card:not(.revealed) {
   transform: perspective(950px) translate3d(0,0,0) rotateY(0) rotateX(0) scale(1);
 }
+
+
+/* Keep the exact same side-to-side 3D tilt on the exam card itself, not only its Open button. */
+.shell .job-grid .job-card.revealed {
+  animation: epOneSideRock .58s cubic-bezier(.18,.9,.28,1) both !important;
+}
