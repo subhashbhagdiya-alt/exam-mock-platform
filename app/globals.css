@@ -3013,3 +3013,30 @@ undefined
   .shell .question-controls .next-button { grid-column: auto; }
   .shell .analysis-candidate-grid { grid-template-columns: 1fr; }
 }
+
+
+/* Exam list interaction: cards are informational; only Open activates a track. */
+.shell .job-card { cursor: default !important; }
+.shell .job-card:hover,
+.shell.theme-dark .job-card:hover,
+.shell.theme-light .job-card:hover { transform: none !important; }
+.shell .job-open-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 38px; padding: 8px 14px; border-radius: 12px;
+  border: 1px solid rgba(164,148,255,.48);
+  color: #f4f1ff; background: linear-gradient(145deg,rgba(104,83,180,.82),rgba(62,52,111,.9));
+  box-shadow: 0 5px 12px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.16);
+  font: inherit; font-size: 12px; font-weight: 800; letter-spacing: .02em;
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+  transform-origin: center;
+}
+.shell .job-open-button:active:not(:disabled) {
+  transform: perspective(420px) translateY(2px) rotateX(9deg) rotateY(-4deg) scale(.97);
+  box-shadow: 0 2px 5px rgba(0,0,0,.22), inset 0 2px 5px rgba(0,0,0,.16);
+  border-color: rgba(205,195,255,.82);
+}
+.shell .job-open-button:focus-visible { outline: 2px solid #b9adff; outline-offset: 3px; }
+.shell .job-open-button:disabled { opacity: .48; cursor: not-allowed; }
+.shell.theme-light .job-open-button { color: #fff; background: linear-gradient(145deg,#7662c7,#58449f); border-color: rgba(86,65,153,.5); }
+@media (prefers-reduced-motion: reduce) { .shell .job-open-button { transition: none; } }
