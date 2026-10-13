@@ -14,6 +14,48 @@ function shuffle(items) {
   return copy;
 }
 
+function selectBalancedQuestions(rows, limit) {
+  const pool = shuffle(rows);
+  const trustedTarget = Math.min(2, limit, pool.filter((row) =>
+    ["pyq", "official", "memory_based"].includes(row.source_type)
+  ).length);
+  const selected = [];
+  let trustedSelected = 0;
+
+  while (selected.length < limit && pool.length) {
+    const last = selected[selected.length - 1];
+    const diverse = last
+      ? pool.filter((row) => row.subject !== last.subject && row.topic !== last.topic)
+      : pool;
+    const subjectDiverse = last
+      ? pool.filter((row) => row.subject !== last.subject)
+      : pool;
+    let candidates = diverse.length ? diverse : subjectDiverse.length ? subjectDiverse : pool;
+
+    if (trustedSelected < trustedTarget) {
+      const trusted = candidates.filter((row) =>
+        ["pyq", "official", "memory_based"].includes(row.source_type)
+      );
+      if (trusted.length) candidates = trusted;
+      else {
+        const anyTrusted = pool.filter((row) =>
+          ["pyq", "official", "memory_based"].includes(row.source_type)
+        );
+        if (anyTrusted.length) candidates = anyTrusted;
+      }
+    }
+
+    const chosen = candidates[0];
+    const index = pool.findIndex((row) => row.id === chosen.id);
+    if (index < 0) break;
+    pool.splice(index, 1);
+    selected.push(chosen);
+    if (["pyq", "official", "memory_based"].includes(chosen.source_type)) trustedSelected += 1;
+  }
+
+  return selected;
+}
+
 export async function GET(request) {
   if (!url || !key) return NextResponse.json({ error: "Question bank is not configured" }, { status: 503 });
   const { searchParams } = new URL(request.url);
@@ -21,6 +63,12 @@ export async function GET(request) {
   const requestedLimit = searchParams.get("limit");
   const subject = searchParams.get("subject") || "";
   const topic = searchParams.get("topic") || "";
+  const excludedIds = new Set(
+    (searchParams.get("exclude") || "")
+      .split(",")
+      .filter((id) => /^[0-9a-f-]{36}$/i.test(id))
+      .slice(0, 250)
+  );
   const client = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 
   const { data: examRow, error: examError } = await client
@@ -33,8 +81,6 @@ export async function GET(request) {
   if (!examRow) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
 
   const limit = Math.min(Math.max(Number(requestedLimit || examRow.total_questions || 10), 1), 100);
-  const poolSize = Math.min(Math.max(limit * 2, limit), 100);
-
   const { data, error } = await client
     .from("question_bank")
     .select("id,exam_id,subject,topic,question_hi,question_en,options,answer_index,explanation_hi,explanation_en,difficulty,source_type,source_year,prediction_score")
@@ -43,8 +89,7 @@ export async function GET(request) {
     .eq("exam_id", examRow.id)
     .match(subject ? { subject } : {})
     .match(topic ? { topic } : {})
-    .order("prediction_score", { ascending: false })
-    .limit(poolSize);
+    .limit(1000);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const rows = data || [];
@@ -52,24 +97,16 @@ export async function GET(request) {
     return NextResponse.json({
       exam: examRow,
       data: [],
-      meta: { requested: Math.min(Math.max(Number(requestedLimit || examRow.total_questions || 10), 1), 100), available: rows.length }
+      meta: { requested: limit, available: rows.length }
     });
   }
-  // Mix source reliability with the analysis score so forecasted/high-signal questions
-  // actually enter the mock while still guaranteeing some real-source questions.
-  const sourceBoost = { pyq: 8, official: 7, memory_based: 5, curated: 0 };
-  const ranked = [...rows].sort((a, b) =>
-    (Number(b.prediction_score || 0) + (sourceBoost[b.source_type] || 0)) -
-    (Number(a.prediction_score || 0) + (sourceBoost[a.source_type] || 0))
-  );
-  const trusted = ranked.filter((row) => row.source_type === "pyq" || row.source_type === "official" || row.source_type === "memory_based");
-  const predicted = ranked.filter((row) => Number(row.prediction_score || 0) > 0);
-  const guaranteedTrusted = shuffle(trusted).slice(0, Math.min(2, limit, trusted.length));
-  const remainingPool = ranked.filter((row) => !guaranteedTrusted.some((item) => item.id === row.id));
-  const remaining = shuffle(remainingPool.slice(0, Math.min(poolSize, remainingPool.length)));
-  const selected = [...guaranteedTrusted, ...remaining]
-    .sort((a, b) => (Number(b.prediction_score || 0) + (sourceBoost[b.source_type] || 0)) - (Number(a.prediction_score || 0) + (sourceBoost[a.source_type] || 0)))
-    .slice(0, Math.min(limit, ranked.length));
+
+  const unseen = rows.filter((row) => !excludedIds.has(row.id));
+  // Prefer questions not used in recent attempts; reuse only when the unseen pool is too small.
+  const preferredPool = unseen.length >= limit
+    ? unseen
+    : [...unseen, ...shuffle(rows.filter((row) => excludedIds.has(row.id)))];
+  const selected = selectBalancedQuestions(preferredPool, Math.min(limit, preferredPool.length));
 
   if (!selected.length) return NextResponse.json({ error: "No verified questions available for this selection" }, { status: 404 });
   const sessionKey = randomUUID();
@@ -86,6 +123,11 @@ export async function GET(request) {
     test_session_id: session,
     test_session_key: sessionKey,
     data: safeQuestions,
-    meta: { requested: limit, available: rows.length, selection: "PYQ/official first, then verified practice; shuffle within priority" }
+    meta: {
+      requested: limit,
+      available: rows.length,
+      unseen_available: unseen.length,
+      selection: "randomized, subject/topic-diverse, recent-repeat avoidance"
+    }
   });
 }
