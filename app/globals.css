@@ -3040,3 +3040,51 @@ undefined
 .shell .job-open-button:disabled { opacity: .48; cursor: not-allowed; }
 .shell.theme-light .job-open-button { color: #fff; background: linear-gradient(145deg,#7662c7,#58449f); border-color: rgba(86,65,153,.5); }
 @media (prefers-reduced-motion: reduce) { .shell .job-open-button { transition: none; } }
+
+
+/* Exam track cards: only the explicit Open button receives taps. */
+.shell .job-card > .job-open-button {
+  position: relative !important;
+  inset: auto !important;
+  width: auto !important;
+  min-width: 94px;
+  max-width: max-content;
+  align-self: flex-start;
+  flex: 0 0 auto;
+  z-index: 3;
+  overflow: hidden;
+  isolation: isolate;
+  transform-style: preserve-3d;
+  background:
+    radial-gradient(ellipse at 25% 0%, rgba(255,255,255,.24), transparent 55%),
+    linear-gradient(145deg, rgba(130,108,220,.94), rgba(68,55,128,.96)) !important;
+  box-shadow: 0 5px 12px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.28), inset 0 -1px 0 rgba(0,0,0,.18);
+}
+.shell .job-card > .job-open-button::before {
+  content: "";
+  position: absolute;
+  inset: -40% auto -40% -65%;
+  width: 45%;
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,.42), transparent);
+  transform: skewX(-18deg);
+  transition: left .32s ease;
+}
+.shell .job-card > .job-open-button:active:not(:disabled) {
+  transform: perspective(500px) translateY(2px) rotateX(8deg) rotateY(-3deg) scale(.965) !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,.22), inset 0 3px 9px rgba(255,255,255,.16), inset 0 -2px 5px rgba(0,0,0,.2);
+  filter: saturate(1.12) brightness(1.06);
+}
+.shell .job-card > .job-open-button:active:not(:disabled)::before {
+  left: 125%;
+}
+.shell.theme-light .job-card > .job-open-button {
+  background:
+    radial-gradient(ellipse at 25% 0%, rgba(255,255,255,.3), transparent 55%),
+    linear-gradient(145deg, #8069d3, #5945a0) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell .job-card > .job-open-button,
+  .shell .job-card > .job-open-button::before { transition: none !important; }
+}
