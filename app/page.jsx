@@ -231,6 +231,14 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, [view, seconds]);
 
+  // Automatically submit once the countdown expires, so a test cannot remain
+  // open indefinitely at 00:00. finishTest guards against duplicate submissions.
+  useEffect(() => {
+    if (view === "test" && seconds === 0 && !result && !grading) {
+      finishTest();
+    }
+  }, [view, seconds, result, grading]);
+
    useEffect(() => {
     if (otpCooldown <= 0) return undefined;
     const timer = setInterval(() => setOtpCooldown(value => Math.max(0, value - 1)), 1000);
