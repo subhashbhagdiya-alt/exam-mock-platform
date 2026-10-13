@@ -48,6 +48,13 @@ export async function GET(request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const rows = data || [];
+  if (searchParams.get("mode") === "availability") {
+    return NextResponse.json({
+      exam: examRow,
+      data: [],
+      meta: { requested: Math.min(Math.max(Number(requestedLimit || examRow.total_questions || 10), 1), 100), available: rows.length }
+    });
+  }
   // Mix source reliability with the analysis score so forecasted/high-signal questions
   // actually enter the mock while still guaranteeing some real-source questions.
   const sourceBoost = { pyq: 8, official: 7, memory_based: 5, curated: 0 };
