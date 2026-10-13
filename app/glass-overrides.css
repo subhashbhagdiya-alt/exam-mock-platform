@@ -2499,3 +2499,65 @@ button{cursor:pointer}
 @media(prefers-reduced-motion:reduce){
   .shell *,.shell *::before,.shell *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+
+
+/* v26 — true panther-black night mode + consistent liquid 3D interaction language.
+   Keep the existing light theme untouched. */
+.shell.theme-dark {
+  --ep-bg: #030303 !important;
+  --ep-surface: #080808 !important;
+  --ep-surface-2: #101010 !important;
+  --ep-border: #202020 !important;
+  --ep-border-strong: #303030 !important;
+  background:
+    radial-gradient(circle at 12% 7%, rgba(116, 76, 255, .13), transparent 29%),
+    radial-gradient(circle at 88% 18%, rgba(0, 190, 190, .075), transparent 26%),
+    #030303 !important;
+}
+.shell.theme-dark .sidebar,
+.shell.theme-dark .topbar {
+  background: rgba(5, 5, 5, .94) !important;
+  border-color: rgba(255, 255, 255, .09) !important;
+}
+.shell.theme-dark .dashboard-content .feature-card,
+.shell.theme-dark .dashboard-content .stat-card,
+.shell.theme-dark .boards-content .exam-board-tab,
+.shell.theme-dark .boards-content .exam-group,
+.shell.theme-dark .boards-content .exam-detail-panel,
+.shell.theme-dark .boards-content .exam-toolbar,
+.shell.theme-dark .question-panel,
+.shell.theme-dark .question-nav,
+.shell.theme-dark .review-panel,
+.shell.theme-dark .result-insight,
+.shell.theme-dark .subject-analysis,
+.shell.theme-dark .settings-card,
+.shell.theme-dark .settings-profile-card,
+.shell.theme-dark .about-card {
+  background:
+    linear-gradient(145deg, rgba(20, 20, 24, .98), rgba(7, 7, 8, .99)) !important;
+  border-color: rgba(255, 255, 255, .10) !important;
+}
+/* Reuse the exam-card motion language on major tappable surfaces, without
+   making unrelated taps trigger effects or overriding the exam-card reveal. */
+@media (hover: hover) and (pointer: fine) {
+  .shell .dashboard-content .feature-card:hover,
+  .shell .dashboard-content .stat-card:hover,
+  .shell .boards-content .exam-board-tab:hover,
+  .shell .boards-content .exam-detail-panel:hover,
+  .shell .settings-card:hover,
+  .shell .about-card:hover {
+    transform: perspective(950px) translate3d(0, -3px, 10px) rotateX(1deg) rotateY(-1deg) !important;
+    transition: transform .32s cubic-bezier(.2,.8,.2,1), box-shadow .32s ease, border-color .32s ease !important;
+    box-shadow: 0 18px 34px rgba(0,0,0,.28), 0 0 18px rgba(130,100,255,.10), inset 0 1px rgba(255,255,255,.08) !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell .dashboard-content .feature-card,
+  .shell .dashboard-content .stat-card,
+  .shell .boards-content .exam-board-tab,
+  .shell .boards-content .exam-detail-panel,
+  .shell .settings-card,
+  .shell .about-card {
+    transition: none !important;
+  }
+}
