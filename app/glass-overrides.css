@@ -2642,3 +2642,111 @@ button{cursor:pointer}
     will-change: auto;
   }
 }
+
+
+/* v28 — eye-comfort day mode: warm, muted surfaces instead of bright white.
+   Keep readable dark text and restrained liquid colour; night mode is untouched. */
+.shell.theme-light {
+  color: #292b32 !important;
+  background:
+    radial-gradient(ellipse at 10% 4%, rgba(210,174,145,.10), transparent 34%),
+    radial-gradient(ellipse at 92% 18%, rgba(154,178,171,.09), transparent 30%),
+    #e9e6df !important;
+}
+.shell.theme-light .sidebar,
+.shell.theme-light .topbar {
+  background: rgba(235,232,225,.96) !important;
+  border-color: rgba(67,66,61,.12) !important;
+}
+.shell.theme-light .dashboard-content .feature-card,
+.shell.theme-light .dashboard-content .stat-card,
+.shell.theme-light .dashboard-content .job-card,
+.shell.theme-light .dashboard-content .exam-board-tab,
+.shell.theme-light .dashboard-content .exam-group,
+.shell.theme-light .dashboard-content .exam-detail-panel,
+.shell.theme-light .dashboard-content .subject-chapter-panel,
+.shell.theme-light .dashboard-content .config-block,
+.shell.theme-light .boards-content .exam-board-tab,
+.shell.theme-light .boards-content .exam-group,
+.shell.theme-light .boards-content .exam-detail-panel,
+.shell.theme-light .boards-content .exam-toolbar,
+.shell.theme-light .question-panel,
+.shell.theme-light .question-nav,
+.shell.theme-light .review-panel,
+.shell.theme-light .result-hero,
+.shell.theme-light .result-stat,
+.shell.theme-light .result-insight,
+.shell.theme-light .subject-analysis,
+.shell.theme-light .subject-row,
+.shell.theme-light .review-question,
+.shell.theme-light .settings-card,
+.shell.theme-light .settings-profile-card,
+.shell.theme-light .about-card,
+.shell.theme-light .history-card,
+.shell.theme-light .source-card,
+.shell.theme-light .setup-card,
+.shell.theme-light .login-card,
+.shell.theme-light .rules-card,
+.shell.theme-light .instruction-stat {
+  background:
+    radial-gradient(ellipse at 8% 4%, rgba(224,190,159,.14), transparent 48%),
+    radial-gradient(ellipse at 94% 94%, rgba(162,190,177,.11), transparent 46%),
+    linear-gradient(135deg,#f0ede6 0%,#eeece6 55%,#ece9e4 100%) !important;
+  border-color: rgba(76,73,66,.15) !important;
+  box-shadow: 0 8px 20px rgba(52,49,43,.065), inset 0 1px 0 rgba(255,255,255,.48) !important;
+}
+.shell.theme-light .dashboard-content .job-grid .job-card.coming,
+.shell.theme-light .job-grid .job-card.coming {
+  background:
+    radial-gradient(ellipse at 8% 5%, rgba(224,190,159,.18), transparent 48%),
+    radial-gradient(ellipse at 92% 94%, rgba(162,190,177,.14), transparent 45%),
+    linear-gradient(135deg,#f1eee7 0%,#eeece6 56%,#ece9e4 100%) !important;
+  border-color: rgba(92,87,77,.18) !important;
+}
+.shell.theme-light .dashboard-content .job-grid .job-card.coming.revealed,
+.shell.theme-light .job-grid .job-card.coming.revealed,
+.shell.theme-light .job-grid .job-card.coming.revealed:hover {
+  background:
+    radial-gradient(ellipse at 8% 6%, rgba(224,190,159,.25), transparent 48%),
+    radial-gradient(ellipse at 94% 90%, rgba(162,190,177,.20), transparent 46%),
+    linear-gradient(135deg,#f3eee5 0%,#edf0e9 54%,#eeebe5 100%) !important;
+  border-color: rgba(112,101,85,.28) !important;
+}
+.shell.theme-light .job-grid .job-card.coming.revealed::after {
+  background: linear-gradient(108deg,transparent 0%,rgba(211,179,148,.04) 20%,rgba(211,179,148,.16) 46%,rgba(153,179,168,.14) 58%,transparent 100%) !important;
+}
+.shell.theme-light .dashboard-content .feature-card,
+.shell.theme-light .dashboard-content .stat-card,
+.shell.theme-light .boards-content .exam-board-tab,
+.shell.theme-light .boards-content .exam-detail-panel,
+.shell.theme-light .settings-card,
+.shell.theme-light .about-card {
+  transition: transform .32s cubic-bezier(.2,.8,.2,1), box-shadow .32s ease, border-color .32s ease !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  .shell.theme-light .dashboard-content .feature-card:hover,
+  .shell.theme-light .dashboard-content .stat-card:hover,
+  .shell.theme-light .boards-content .exam-board-tab:hover,
+  .shell.theme-light .boards-content .exam-detail-panel:hover,
+  .shell.theme-light .settings-card:hover,
+  .shell.theme-light .about-card:hover {
+    box-shadow: 0 13px 26px rgba(52,49,43,.10), 0 0 12px rgba(146,158,151,.09), inset 0 1px 0 rgba(255,255,255,.56) !important;
+    border-color: rgba(112,101,85,.25) !important;
+  }
+}
+.shell.theme-light .setup-summary>div,
+.shell.theme-light .exam-detail-stats>div,
+.shell.theme-light .subject-selector button,
+.shell.theme-light .topic-selector button,
+.shell.theme-light .config-options button,
+.shell.theme-light .setup-options button,
+.shell.theme-light .setting-choice {
+  background-color: #e6e2da !important;
+  border-color: rgba(76,73,66,.16) !important;
+}
+.shell.theme-light .setup-hero,
+.shell.theme-light .login-hero {
+  background: linear-gradient(135deg,#f1eee7,#eae7df) !important;
+  border-color: rgba(76,73,66,.15) !important;
+  box-shadow: 0 12px 28px rgba(52,49,43,.07), inset 0 1px 0 rgba(255,255,255,.48) !important;
+}
