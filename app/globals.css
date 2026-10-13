@@ -3158,3 +3158,50 @@ undefined
   .shell .primary-button, .shell .secondary-button, .shell .lang-button,
   .shell .theme-toggle { transition: none !important; }
 }
+
+
+/* Tap-to-reveal exam cards: liquid tilt first, Open appears inside the card. */
+.shell .dashboard-content .job-card.revealed,
+.shell .job-card.revealed {
+  transform: perspective(900px) translate3d(0,-3px,14px) rotateX(1.1deg) rotateY(-.7deg) !important;
+  border-color: rgba(169,145,255,.72) !important;
+  background:
+    radial-gradient(ellipse at 10% 0%, rgba(151,117,255,.22), transparent 58%),
+    radial-gradient(ellipse at 100% 100%, rgba(48,207,191,.075), transparent 52%),
+    linear-gradient(145deg, rgba(43,39,73,.98), rgba(18,21,36,.98)) !important;
+  box-shadow: 0 20px 42px rgba(0,0,0,.3), 0 0 0 1px rgba(166,143,255,.12), 0 0 30px rgba(127,97,255,.12), inset 0 1px rgba(255,255,255,.12) !important;
+  transition: transform .24s cubic-bezier(.2,.8,.2,1), box-shadow .24s ease, border-color .24s ease, background .24s ease !important;
+}
+.shell .job-card.revealed::after {
+  content: "";
+  position: absolute;
+  inset: -30% auto -30% -65%;
+  width: 42%;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent, rgba(194,178,255,.18), rgba(102,238,224,.10), transparent);
+  transform: skewX(-18deg);
+  animation: epCardLiquidSweep .75s ease-out both;
+}
+@keyframes epCardLiquidSweep {
+  from { left: -65%; opacity: .2; }
+  to { left: 130%; opacity: .85; }
+}
+.shell .job-card.revealed .job-open-button {
+  animation: epOpenReveal .24s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes epOpenReveal {
+  from { opacity: 0; transform: perspective(500px) translateY(8px) rotateX(-9deg) scale(.94); }
+  to { opacity: 1; transform: perspective(500px) translateY(0) rotateX(0) scale(1); }
+}
+.shell.theme-light .job-card.revealed {
+  background:
+    radial-gradient(ellipse at 10% 0%, rgba(151,117,255,.20), transparent 58%),
+    radial-gradient(ellipse at 100% 100%, rgba(48,207,191,.08), transparent 52%),
+    linear-gradient(145deg, #f0edff, #e2e6f5) !important;
+  box-shadow: 0 18px 38px rgba(64,49,125,.15), 0 0 0 1px rgba(125,103,210,.12), inset 0 1px rgba(255,255,255,.9) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell .job-card.revealed, .shell .job-card.revealed::after,
+  .shell .job-card.revealed .job-open-button { animation: none !important; transition: none !important; }
+}
