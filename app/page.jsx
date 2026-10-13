@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Target, Trophy, X } from "lucide-react";
 
@@ -57,6 +57,7 @@ export default function HomePage() {
   const [testSessionId, setTestSessionId] = useState("");
   const [testSessionKey, setTestSessionKey] = useState("");
   const [grading, setGrading] = useState(false);
+  const autoSubmitAttempted = useRef(false);
   const [history, setHistory] = useState([]);
   const [storageMessage, setStorageMessage] = useState("");
   const [showSubmit, setShowSubmit] = useState(false);
@@ -550,6 +551,7 @@ export default function HomePage() {
   }
 
   async function runTest() {
+    autoSubmitAttempted.current = false;
     setAuthMessage("");
     if (!user) setAuthMessage(t("Guest practice mode: login के बिना टेस्ट शुरू हो रहा है। रिज़ल्ट इस device पर सेव होगा।","Guest practice mode: starting without login. The result will be saved on this device."));
     if (questionLoadError) { setAuthMessage(questionLoadError); return; }
@@ -715,10 +717,10 @@ export default function HomePage() {
     }
   }
   useEffect(() => {
-    if (view !== "test" || seconds !== 0 || !testQuestions.length || result) return undefined;
-    const timer = window.setTimeout(() => { void finishTest(); }, 0);
-    return () => window.clearTimeout(timer);
-  }, [view, seconds, testQuestions.length, result, finishTest]);
+    if (view !== "test" || seconds !== 0 || !testQuestions.length || result || grading || autoSubmitAttempted.current) return;
+    autoSubmitAttempted.current = true;
+    void finishTest();
+  }, [view, seconds, testQuestions.length, result, grading]);
 
   function chooseAnswer(index) { setAnswers(old => ({ ...old, [q.id]: index })); }
   function toggleReview() { setReview(old => old.includes(q.id) ? old.filter(n => n !== q.id) : [...old, q.id]); }
