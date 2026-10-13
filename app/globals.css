@@ -3453,3 +3453,15 @@ undefined
 .shell .job-grid .job-card.revealed {
   animation: epOneSideRock .58s cubic-bezier(.18,.9,.28,1) both !important;
 }
+
+
+/* The first/default selected track gets the same tap animation as every other exam card. */
+.shell .job-grid .job-card.selected.revealed {
+  animation: epOneSideRock .58s cubic-bezier(.18,.9,.28,1) both !important;
+  border-color: rgba(190,166,255,.9) !important;
+  box-shadow:
+    0 20px 42px rgba(0,0,0,.32),
+    0 0 0 1px rgba(187,161,255,.22),
+    0 0 28px rgba(137,105,255,.20),
+    inset 0 1px 0 rgba(255,255,255,.16) !important;
+}
