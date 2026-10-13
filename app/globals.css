@@ -3520,7 +3520,8 @@ undefined
     filter: brightness(1.08);
   }
   100% {
-    transform: perspective(900px) translate3d(0,-5px,16px) rotateX(2.5deg) rotateY(-5.5deg) scale(1.008);
+    /* End flat and stable; keep the 3D pop as a one-shot action, not a sticky hover pose. */
+    transform: perspective(900px) translate3d(0,-2px,0) rotateX(0) rotateY(0) scale(1);
     filter: none;
   }
 }
@@ -3911,5 +3912,42 @@ undefined
   .shell.theme-light .job-grid .job-card.revealed:hover {
     animation: none !important;
     will-change: auto;
+  }
+}
+
+
+/* Touch-device hover kill switch v2 —
+   Some legacy selectors have higher specificity than the first touch patch. Override
+   hover-only transforms across the whole shell on coarse pointers; use :active for
+   real taps. Keep the revealed card's one-shot reveal and Open control untouched. */
+@media (hover: none), (pointer: coarse) {
+  .shell.theme-dark *:hover:not(:active):not(.job-card.revealed):not(.job-open-button),
+  .shell.theme-light *:hover:not(:active):not(.job-card.revealed):not(.job-open-button),
+  .shell *:hover:not(:active):not(.job-card.revealed):not(.job-open-button) {
+    transform: none !important;
+    translate: none !important;
+    rotate: none !important;
+    scale: none !important;
+    filter: none !important;
+    transition-property: none !important;
+  }
+
+  /* Hover pseudo-layers must not start new shimmer/float effects after a tap. */
+  .shell.theme-dark *:hover:not(:active):not(.job-card.revealed):not(.job-open-button)::before,
+  .shell.theme-dark *:hover:not(:active):not(.job-card.revealed):not(.job-open-button)::after,
+  .shell.theme-light *:hover:not(:active):not(.job-card.revealed):not(.job-open-button)::before,
+  .shell.theme-light *:hover:not(:active):not(.job-card.revealed):not(.job-open-button)::after,
+  .shell *:hover:not(:active):not(.job-card.revealed):not(.job-open-button)::before,
+  .shell *:hover:not(:active):not(.job-card.revealed):not(.job-open-button)::after {
+    animation: none !important;
+  }
+
+  /* The selected exam card animates only from its .revealed state and settles flat. */
+  .shell .job-grid .job-card.revealed,
+  .shell .job-grid .job-card.revealed:hover,
+  .shell.theme-dark .job-grid .job-card.revealed:hover,
+  .shell.theme-light .job-grid .job-card.revealed:hover {
+    animation: epExamCardOpenPop .62s cubic-bezier(.16,1,.3,1) both !important;
+    will-change: transform, filter;
   }
 }
