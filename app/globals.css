@@ -3323,3 +3323,38 @@ undefined
 @media (prefers-reduced-motion: reduce) {
   .shell .job-grid .job-card.revealed::before { animation: none !important; }
 }
+
+
+/* Small horizontal glass-slide on exam-card tap; keep the existing liquid and Open animations. */
+.shell .job-grid .job-card.revealed {
+  animation: epGlassSideSlide .34s cubic-bezier(.18,.86,.32,1) both;
+  transform-origin: left center;
+}
+@keyframes epGlassSideSlide {
+  0% {
+    transform: perspective(850px) translate3d(-14px,0,0) rotateY(-8deg) scale(.992);
+    filter: brightness(1.03);
+  }
+  62% {
+    transform: perspective(850px) translate3d(3px,-2px,5px) rotateY(2deg) scale(1.006);
+    filter: brightness(1.08);
+  }
+  100% {
+    transform: perspective(850px) translate3d(0,0,0) rotateY(0) scale(1);
+    filter: none;
+  }
+}
+.shell .job-grid .job-card.revealed::before {
+  background:
+    linear-gradient(100deg, transparent 0%, rgba(203,187,255,.30) 22%, rgba(117,238,226,.14) 38%, transparent 62%) !important;
+  background-size: 240% 100% !important;
+  animation: epGlassSideSweep .52s ease-out both, epLiquidColorGrade 1.15s ease-out both !important;
+}
+@keyframes epGlassSideSweep {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell .job-grid .job-card.revealed { animation: none !important; }
+  .shell .job-grid .job-card.revealed::before { animation: none !important; }
+}
