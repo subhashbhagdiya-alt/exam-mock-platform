@@ -3403,3 +3403,31 @@ undefined
   .shell .job-grid .job-card.revealed { animation: none !important; }
   .shell .job-grid .job-card.revealed::before { animation: none !important; }
 }
+
+
+/* One active tilted exam card at a time; the next tap resets the previous card. */
+.shell .job-grid .job-card {
+  transition:
+    transform .28s cubic-bezier(.2,.8,.2,1),
+    box-shadow .28s ease,
+    border-color .28s ease,
+    background .28s ease,
+    filter .28s ease !important;
+  transform-style: preserve-3d;
+}
+.shell .job-grid .job-card.revealed {
+  transform: perspective(900px) translate3d(0,-5px,16px) rotateX(2.5deg) rotateY(-5.5deg) scale(1.008) !important;
+  transform-origin: left center;
+  border-color: rgba(190,166,255,.9) !important;
+  box-shadow:
+    0 20px 42px rgba(0,0,0,.32),
+    0 0 0 1px rgba(187,161,255,.22),
+    0 0 28px rgba(137,105,255,.20),
+    inset 0 1px 0 rgba(255,255,255,.16) !important;
+}
+.shell .job-grid .job-card.revealed .job-open-button {
+  animation: epTiltedOpenPop .62s cubic-bezier(.16,1,.3,1) both !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell .job-grid .job-card { transition: none !important; }
+}
