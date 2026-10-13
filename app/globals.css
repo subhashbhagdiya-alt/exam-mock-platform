@@ -1308,7 +1308,7 @@ undefined
   border-color:rgba(149,132,255,.18)!important;
   box-shadow:0 13px 28px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.06)!important;
 }
-.shell.theme-dark .dashboard-content .job-card.selected{
+.shell.theme-dark .dashboard-content .job-card.selected:not(.revealed){
   background:linear-gradient(145deg,rgba(92,61,190,.68),rgba(25,25,65,.68))!important;
   border-color:rgba(184,157,255,.55)!important;
   box-shadow:0 16px 34px rgba(87,54,197,.24),inset 0 1px rgba(255,255,255,.10)!important;
@@ -2037,19 +2037,19 @@ undefined
   background:linear-gradient(145deg,#ffffff,#edf1f5)!important;
   border-color:#b9c2cf!important;
 }
-.shell.theme-light .dashboard-content .job-card.selected{
+.shell.theme-light .dashboard-content .job-card.selected:not(.revealed){
   background:linear-gradient(145deg,#7659c7,#6248aa)!important;
   border-color:#57408f!important;
   box-shadow:0 15px 32px rgba(72,50,142,.25),inset 0 1px rgba(255,255,255,.18)!important;
 }
-.shell.theme-light .dashboard-content .job-card.selected .job-copy b{
+.shell.theme-light .dashboard-content .job-card.selected:not(.revealed) .job-copy b{
   color:#ffffff!important;
 }
-.shell.theme-light .dashboard-content .job-card.selected .job-copy span,
-.shell.theme-light .dashboard-content .job-card.selected .job-copy small{
+.shell.theme-light .dashboard-content .job-card.selected:not(.revealed) .job-copy span,
+.shell.theme-light .dashboard-content .job-card.selected:not(.revealed) .job-copy small{
   color:#eeeaff!important;
 }
-.shell.theme-light .dashboard-content .job-card.selected .job-copy em{
+.shell.theme-light .dashboard-content .job-card.selected:not(.revealed) .job-copy em{
   color:#72f0bd!important;
 }
 .shell.theme-light .dashboard-content .job-card:not(.selected) .job-copy b{
@@ -2139,8 +2139,8 @@ undefined
 .shell.theme-light .dashboard-content .feature-card:hover{
   transform:translateY(-4px)!important;
 }
-.shell.theme-dark .dashboard-content .job-card.selected .job-copy b,
-.shell.theme-dark .dashboard-content .job-card.selected .job-copy span{
+.shell.theme-dark .dashboard-content .job-card.selected:not(.revealed) .job-copy b,
+.shell.theme-dark .dashboard-content .job-card.selected:not(.revealed) .job-copy span{
   color:#ffffff!important;
 }
 
@@ -2365,7 +2365,7 @@ undefined
 .instructions-content .instruction-stat:hover{
   transform:translate3d(0,-7px,18px) rotateX(1deg)!important;
 }
-.dashboard-content .job-card.selected{
+.dashboard-content .job-card.selected:not(.revealed){
   transform:translate3d(0,-3px,12px)!important;
 }
 .dashboard-content .exam-board-tab.active{
