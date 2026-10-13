@@ -3163,7 +3163,7 @@ undefined
 /* Tap-to-reveal exam cards: liquid tilt first, Open appears inside the card. */
 .shell .dashboard-content .job-card.revealed,
 .shell .job-card.revealed {
-  transform: perspective(900px) translate3d(0,-3px,14px) rotateX(1.1deg) rotateY(-.7deg) !important;
+  transform: perspective(900px) translate3d(0,-3px,14px) rotateX(1.1deg) rotateY(-.7deg) ;
   border-color: rgba(169,145,255,.72) !important;
   background:
     radial-gradient(ellipse at 10% 0%, rgba(151,117,255,.22), transparent 58%),
@@ -3209,7 +3209,7 @@ undefined
 
 /* Stronger, visible anime-style card reveal: keep the tilt after tap and animate Open upward. */
 .shell .job-grid .job-card.revealed {
-  transform: perspective(720px) translate3d(0,-5px,18px) rotateX(2.2deg) rotateY(-1.8deg) scale(1.008) !important;
+  transform: perspective(720px) translate3d(0,-5px,18px) rotateX(2.2deg) rotateY(-1.8deg) scale(1.008) ;
   transform-origin: center center;
   border-color: rgba(181,157,255,.88) !important;
   background:
@@ -3265,7 +3265,7 @@ undefined
 
 /* Preserve the existing liquid sweep; add a clearly visible lifted, tilted reveal to the selected card and Open action. */
 .shell .job-grid .job-card.revealed {
-  transform: perspective(780px) translate3d(3px,-7px,26px) rotateX(3deg) rotateY(-4deg) scale(1.012) !important;
+  transform: perspective(780px) translate3d(3px,-7px,26px) rotateX(3deg) rotateY(-4deg) scale(1.012) ;
   transform-origin: 50% 50%;
   will-change: transform;
 }
@@ -3416,7 +3416,7 @@ undefined
   transform-style: preserve-3d;
 }
 .shell .job-grid .job-card.revealed {
-  transform: perspective(900px) translate3d(0,-5px,16px) rotateX(2.5deg) rotateY(-5.5deg) scale(1.008) !important;
+  transform: perspective(900px) translate3d(0,-5px,16px) rotateX(2.5deg) rotateY(-5.5deg) scale(1.008) ;
   transform-origin: left center;
   border-color: rgba(190,166,255,.9) !important;
   box-shadow:
@@ -3430,4 +3430,20 @@ undefined
 }
 @media (prefers-reduced-motion: reduce) {
   .shell .job-grid .job-card { transition: none !important; }
+}
+
+
+/* Fix: let the card's own transform animation run (no !important transform override). */
+.shell .job-grid .job-card.revealed {
+  animation: epOneSideRock .58s cubic-bezier(.18,.9,.28,1) both !important;
+  transform-origin: center center;
+}
+@keyframes epOneSideRock {
+  0% { transform: perspective(950px) translate3d(0,10px,0) rotateY(-12deg) rotateX(5deg) scale(.99); }
+  48% { transform: perspective(950px) translate3d(0,-7px,20px) rotateY(8deg) rotateX(-2deg) scale(1.012); }
+  72% { transform: perspective(950px) translate3d(0,-2px,8px) rotateY(-4deg) rotateX(1deg) scale(1.005); }
+  100% { transform: perspective(950px) translate3d(0,0,0) rotateY(0) rotateX(0) scale(1); }
+}
+.shell .job-grid .job-card:not(.revealed) {
+  transform: perspective(950px) translate3d(0,0,0) rotateY(0) rotateX(0) scale(1);
 }
