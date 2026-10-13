@@ -2938,3 +2938,25 @@ button{cursor:pointer}
     transition: none !important;
   }
 }
+
+
+/* v31 — restore the entrance animation for the action option revealed inside an exam card.
+   Scoped only to the Open action rendered when a card is expanded. */
+.shell .job-grid .job-card.revealed .job-open-button {
+  transform-origin: left center;
+  animation: epExamOptionEnter .42s cubic-bezier(.16,1,.3,1) both !important;
+  will-change: transform, opacity, filter;
+}
+@keyframes epExamOptionEnter {
+  0% { opacity: 0; transform: translate3d(0,8px,0) scale(.94); filter: blur(2px); }
+  65% { opacity: 1; transform: translate3d(0,-1px,0) scale(1.015); filter: blur(0); }
+  100% { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell .job-grid .job-card.revealed .job-open-button {
+    animation: none !important;
+    transform: none !important;
+    filter: none !important;
+    will-change: auto;
+  }
+}
