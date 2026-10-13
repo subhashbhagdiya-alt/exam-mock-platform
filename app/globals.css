@@ -4001,3 +4001,28 @@ undefined
     animation: none !important;
   }
 }
+
+
+/* Ensure a tap on an exam card starts its reveal/rock animation immediately.
+   Match the legacy theme + :hover specificity used by the touch hover guard so it
+   cannot replace the liquid animation until the user taps elsewhere. */
+.shell .job-grid .job-card.revealed,
+.shell .job-grid .job-card.revealed:hover,
+.shell.theme-dark .job-grid .job-card.revealed:hover,
+.shell.theme-light .job-grid .job-card.revealed:hover {
+  animation:
+    epExamCardOpenPop .62s cubic-bezier(.16,1,.3,1) both,
+    epLiquidCardRock 3.6s ease-in-out .62s infinite alternate !important;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell .job-grid .job-card.revealed,
+  .shell .job-grid .job-card.revealed:hover,
+  .shell.theme-dark .job-grid .job-card.revealed:hover,
+  .shell.theme-light .job-grid .job-card.revealed:hover {
+    animation: none !important;
+    transform: none !important;
+    will-change: auto;
+  }
+}
