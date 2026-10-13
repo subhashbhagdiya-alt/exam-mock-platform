@@ -57,6 +57,7 @@ export default function HomePage() {
   const [result, setResult] = useState(null);
   const [reviewAnswers, setReviewAnswers] = useState({});
   const [testSessionId, setTestSessionId] = useState("");
+  const [testSessionKey, setTestSessionKey] = useState("");
   const [grading, setGrading] = useState(false);
   const [history, setHistory] = useState([]);
   const [storageMessage, setStorageMessage] = useState("");
@@ -549,12 +550,12 @@ export default function HomePage() {
     const readyCount = Number(selectedTrackData?.verified_question_count || availableQuestionCount || 0);
     if (!readyCount) { setAuthMessage(t("इस परीक्षा के verified सवाल अभी उपलब्ध नहीं हैं।","Verified questions are not available for this exam yet.")); return; }
     const requestedCount = Math.min(Number(practiceQuestionCount || 10), readyCount);
-    setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setReviewAnswers({}); setTestSessionId(""); setShowSubmit(false); setTestQuestions([]);
+    setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setReviewAnswers({}); setTestSessionId(""); setTestSessionKey(""); setShowSubmit(false); setTestQuestions([]);
     try {
       const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${requestedCount}${selectedSubject !== "all" ? `&subject=${encodeURIComponent(selectedSubject)}` : ""}${selectedTopic !== "all" ? `&topic=${encodeURIComponent(selectedTopic)}` : ""}`, { cache: "no-store" });
       const payload = await response.json();
-      if (response.ok && payload.exam && payload.test_session_id) { setTestSessionId(payload.test_session_id); const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(Number(practiceDuration || config.duration_minutes || 10) * 60); } else { setSeconds(Number(practiceDuration || examConfig.duration_minutes || 10) * 60); }
-      if (response.ok && payload.test_session_id && Array.isArray(payload.data) && payload.data.length) {
+      if (response.ok && payload.exam && payload.test_session_id && payload.test_session_key) { setTestSessionId(payload.test_session_id); setTestSessionKey(payload.test_session_key); const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(Number(practiceDuration || config.duration_minutes || 10) * 60); } else { setSeconds(Number(practiceDuration || examConfig.duration_minutes || 10) * 60); }
+      if (response.ok && payload.test_session_id && payload.test_session_key && Array.isArray(payload.data) && payload.data.length) {
         const mapped = payload.data.map((item, index) => ({
           id: index + 1,
           sourceId: item.id,
@@ -604,7 +605,7 @@ export default function HomePage() {
 
    async function finishTest() {
     if (result || grading) return;
-    if (!testSessionId) {
+    if (!testSessionId || !testSessionKey) {
       setAuthMessage(t("इस टेस्ट का सुरक्षित session नहीं मिला। नया टेस्ट शुरू करें।", "Secure test session missing. Please start a new test."));
       return;
     }
@@ -614,7 +615,7 @@ export default function HomePage() {
       const gradeResponse = await fetch("/api/grade", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ test_session_id: testSessionId, answers })
+        body: JSON.stringify({ test_session_id: testSessionId, test_session_key: testSessionKey, answers })
       });
       const gradePayload = await gradeResponse.json();
       if (!gradeResponse.ok || !gradePayload?.data) throw new Error(gradePayload?.error || "Could not grade this test. Please retry.");
