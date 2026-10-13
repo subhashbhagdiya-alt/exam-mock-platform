@@ -38,19 +38,7 @@ async function ensureSessionKey() {
   }
   return key;
 }
-const questionBank = [
-  // Seed questions — this bank will be expanded and ranked by the exam-question pipeline.
-  { id: 1, subject: "सामान्य ज्ञान", en: "Which is the largest planet in our Solar System?", hi: "हमारे सौरमंडल का सबसे बड़ा ग्रह कौन-सा है?", options: ["Earth / पृथ्वी", "Jupiter / बृहस्पति", "Saturn / शनि", "Neptune / वरुण"], answer: 1, explanation: "Jupiter is the largest planet in the Solar System. / बृहस्पति सौरमंडल का सबसे बड़ा ग्रह है।" },
-  { id: 2, subject: "भारतीय संविधान", en: "When did the Constitution of India come into force?", hi: "भारत का संविधान कब लागू हुआ?", options: ["15 August 1947", "26 January 1950", "26 November 1949", "2 October 1950"], answer: 1, explanation: "The Constitution came into force on 26 January 1950. / संविधान 26 जनवरी 1950 को लागू हुआ।" },
-  { id: 3, subject: "गणित", en: "What is the LCM of 12 and 18?", hi: "12 और 18 का लघुत्तम समापवर्त्य (LCM) क्या है?", options: ["24", "30", "36", "72"], answer: 2, explanation: "LCM(12,18) = 36. / LCM = 36." },
-  { id: 4, subject: "विज्ञान", en: "Which gas do plants absorb during photosynthesis?", hi: "प्रकाश संश्लेषण के दौरान पौधे कौन-सी गैस ग्रहण करते हैं?", options: ["Oxygen / ऑक्सीजन", "Nitrogen / नाइट्रोजन", "Carbon dioxide / कार्बन डाइऑक्साइड", "Hydrogen / हाइड्रोजन"], answer: 2, explanation: "Plants absorb carbon dioxide during photosynthesis. / पौधे प्रकाश संश्लेषण में कार्बन डाइऑक्साइड ग्रहण करते हैं।" },
-  { id: 5, subject: "इतिहास", en: "Who was the first President of India?", hi: "भारत के प्रथम राष्ट्रपति कौन थे?", options: ["Dr. Rajendra Prasad", "Dr. S. Radhakrishnan", "Jawaharlal Nehru", "Sardar Patel"], answer: 0, explanation: "Dr. Rajendra Prasad was India's first President. / डॉ. राजेंद्र प्रसाद भारत के प्रथम राष्ट्रपति थे।" },
-  { id: 6, subject: "रीजनिंग", en: "Find the next number: 2, 6, 12, 20, 30, ?", hi: "अगली संख्या ज्ञात करें: 2, 6, 12, 20, 30, ?", options: ["36", "40", "42", "44"], answer: 2, explanation: "The differences increase by 2: +4, +6, +8, +10, so next is +12. / उत्तर 42 है।" },
-  { id: 7, subject: "भूगोल", en: "Which is the longest river in India by length within the country?", hi: "भारत की सीमाओं के भीतर बहने वाली सबसे लंबी नदी कौन-सी है?", options: ["Yamuna / यमुना", "Ganga / गंगा", "Godavari / गोदावरी", "Narmada / नर्मदा"], answer: 1, explanation: "The Ganga is generally recognised as the longest river flowing within India. / भारत में गंगा सबसे लंबी नदी मानी जाती है।" },
-  { id: 8, subject: "कंप्यूटर", en: "What does CPU stand for?", hi: "CPU का पूरा नाम क्या है?", options: ["Central Processing Unit", "Computer Power Utility", "Central Program User", "Core Processing Upload"], answer: 0, explanation: "CPU stands for Central Processing Unit. / CPU का अर्थ Central Processing Unit है।" },
-  { id: 9, subject: "अर्थशास्त्र", en: "Which institution issues most currency notes in India?", hi: "भारत में अधिकांश करेंसी नोट कौन जारी करता है?", options: ["SBI", "Finance Commission", "Reserve Bank of India", "NITI Aayog"], answer: 2, explanation: "The RBI issues banknotes except the ₹1 note, issued by the Government of India. / ₹1 का नोट भारत सरकार जारी करती है।" },
-  { id: 10, subject: "सामान्य ज्ञान", en: "What is the national animal of India?", hi: "भारत का राष्ट्रीय पशु कौन-सा है?", options: ["Asiatic lion / एशियाई शेर", "Bengal tiger / बंगाल टाइगर", "Elephant / हाथी", "Leopard / तेंदुआ"], answer: 1, explanation: "The Bengal tiger is India's national animal. / बंगाल टाइगर भारत का राष्ट्रीय पशु है।" }
-];
+const questionBank = [];
 
 const formatTime = (seconds) => {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -67,10 +55,13 @@ export default function HomePage() {
   const [current, setCurrent] = useState(0);
   const [seconds, setSeconds] = useState(600);
   const [result, setResult] = useState(null);
+  const [reviewAnswers, setReviewAnswers] = useState({});
+  const [testSessionId, setTestSessionId] = useState("");
+  const [grading, setGrading] = useState(false);
   const [history, setHistory] = useState([]);
   const [storageMessage, setStorageMessage] = useState("");
   const [showSubmit, setShowSubmit] = useState(false);
-  const [testQuestions, setTestQuestions] = useState(questionBank);
+  const [testQuestions, setTestQuestions] = useState([]);
   const [examConfig, setExamConfig] = useState({ total_questions: 10, duration_minutes: 10, marks_per_question: 1, negative_marks: 0, passing_percentage: 33 });
   const [examName, setExamName] = useState("MPESB Mock Test");
   const [examId, setExamId] = useState(null);
@@ -314,7 +305,7 @@ export default function HomePage() {
     async function loadQuestionAvailability() {
       setQuestionBankLoading(true);
       try {
-        const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=100`, { cache: "no-store" });
+        const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=100&mode=availability`, { cache: "no-store" });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error || "Question bank unavailable");
         if (active) {
@@ -558,12 +549,12 @@ export default function HomePage() {
     const readyCount = Number(selectedTrackData?.verified_question_count || availableQuestionCount || 0);
     if (!readyCount) { setAuthMessage(t("इस परीक्षा के verified सवाल अभी उपलब्ध नहीं हैं।","Verified questions are not available for this exam yet.")); return; }
     const requestedCount = Math.min(Number(practiceQuestionCount || 10), readyCount);
-    setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setShowSubmit(false); setTestQuestions([]);
+    setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setReviewAnswers({}); setTestSessionId(""); setShowSubmit(false); setTestQuestions([]);
     try {
       const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${requestedCount}${selectedSubject !== "all" ? `&subject=${encodeURIComponent(selectedSubject)}` : ""}${selectedTopic !== "all" ? `&topic=${encodeURIComponent(selectedTopic)}` : ""}`, { cache: "no-store" });
       const payload = await response.json();
-      if (response.ok && payload.exam) { const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(Number(practiceDuration || config.duration_minutes || 10) * 60); } else { setSeconds(Number(practiceDuration || examConfig.duration_minutes || 10) * 60); }
-      if (response.ok && Array.isArray(payload.data) && payload.data.length) {
+      if (response.ok && payload.exam && payload.test_session_id) { setTestSessionId(payload.test_session_id); const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(Number(practiceDuration || config.duration_minutes || 10) * 60); } else { setSeconds(Number(practiceDuration || examConfig.duration_minutes || 10) * 60); }
+      if (response.ok && payload.test_session_id && Array.isArray(payload.data) && payload.data.length) {
         const mapped = payload.data.map((item, index) => ({
           id: index + 1,
           sourceId: item.id,
@@ -572,12 +563,10 @@ export default function HomePage() {
           en: item.question_en || item.question_hi,
           hi: item.question_hi || item.question_en,
           options: Array.isArray(item.options) ? item.options : [],
-          answer: Number(item.answer_index),
-          explanation: item.explanation_hi || item.explanation_en || "",
           sourceType: item.source_type || "curated",
           sourceYear: item.source_year || null,
           predictionScore: Number(item.prediction_score || 0)
-        })).filter(item => item.options.length === 4 && Number.isInteger(item.answer) && item.answer >= 0 && item.answer < 4);
+        })).filter(item => item.options.length === 4);
         if (mapped.length) { setTestQuestions(mapped); setView("test"); }
         else {
           setTestQuestions([]);
@@ -614,82 +603,107 @@ export default function HomePage() {
   }
 
    async function finishTest() {
-    if (result) return;
-    const entries = Object.entries(answers);
-    const questionById = new Map(testQuestions.map(item => [String(item.id), item]));
-    const correctCount = entries.filter(([id, a]) => {
-      const question = questionById.get(String(id));
-      return question && Number(question.answer) === Number(a);
-    }).length;
-    const wrongCount = entries.filter(([id, a]) => {
-      const question = questionById.get(String(id));
-      return question && Number(question.answer) !== Number(a);
-    }).length;
-    const unansweredCount = Math.max(0, testQuestions.length - entries.length);
-    const grossMarks = correctCount * Number(examConfig.marks_per_question || 1);
-    const negativeMarks = wrongCount * Number(examConfig.negative_marks || 0);
-    const netScore = Math.max(0, grossMarks - negativeMarks);
-    const accuracy = Math.round(correctCount / Math.max(1, testQuestions.length) * 100);
-    const summary = { practice_mode: true, full_exam_mode: selectedSubject === "all" && selectedTopic === "all" && testQuestions.length === Number(examConfig.total_questions), exam_id: examId, question_ids: Object.fromEntries(testQuestions.map(item => [String(item.id), item.sourceId]).filter(([, sourceId]) => sourceId)), correct: correctCount, wrong: wrongCount, unanswered: unansweredCount, score: netScore, gross_score: grossMarks, negative_score: negativeMarks, accuracy, answers: {...answers}, review_ids: [...review], language, total_questions: testQuestions.length, marks_per_question: Number(examConfig.marks_per_question || 1), negative_marks_per_question: Number(examConfig.negative_marks || 0), passing_percentage: Number(examConfig.passing_percentage || 33), test_name: examName };
-    setResult(summary); setView("result"); setShowSubmit(false);
-
-    const saveLocal = (pending = false) => {
-      try {
-        const key = pending ? "exam_prep_offline_results" : "exam_prep_local_history";
-        const existing = JSON.parse(localStorage.getItem(key) || "[]");
-        const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
-        const canSync = pending && Boolean(user?.id && deviceKey);
-        const item = {...summary, created_at: new Date().toISOString(), ...(canSync ? {offline_pending:true, user_id:user.id, device_key:deviceKey} : {})};
-        localStorage.setItem(key, JSON.stringify([item, ...existing].slice(0, 50)));
-        setHistory(old => [item, ...old].slice(0, 50));
-      } catch {}
-    };
-
-    let retryableSave = false;
+    if (result || grading) return;
+    if (!testSessionId) {
+      setAuthMessage(t("इस टेस्ट का सुरक्षित session नहीं मिला। नया टेस्ट शुरू करें।", "Secure test session missing. Please start a new test."));
+      return;
+    }
+    setGrading(true);
+    setAuthMessage("");
     try {
-      const sessionKey = await ensureSessionKey();
-      const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
-      const body = { session_key: sessionKey, practice_mode: true, requested_total_questions: practiceQuestionCount, requested_duration_minutes: practiceDuration, user_id: user?.id || null, device_key: deviceKey, ...summary };
-
-      if (!navigator.onLine) {
-        const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
-        const canSync = Boolean(user?.id && deviceKey);
-        saveLocal(canSync);
-        setStorageMessage(canSync
-          ? t("ऑफलाइन रिज़ल्ट सुरक्षित है; इंटरनेट आने पर इस trusted account से sync होगा।","Result saved offline; it will sync to this trusted account when you reconnect.")
-          : t("Guest result इस device पर सुरक्षित है। Cloud sync के लिए login करें।","Guest result is saved on this device. Login to sync it to the cloud."));
-        return;
-      }
-
-      const { data: sessionData } = await supabaseBrowser.auth.getSession();
-      const accessToken = sessionData.session?.access_token || "";
-
-      // Guest practice is intentionally local-only. Cloud history requires an authenticated account.
-      if (!accessToken) {
-        saveLocal(false);
-        setStorageMessage(t("Guest result इस device पर सुरक्षित है। Cloud sync के लिए login करें।","Guest result is saved on this device. Login to sync it to the cloud."));
-        return;
-      }
-
-      const response = await fetch("/api/results", {
+      const gradeResponse = await fetch("/api/grade", {
         method: "POST",
-        headers: { "content-type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify(body)
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ test_session_id: testSessionId, answers })
       });
-      const payload = await response.json();
-      if (!response.ok) {
-        retryableSave = response.status === 429 || response.status >= 500;
-        throw new Error(payload?.error || "Result could not be saved to cloud");
+      const gradePayload = await gradeResponse.json();
+      if (!gradeResponse.ok || !gradePayload?.data) throw new Error(gradePayload?.error || "Could not grade this test. Please retry.");
+
+      const graded = gradePayload.data;
+      setReviewAnswers(Object.fromEntries((graded.review || []).map(item => [String(item.id), item])));
+      const summary = {
+        practice_mode: true,
+        full_exam_mode: selectedSubject === "all" && selectedTopic === "all" && testQuestions.length === Number(examConfig.total_questions),
+        exam_id: examId,
+        question_ids: Object.fromEntries(testQuestions.map(item => [String(item.id), item.sourceId]).filter(([, sourceId]) => sourceId)),
+        correct: Number(graded.correct || 0),
+        wrong: Number(graded.wrong || 0),
+        unanswered: Number(graded.unanswered || 0),
+        score: Number(graded.score || 0),
+        gross_score: Number(graded.gross_score || 0),
+        negative_score: Number(graded.negative_score || 0),
+        accuracy: Number(graded.accuracy || 0),
+        answers: { ...answers },
+        review_ids: [...review],
+        language,
+        total_questions: Number(graded.total_questions || testQuestions.length),
+        marks_per_question: Number(graded.marks_per_question || examConfig.marks_per_question || 1),
+        negative_marks_per_question: Number(graded.negative_marks_per_question ?? examConfig.negative_marks ?? 0),
+        passing_percentage: Number(graded.passing_percentage || examConfig.passing_percentage || 33),
+        test_name: String(graded.test_name || examName)
+      };
+      setResult(summary);
+      setView("result");
+      setShowSubmit(false);
+
+      const saveLocal = (pending = false) => {
+        try {
+          const key = pending ? "exam_prep_offline_results" : "exam_prep_local_history";
+          const existing = JSON.parse(localStorage.getItem(key) || "[]");
+          const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
+          const canSync = pending && Boolean(user?.id && deviceKey);
+          const item = {...summary, created_at: new Date().toISOString(), ...(canSync ? {offline_pending:true, user_id:user.id, device_key:deviceKey} : {})};
+          localStorage.setItem(key, JSON.stringify([item, ...existing].slice(0, 50)));
+          setHistory(old => [item, ...old].slice(0, 50));
+        } catch {}
+      };
+
+      let retryableSave = false;
+      try {
+        const sessionKey = await ensureSessionKey();
+        const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
+        const body = { session_key: sessionKey, practice_mode: true, requested_total_questions: practiceQuestionCount, requested_duration_minutes: practiceDuration, user_id: user?.id || null, device_key: deviceKey, ...summary };
+        if (!navigator.onLine) {
+          const canSync = Boolean(user?.id && deviceKey);
+          saveLocal(canSync);
+          setStorageMessage(canSync
+            ? t("रिज़ल्ट इस device पर सेव है; इंटरनेट आने पर cloud sync करें।", "Result is saved on this device; sync to cloud when online.")
+            : t("Guest result इस device पर सुरक्षित है। Cloud sync के लिए login करें।", "Guest result is saved on this device. Login to sync it to the cloud."));
+          return;
+        }
+
+        const { data: sessionData } = await supabaseBrowser.auth.getSession();
+        const accessToken = sessionData.session?.access_token || "";
+        if (!accessToken) {
+          saveLocal(false);
+          setStorageMessage(t("Guest result इस device पर सुरक्षित है। Cloud sync के लिए login करें।", "Guest result is saved on this device. Login to sync it to the cloud."));
+          return;
+        }
+
+        const response = await fetch("/api/results", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: `Bearer ${accessToken}` },
+          body: JSON.stringify(body)
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          retryableSave = response.status === 429 || response.status >= 500;
+          throw new Error(payload?.error || "Result could not be saved to cloud");
+        }
+        setHistory(old => [payload.data, ...old].slice(0, 50));
+        setStorageMessage("");
+      } catch (error) {
+        const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
+        const retryable = Boolean(user?.id && deviceKey) && (retryableSave || /failed to fetch|networkerror|network request failed|load failed|timeout|timed out/i.test(String(error?.message || "")));
+        saveLocal(retryable);
+        setStorageMessage(retryable
+          ? t("Cloud save अभी नहीं हो सका; रिज़ल्ट queue में सुरक्षित है और दोबारा sync होगा।", "Cloud save failed temporarily; the result is queued and will sync again.")
+          : error?.message || "Result could not be saved to cloud");
       }
-      setHistory(old => [payload.data, ...old].slice(0, 50));
-      setStorageMessage("");
     } catch (error) {
-      const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
-      const retryable = Boolean(user?.id && deviceKey) && (retryableSave || /failed to fetch|networkerror|network request failed|load failed|timeout|timed out/i.test(String(error?.message || "")));
-      saveLocal(retryable);
-      setStorageMessage(retryable
-        ? t("Cloud save अभी नहीं हो सका; रिज़ल्ट queue में सुरक्षित है और दोबारा sync होगा।", "Cloud save failed temporarily; the result is queued and will sync again.")
-        : error?.message || "Result could not be saved to cloud");
+      setAuthMessage(error?.message || t("टेस्ट जाँच नहीं हो सकी। इंटरनेट जाँचकर फिर सबमिट करें।", "Could not grade the test. Check your connection and retry submission."));
+    } finally {
+      setGrading(false);
     }
   }
   useEffect(() => {
@@ -861,7 +875,7 @@ export default function HomePage() {
           <div className="test-layout"><div className="question-panel"><div className="question-meta"><span className="question-number">{t("सवाल","QUESTION")} {current + 1} <i/> {testQuestions.length}</span><span className="subject-chip">{q.subject}</span>{q.topic ? <span className="topic-chip">{q.topic}</span> : null}<span className="source-chip">{q.sourceType === "pyq" ? `PYQ${q.sourceYear ? ` ${q.sourceYear}` : ""}` : q.sourceType === "official" ? "OFFICIAL" : q.sourceType === "memory_based" ? "MEMORY-BASED" : "PRACTICE"}</span></div><h2>{hi ? q.hi : q.en}</h2><p className="question-hint">{t("सही विकल्प चुनें। आप अपना जवाब बदल सकते हैं।","Select one option. You can change your answer before submitting.")}</p><div className="options">{q.options.map((option,i)=><button key={option} className={"option " + (answers[q.id] === i ? "selected" : "")} onClick={() => chooseAnswer(i)}><span className="option-letter">{String.fromCharCode(65+i)}</span><span>{option}</span>{answers[q.id] === i ? <span className="radio-selected"/> : null}</button>)}</div>
           <div className="question-controls"><button className="secondary-button" disabled={current===0} onClick={() => setCurrent(c=>c-1)}><ChevronLeft size={17}/>{t("पिछला","Previous")}</button><button className={"review-button " + (review.includes(q.id) ? "review-on" : "")} onClick={toggleReview}><Flag size={16}/>{review.includes(q.id) ? t("रिव्यू हटाएँ","Unmark review") : t("रिव्यू के लिए","Mark for review")}</button>{current < testQuestions.length-1 ? <button className="primary-button next-button" onClick={() => setCurrent(c=>c+1)}>{t("अगला सवाल","Next question")}<ChevronRight size={17}/></button> : <button className="primary-button next-button" onClick={() => setShowSubmit(true)}>{t("टेस्ट सबमिट करें","Submit test")}<ArrowRight size={17}/></button>}</div></div>
           <aside className="question-nav"><div className="nav-heading"><h3>{t("सवालों की सूची","Question palette")}</h3><span>{answered}/{testQuestions.length}</span></div><p>{t("किसी सवाल पर जाने के लिए नंबर चुनें।","Tap a number to jump to a question.")}</p><div className="number-grid">{testQuestions.map((item,i)=><button key={item.id} onClick={() => setCurrent(i)} className={"number-cell " + (current===i ? "current" : "") + (answers[item.id] !== undefined ? " answered" : "") + (review.includes(item.id) ? " marked" : "")}>{String(item.id).padStart(2,"0")}{review.includes(item.id) && <i/>}</button>)}</div><div className="legend"><span><i className="legend-answered"/> {t("जवाब दिया","Answered")}</span><span><i className="legend-marked"/> {t("रिव्यू","Review")}</span><span><i className="legend-empty"/> {t("बाकी","Not answered")}</span></div><div className="nav-summary"><div><span>{t("जवाब दिए","Answered")}</span><b>{answered}</b></div><div><span>{t("बाकी सवाल","Remaining")}</span><b>{testQuestions.length-answered}</b></div><div><span>{t("रिव्यू के लिए","For review")}</span><b>{review.length}</b></div></div><button className="submit-full" onClick={() => setShowSubmit(true)}>{t("टेस्ट समाप्त करें","Finish test")}<ArrowRight size={16}/></button></aside></div>
-          {showSubmit && <div className="modal-backdrop"><div className="confirm-modal"><div className="modal-icon"><Flag size={22}/></div><h2>{t("टेस्ट सबमिट करें?","Submit your test?")}</h2><p>{t("आपने","You have answered")} {answered} {t("में से "+testQuestions.length+" सवालों के जवाब दिए हैं। सबमिट करने के बाद जवाब नहीं बदल पाएँगे।","of the selected questions. You cannot change answers after submission.")}</p><div className="modal-actions"><button className="secondary-button" onClick={() => setShowSubmit(false)}>{t("वापस जाएँ","Go back")}</button><button className="primary-button" onClick={finishTest}>{t("हाँ, सबमिट करें","Yes, submit")}</button></div></div></div>}
+          {showSubmit && <div className="modal-backdrop"><div className="confirm-modal"><div className="modal-icon"><Flag size={22}/></div><h2>{t("टेस्ट सबमिट करें?","Submit your test?")}</h2><p>{t("आपने","You have answered")} {answered} {t("में से "+testQuestions.length+" सवालों के जवाब दिए हैं। सबमिट करने के बाद जवाब नहीं बदल पाएँगे।","of the selected questions. You cannot change answers after submission.")}</p><div className="modal-actions"><button className="secondary-button" onClick={() => setShowSubmit(false)}>{t("वापस जाएँ","Go back")}</button><button className="primary-button" onClick={finishTest} disabled={grading}>{grading ? t("जाँच हो रही है…","Grading…") : t("हाँ, सबमिट करें","Yes, submit")}</button></div></div></div>}
         </div>}
 
         {view === "result" && result && <div className="content result-content">
@@ -896,7 +910,7 @@ export default function HomePage() {
                 const key = item.subject || "General";
                 const row = acc[key] || {total:0, correct:0};
                 row.total += 1;
-                if (answers[item.id] === item.answer) row.correct += 1;
+                if (answers[item.id] === reviewAnswers[String(item.id)]?.answer) row.correct += 1;
                 acc[key] = row;
                 return acc;
               }, {})).map(([subject,data]) => {
@@ -909,8 +923,10 @@ export default function HomePage() {
             <div className="section-heading"><div><h2>{t("सवालों की समीक्षा","Review your answers")}</h2><p>{t("सही उत्तर और व्याख्या देखें।","See the correct answer and explanation.")}</p></div><span className="section-count">{result.total_questions} QUESTIONS</span></div>
             {testQuestions.map((item,i) => {
               const answer = answers[item.id];
-              const isRight = answer === item.answer;
-              return <div className="review-question" key={item.id}><div className={"review-status " + (answer === undefined ? "status-empty" : isRight ? "status-right" : "status-wrong")}>{answer === undefined ? "—" : isRight ? <Check size={16}/> : <X size={16}/>}</div><div className="review-body"><b>{i+1}. {hi ? item.hi : item.en}</b><span>{t("आपका जवाब:","Your answer:")} {answer === undefined ? t("जवाब नहीं दिया","Not answered") : item.options[answer]}</span><span className="correct-answer">{t("सही जवाब:","Correct answer:")} {item.options[item.answer]}</span><p>{item.explanation}</p></div></div>;
+              const correctAnswer = reviewAnswers[String(item.id)]?.answer;
+              const explanation = reviewAnswers[String(item.id)]?.explanation || "";
+              const isRight = answer !== undefined && answer === correctAnswer;
+              return <div className="review-question" key={item.id}><div className={"review-status " + (answer === undefined ? "status-empty" : isRight ? "status-right" : "status-wrong")}>{answer === undefined ? "—" : isRight ? <Check size={16}/> : <X size={16}/>}</div><div className="review-body"><b>{i+1}. {hi ? item.hi : item.en}</b><span>{t("आपका जवाब:","Your answer:")} {answer === undefined ? t("जवाब नहीं दिया","Not answered") : item.options[answer]}</span><span className="correct-answer">{t("सही जवाब:","Correct answer:")} {item.options[correctAnswer]}</span><p>{explanation}</p></div></div>;
             })}
           </div>
           <div className="result-actions"><button className="secondary-button" onClick={() => setView("home")}><Home size={17}/>{t("डैशबोर्ड","Dashboard")}</button><button className="primary-button" onClick={startTest}><RotateCcw size={17}/>{t("फिर से टेस्ट दें","Retake test")}</button></div>
