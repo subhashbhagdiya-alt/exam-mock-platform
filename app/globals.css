@@ -3358,3 +3358,48 @@ undefined
   .shell .job-grid .job-card.revealed { animation: none !important; }
   .shell .job-grid .job-card.revealed::before { animation: none !important; }
 }
+
+
+/* Final polish: upward glass lift plus a diagonal 3D tilt, layered over the existing side-slide. */
+.shell .job-grid .job-card.revealed {
+  animation: epGlassLiftTilt .48s cubic-bezier(.16,1,.3,1) both !important;
+  transform-origin: left center;
+  backdrop-filter: blur(14px) saturate(1.22);
+  -webkit-backdrop-filter: blur(14px) saturate(1.22);
+}
+@keyframes epGlassLiftTilt {
+  0% {
+    transform: perspective(900px) translate3d(-10px,12px,0) rotateX(5deg) rotateY(-10deg) scale(.99);
+    filter: brightness(1.02);
+  }
+  58% {
+    transform: perspective(900px) translate3d(3px,-8px,22px) rotateX(2deg) rotateY(4deg) scale(1.008);
+    filter: brightness(1.12);
+  }
+  78% {
+    transform: perspective(900px) translate3d(-1px,-2px,8px) rotateX(-1deg) rotateY(-2deg) scale(1.003);
+    filter: brightness(1.06);
+  }
+  100% {
+    transform: perspective(900px) translate3d(0,0,0) rotateX(0) rotateY(0) scale(1);
+    filter: none;
+  }
+}
+.shell .job-grid .job-card.revealed::before {
+  background:
+    linear-gradient(112deg, transparent 0%, rgba(212,198,255,.32) 23%, rgba(126,243,230,.16) 42%, rgba(180,154,255,.12) 53%, transparent 76%) !important;
+  background-size: 260% 100% !important;
+  animation: epGlassDiagonalSweep .68s cubic-bezier(.2,.7,.2,1) both !important;
+}
+@keyframes epGlassDiagonalSweep {
+  from { background-position: 110% 0; opacity: .2; }
+  to { background-position: -10% 0; opacity: 1; }
+}
+.shell .job-grid .job-card.revealed .job-open-button {
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell .job-grid .job-card.revealed { animation: none !important; }
+  .shell .job-grid .job-card.revealed::before { animation: none !important; }
+}
