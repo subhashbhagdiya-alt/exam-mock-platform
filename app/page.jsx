@@ -773,7 +773,13 @@ export default function HomePage() {
             </div>
             <div className="exam-groups">{jobTracksLoading ? <div className="exam-loading">{t("परीक्षा बोर्ड लोड हो रहे हैं…","Loading exam boards…")}</div> : (() => {
               const group = examGroups.find(item => item.key === openExamGroup) || examGroups[0];
-              const groupTracks = filteredJobTracks.filter(track => getExamGroup(track) === group.key);
+              const groupTracks = filteredJobTracks
+                .filter(track => getExamGroup(track) === group.key)
+                .sort((a, b) => {
+                  const aReady = a.question_bank_ready === true && Boolean(a.exam_slug);
+                  const bReady = b.question_bank_ready === true && Boolean(b.exam_slug);
+                  return Number(bReady) - Number(aReady);
+                });
               return <section className="exam-group exam-group-active">
                 <div className="active-board-head"><div><span className="active-board-kicker">{group.icon} {t("चयनित बोर्ड","SELECTED BOARD")}</span><h3>{hi ? group.labelHi : group.labelEn}</h3></div><span>{groupTracks.length} {t("पोस्ट","posts")}</span></div>
                 {groupTracks.length ? <div className="job-grid">{groupTracks.map((track,index) => <article key={track.slug} onClick={() => setExpandedJobTrack(current => current === track.slug ? null : track.slug)} className={"job-card " + (selectedJobTrack === track.slug ? "selected" : "") + (expandedJobTrack === track.slug ? " revealed" : "") + (!track.question_bank_ready ? "coming" : "")}>
