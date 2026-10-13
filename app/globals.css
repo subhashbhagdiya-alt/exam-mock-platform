@@ -2966,3 +2966,50 @@ undefined
   }
   .shell .primary-button, .shell .secondary-button { min-height: 44px; }
 }
+
+
+/* Mobile readability pass: keep the premium glass UI, improve exam usability on phones. */
+@media (max-width: 600px) {
+  .shell .content { padding: 18px 14px 30px !important; }
+  .shell .content h1 { font-size: clamp(1.72rem, 7.2vw, 2.25rem) !important; line-height: 1.16 !important; letter-spacing: -.7px !important; }
+  .shell .content h2 { font-size: clamp(1.18rem, 5.2vw, 1.5rem) !important; line-height: 1.35 !important; }
+  .shell .content h3 { font-size: 1.02rem !important; line-height: 1.35 !important; }
+  .shell .content p, .shell .content label { font-size: 14px; line-height: 1.65; }
+  .shell .content small, .shell .content .tag, .shell .content .section-count { font-size: 11px; line-height: 1.45; }
+  .shell .topbar { min-height: 60px; padding-inline: 12px; gap: 8px; }
+  .shell .breadcrumb { font-size: 11px; max-width: 48%; }
+  .shell .lang-button, .shell .theme-toggle { min-height: 42px; padding: 8px 10px; }
+  .shell .test-title-row { align-items: flex-start; gap: 12px; }
+  .shell .test-title-row h1 { overflow-wrap: anywhere; }
+  .shell .timer-card { flex: 0 0 auto; min-width: 94px; padding: 10px; }
+  .shell .timer-card strong { font-size: 1.25rem; }
+  .shell .quick-test-meta { flex-wrap: wrap; gap: 8px 12px; font-size: 12px; }
+  .shell .test-progress { margin-block: 14px; }
+  .shell .question-panel { padding: 17px 14px !important; }
+  .shell .question-meta { flex-wrap: wrap; gap: 8px; }
+  .shell .question-panel > h2 { font-size: clamp(1.12rem, 4.8vw, 1.35rem) !important; line-height: 1.65 !important; overflow-wrap: anywhere; }
+  .shell .question-hint { font-size: 12px !important; }
+  .shell .options { gap: 10px; }
+  .shell .option { min-height: 54px; padding: 13px 12px !important; gap: 10px; align-items: flex-start; }
+  .shell .option > span:not(.option-letter):not(.radio-selected) { font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+  .shell .option-letter { flex: 0 0 28px; width: 28px; height: 28px; }
+  .shell .question-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .shell .question-controls > button { min-width: 0; justify-content: center; padding: 10px 8px; font-size: 12px; }
+  .shell .question-controls .next-button { grid-column: 1 / -1; }
+  .shell .number-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
+  .shell .number-cell { min-height: 42px; }
+  .shell .result-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .shell .result-stat { min-width: 0; padding: 12px 10px; }
+  .shell .review-question { gap: 10px; padding: 13px 11px; }
+  .shell .review-body { min-width: 0; }
+  .shell .review-body b, .shell .review-body span, .shell .review-body p { overflow-wrap: anywhere; line-height: 1.6; }
+  .shell .analysis-candidate-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 380px) {
+  .shell .content { padding-inline: 11px !important; }
+  .shell .test-title-row { flex-direction: column; }
+  .shell .timer-card { align-self: flex-start; }
+  .shell .question-controls { grid-template-columns: 1fr; }
+  .shell .question-controls .next-button { grid-column: auto; }
+  .shell .analysis-candidate-grid { grid-template-columns: 1fr; }
+}
