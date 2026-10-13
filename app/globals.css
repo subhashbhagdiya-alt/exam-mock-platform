@@ -3465,3 +3465,24 @@ undefined
     0 0 28px rgba(137,105,255,.20),
     inset 0 1px 0 rgba(255,255,255,.16) !important;
 }
+
+
+/* Reliable card-only tilt: animate independent rotate/translate so older transforms cannot cancel it. */
+.shell .job-grid .job-card.revealed {
+  animation:
+    epCardLiftOnly .52s cubic-bezier(.18,.9,.28,1) both,
+    epCardRollTilt .52s cubic-bezier(.18,.9,.28,1) both !important;
+  transform-style: preserve-3d;
+}
+@keyframes epCardLiftOnly {
+  0% { translate: 0 8px; filter: brightness(1); }
+  48% { translate: 0 -6px; filter: brightness(1.1); }
+  76% { translate: 0 -2px; filter: brightness(1.05); }
+  100% { translate: 0 0; filter: none; }
+}
+@keyframes epCardRollTilt {
+  0% { rotate: z -0.2deg; }
+  38% { rotate: z -1.8deg; }
+  68% { rotate: z 1.2deg; }
+  100% { rotate: z 0deg; }
+}
