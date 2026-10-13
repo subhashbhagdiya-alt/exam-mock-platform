@@ -3592,3 +3592,174 @@ undefined
     transition: none !important;
   }
 }
+
+
+/* ExamPrep motion system — extend the same premium 3D/glass language across the UI.
+   Keep motion purposeful: reveal on entry, tactile lift on hover/press, and restrained ambient motion. */
+.shell .content {
+  animation: epPageEnter .48s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes epPageEnter {
+  from { opacity: 0; translate: 0 12px; filter: blur(2px); }
+  to { opacity: 1; translate: 0 0; filter: none; }
+}
+
+/* Shared tactile interaction for controls and navigation. */
+.shell button,
+.shell a.primary-button,
+.shell a.secondary-button,
+.shell .nav-item,
+.shell .exam-board-tab,
+.shell .option,
+.shell .number-cell,
+.shell .setting-choice {
+  transform-style: preserve-3d;
+  transition: transform .24s cubic-bezier(.16,1,.3,1), box-shadow .24s ease, filter .24s ease, border-color .24s ease !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  .shell button:not(:disabled):hover,
+  .shell a.primary-button:hover,
+  .shell a.secondary-button:hover,
+  .shell .nav-item:hover,
+  .shell .exam-board-tab:hover,
+  .shell .option:hover,
+  .shell .number-cell:hover,
+  .shell .setting-choice:hover {
+    transform: perspective(700px) translate3d(0,-3px,7px) rotateX(1.5deg) !important;
+    filter: brightness(1.06);
+    box-shadow: 0 10px 22px rgba(112,91,204,.16);
+  }
+}
+.shell button:not(:disabled):active,
+.shell a.primary-button:active,
+.shell a.secondary-button:active,
+.shell .nav-item:active,
+.shell .exam-board-tab:active,
+.shell .option:active,
+.shell .number-cell:active,
+.shell .setting-choice:active {
+  transform: perspective(600px) translate3d(0,1px,0) scale(.975) !important;
+  filter: brightness(.98);
+}
+
+/* Entrance motion for content cards — subtle stagger via natural component grouping. */
+.shell .feature-card,
+.shell .about-card,
+.shell .settings-card,
+.shell .settings-profile-card,
+.shell .stat-card,
+.shell .result-stat,
+.shell .history-item,
+.shell .review-question,
+.shell .subject-row,
+.shell .empty-state,
+.shell .bottom-note,
+.shell .about-note {
+  animation: epGlassCardEnter .52s cubic-bezier(.16,1,.3,1) both;
+}
+.shell .feature-card:nth-child(2),
+.shell .about-card:nth-child(2),
+.shell .settings-card:nth-child(2),
+.shell .result-stat:nth-child(2),
+.shell .history-item:nth-child(2),
+.shell .review-question:nth-child(2) { animation-delay: 45ms; }
+.shell .feature-card:nth-child(3),
+.shell .about-card:nth-child(3),
+.shell .settings-card:nth-child(3),
+.shell .result-stat:nth-child(3),
+.shell .history-item:nth-child(3),
+.shell .review-question:nth-child(3) { animation-delay: 90ms; }
+.shell .feature-card:nth-child(4),
+.shell .about-card:nth-child(4),
+.shell .settings-card:nth-child(4),
+.shell .result-stat:nth-child(4),
+.shell .review-question:nth-child(4) { animation-delay: 135ms; }
+@keyframes epGlassCardEnter {
+  0% { opacity: 0; translate: 0 13px; scale: .985; filter: blur(2px); }
+  68% { opacity: 1; translate: 0 -2px; scale: 1.002; filter: blur(0); }
+  100% { opacity: 1; translate: 0 0; scale: 1; filter: none; }
+}
+
+/* Keep exam cards' existing Open/reveal animation intact; enhance only idle/hover feedback. */
+@media (hover: hover) and (pointer: fine) {
+  .shell .feature-card:hover,
+  .shell .about-card:hover,
+  .shell .settings-card:hover,
+  .shell .history-item:hover,
+  .shell .review-question:hover,
+  .shell .stat-card:hover,
+  .shell .result-stat:hover {
+    translate: 0 -3px;
+    border-color: rgba(173,150,255,.5);
+    box-shadow: 0 14px 30px rgba(85,67,160,.14), inset 0 1px 0 rgba(255,255,255,.12);
+  }
+}
+
+/* Quiz options: a crisp 3D selection response without changing answer logic. */
+.shell .option.selected,
+.shell .option[aria-checked="true"] {
+  animation: epAnswerSelect .34s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes epAnswerSelect {
+  0% { scale: .975; rotate: x -3deg; }
+  65% { scale: 1.012; rotate: x 1deg; }
+  100% { scale: 1; rotate: x 0deg; }
+}
+
+/* Progress fills glide into place when score/subject analysis appears. */
+.shell .subject-bar i,
+.shell .progress-fill,
+.shell .progress-bar > span {
+  animation: epProgressGlide .8s cubic-bezier(.16,1,.3,1) both;
+  transform-origin: left center;
+}
+@keyframes epProgressGlide {
+  from { scale: .2 1; opacity: .45; }
+  to { scale: 1 1; opacity: 1; }
+}
+
+/* Input focus gets a restrained luminous ring; no constant flashing. */
+.shell input,
+.shell textarea,
+.shell select {
+  transition: border-color .22s ease, box-shadow .22s ease, background-color .22s ease !important;
+}
+.shell input:focus-visible,
+.shell textarea:focus-visible,
+.shell select:focus-visible {
+  outline: none;
+  border-color: rgba(164,139,255,.88) !important;
+  box-shadow: 0 0 0 3px rgba(143,117,255,.15), 0 8px 20px rgba(92,72,177,.10) !important;
+}
+
+/* Respect accessibility settings and keep small-screen interactions stable. */
+@media (prefers-reduced-motion: reduce) {
+  .shell .content,
+  .shell .feature-card,
+  .shell .about-card,
+  .shell .settings-card,
+  .shell .settings-profile-card,
+  .shell .stat-card,
+  .shell .result-stat,
+  .shell .history-item,
+  .shell .review-question,
+  .shell .subject-row,
+  .shell .empty-state,
+  .shell .bottom-note,
+  .shell .about-note,
+  .shell .option.selected,
+  .shell .option[aria-checked="true"],
+  .shell .subject-bar i,
+  .shell .progress-fill,
+  .shell .progress-bar > span {
+    animation: none !important;
+  }
+  .shell button, .shell a.primary-button, .shell a.secondary-button,
+  .shell .nav-item, .shell .exam-board-tab, .shell .option,
+  .shell .number-cell, .shell .setting-choice,
+  .shell .feature-card, .shell .about-card, .shell .settings-card,
+  .shell .settings-profile-card, .shell .stat-card, .shell .result-stat,
+  .shell .history-item, .shell .review-question, .shell .subject-row {
+    transition: none !important;
+  }
+}
