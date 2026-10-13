@@ -73,6 +73,7 @@ export async function GET(request) {
 
   if (!selected.length) return NextResponse.json({ error: "No verified questions available for this selection" }, { status: 404 });
   const admin = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
+  await admin.from("mock_test_sessions").delete().lt("expires_at", new Date().toISOString());
   const { data: session, error: sessionError } = await admin
     .from("mock_test_sessions")
     .insert({ exam_id: examRow.id, question_ids: selected.map((item) => item.id) })
