@@ -732,7 +732,7 @@
   .result-content{padding:12px 10px 86px}
   .result-hero{padding:20px 14px 18px;border-radius:15px}
   .result-hero h1{font-size:22px}
-  .result-hero>p{font-size:9px;line-height:1.45}
+  .result-hero>p{font-size:12px;line-height:1.55}
   .score-circle{width:150px;height:150px;margin:14px auto 0}
   .score-circle strong{font-size:31px}
   .result-insight{
@@ -742,18 +742,18 @@
     border-radius:13px;
   }
   .result-insight-main>b{font-size:16px}
-  .result-insight-main p{font-size:8px}
+  .result-insight-main p{font-size:12px;line-height:1.55}
   .performance-meter strong{font-size:21px}
-  .result-stats{grid-template-columns:repeat(2,1fr);gap:7px}
-  .result-stat{min-height:70px;padding:10px}
-  .result-stat span{font-size:7px}
+  .result-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .result-stat{min-width:0;min-height:74px;padding:10px}
+  .result-stat span{font-size:11px;line-height:1.35}
   .result-stat b{font-size:17px}
   .review-panel{padding:11px;border-radius:14px}
   .review-question{padding:10px;gap:8px}
-  .review-body>b{font-size:10px;line-height:1.45}
-  .review-body span,.review-body p{font-size:8px;line-height:1.45}
+  .review-body>b{font-size:13px;line-height:1.5}
+  .review-body span,.review-body p{font-size:12px;line-height:1.55}
   .result-actions{bottom:5px}
-  .result-actions button{min-height:40px;font-size:8px}
+  .result-actions button{min-height:44px;font-size:12px}
 }
 
 
