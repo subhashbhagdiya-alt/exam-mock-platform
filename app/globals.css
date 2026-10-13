@@ -3568,8 +3568,8 @@ undefined
   50% { box-shadow: 0 9px 22px rgba(135,109,255,.13), 0 0 0 1px rgba(177,151,255,.055); }
 }
 @keyframes epUnopenedCardShimmer {
-  from { background-position: 110% 0; }
-  to { background-position: -10% 0; }
+  from { background-position: 110% 0, 0 0; }
+  to { background-position: -10% 0, 0 0; }
 }
 @keyframes epUnopenedIconFloat {
   0%, 100% { translate: 0 0; }
@@ -3777,10 +3777,6 @@ undefined
     linear-gradient(125deg, rgba(255,255,255,.055), transparent 24%, transparent 72%, rgba(111,119,255,.045));
   background-size: 220% 100%, 100% 100%;
   background-position: 100% 0, 0 0;
-}
-@keyframes epUnopenedCardShimmer {
-  from { background-position: 110% 0, 0 0; }
-  to { background-position: -10% 0, 0 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .shell .job-grid .job-card:not(.revealed)::before { transition: none !important; }
