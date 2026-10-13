@@ -3205,3 +3205,59 @@ undefined
   .shell .job-card.revealed, .shell .job-card.revealed::after,
   .shell .job-card.revealed .job-open-button { animation: none !important; transition: none !important; }
 }
+
+
+/* Stronger, visible anime-style card reveal: keep the tilt after tap and animate Open upward. */
+.shell .job-grid .job-card.revealed {
+  transform: perspective(720px) translate3d(0,-5px,18px) rotateX(2.2deg) rotateY(-1.8deg) scale(1.008) !important;
+  transform-origin: center center;
+  border-color: rgba(181,157,255,.88) !important;
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(164,126,255,.28), transparent 54%),
+    radial-gradient(ellipse at 100% 100%, rgba(43,224,204,.13), transparent 48%),
+    linear-gradient(145deg, rgba(44,38,78,.99), rgba(17,20,35,.99)) !important;
+  box-shadow: 0 22px 48px rgba(0,0,0,.34), 0 0 0 1px rgba(178,153,255,.22), 0 0 32px rgba(130,99,255,.20), inset 0 1px 0 rgba(255,255,255,.15) !important;
+  transition: transform .34s cubic-bezier(.16,1,.3,1), box-shadow .3s ease, border-color .3s ease, background .3s ease !important;
+}
+.shell .job-grid .job-card.revealed::after {
+  content: "";
+  position: absolute;
+  inset: -35% auto -35% -90%;
+  width: 62%;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(105deg, transparent, rgba(200,183,255,.32), rgba(104,245,224,.22), transparent);
+  filter: blur(1px);
+  transform: skewX(-22deg);
+  animation: epAnimeLiquidSweep .9s cubic-bezier(.2,.7,.2,1) both;
+}
+@keyframes epAnimeLiquidSweep {
+  0% { left: -90%; opacity: 0; }
+  18% { opacity: 1; }
+  100% { left: 145%; opacity: 0; }
+}
+.shell .job-grid .job-card.revealed .job-open-button {
+  position: relative;
+  z-index: 2;
+  transform-origin: 50% 100%;
+  animation: epAnimeOpenRise .52s cubic-bezier(.16,1,.3,1) both;
+  box-shadow: 0 8px 18px rgba(109,79,207,.3), inset 0 1px 0 rgba(255,255,255,.38), inset 0 -2px 0 rgba(30,20,70,.22) !important;
+}
+@keyframes epAnimeOpenRise {
+  0% { opacity: 0; transform: perspective(650px) translate3d(0,22px,0) rotateX(-24deg) scale(.82); filter: blur(4px) brightness(1.4); }
+  65% { opacity: 1; transform: perspective(650px) translate3d(0,-3px,8px) rotateX(7deg) scale(1.035); filter: blur(0) brightness(1.12); }
+  100% { opacity: 1; transform: perspective(650px) translate3d(0,0,0) rotateX(0) scale(1); filter: none; }
+}
+.shell .job-grid .job-card:not(.revealed) .job-open-button { display: none !important; }
+.shell.theme-light .job-grid .job-card.revealed {
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(164,126,255,.24), transparent 54%),
+    radial-gradient(ellipse at 100% 100%, rgba(43,224,204,.13), transparent 48%),
+    linear-gradient(145deg, #f0edff, #e1e5f5) !important;
+  box-shadow: 0 18px 40px rgba(64,49,125,.18), 0 0 0 1px rgba(125,103,210,.16), inset 0 1px 0 rgba(255,255,255,.95) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell .job-grid .job-card.revealed,
+  .shell .job-grid .job-card.revealed::after,
+  .shell .job-grid .job-card.revealed .job-open-button { animation: none !important; transition: none !important; }
+}
