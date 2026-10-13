@@ -3088,3 +3088,73 @@ undefined
   .shell .job-card > .job-open-button,
   .shell .job-card > .job-open-button::before { transition: none !important; }
 }
+
+
+/* Liquid-glass tactile feedback: animate only the control being pressed. */
+.shell .option,
+.shell .exam-filters button,
+.shell .exam-board-tab,
+.shell .config-options button,
+.shell .setting-choice,
+.shell .number-cell,
+.shell .primary-button,
+.shell .secondary-button,
+.shell .lang-button,
+.shell .theme-toggle {
+  transform-style: preserve-3d;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform .18s cubic-bezier(.2,.8,.2,1),
+    box-shadow .18s ease,
+    border-color .18s ease,
+    background .18s ease,
+    filter .18s ease;
+}
+.shell .option:active,
+.shell .exam-filters button:active,
+.shell .exam-board-tab:active,
+.shell .config-options button:active,
+.shell .setting-choice:active,
+.shell .number-cell:active,
+.shell .primary-button:active:not(:disabled),
+.shell .secondary-button:active:not(:disabled),
+.shell .lang-button:active,
+.shell .theme-toggle:active {
+  transform: perspective(650px) translateY(2px) rotateX(5deg) rotateY(-2deg) scale(.975) !important;
+  filter: brightness(1.08) saturate(1.12);
+  box-shadow:
+    0 2px 5px rgba(0,0,0,.22),
+    inset 0 2px 7px rgba(255,255,255,.13),
+    inset 0 -2px 5px rgba(0,0,0,.14) !important;
+}
+.shell .option:active,
+.shell .exam-filters button:active,
+.shell .exam-board-tab:active,
+.shell .config-options button:active,
+.shell .setting-choice:active,
+.shell .number-cell:active {
+  border-color: rgba(180,160,255,.82) !important;
+  background-image:
+    radial-gradient(ellipse at 22% 0%, rgba(255,255,255,.19), transparent 58%),
+    linear-gradient(135deg, rgba(126,99,224,.20), rgba(55,196,190,.10)) !important;
+}
+.shell .option.selected {
+  box-shadow: 0 7px 18px rgba(115,91,220,.12), inset 0 1px rgba(255,255,255,.07);
+}
+.shell.theme-light .option:active,
+.shell.theme-light .exam-filters button:active,
+.shell.theme-light .exam-board-tab:active,
+.shell.theme-light .config-options button:active,
+.shell.theme-light .setting-choice:active,
+.shell.theme-light .number-cell:active {
+  border-color: rgba(111,91,202,.7) !important;
+  background-image:
+    radial-gradient(ellipse at 22% 0%, rgba(255,255,255,.72), transparent 58%),
+    linear-gradient(135deg, rgba(133,112,225,.20), rgba(56,187,180,.10)) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell .option, .shell .exam-filters button, .shell .exam-board-tab,
+  .shell .config-options button, .shell .setting-choice, .shell .number-cell,
+  .shell .primary-button, .shell .secondary-button, .shell .lang-button,
+  .shell .theme-toggle { transition: none !important; }
+}
