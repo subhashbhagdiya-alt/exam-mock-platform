@@ -561,7 +561,14 @@ export default function HomePage() {
     const requestedCount = Math.min(Number(practiceQuestionCount || 10), readyCount);
     setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setReviewAnswers({}); setTestSessionId(""); setTestSessionKey(""); setShowSubmit(false); setTestQuestions([]);
     try {
-      const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${requestedCount}${selectedSubject !== "all" ? `&subject=${encodeURIComponent(selectedSubject)}` : ""}${selectedTopic !== "all" ? `&topic=${encodeURIComponent(selectedTopic)}` : ""}`, { cache: "no-store" });
+      const historyKey = `exam_prep_seen_questions_${selectedExam}_${selectedSubject}_${selectedTopic}`;
+      let seenQuestionIds = [];
+      try {
+        const stored = JSON.parse(localStorage.getItem(historyKey) || "[]");
+        if (Array.isArray(stored)) seenQuestionIds = stored.filter(id => typeof id === "string").slice(-250);
+      } catch {}
+      const excludeParam = seenQuestionIds.length ? `&exclude=${encodeURIComponent(seenQuestionIds.join(","))}` : "";
+      const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${requestedCount}${selectedSubject !== "all" ? `&subject=${encodeURIComponent(selectedSubject)}` : ""}${selectedTopic !== "all" ? `&topic=${encodeURIComponent(selectedTopic)}` : ""}${excludeParam}`, { cache: "no-store" });
       const payload = await response.json();
       if (response.ok && payload.exam && payload.test_session_id && payload.test_session_key) { setTestSessionId(payload.test_session_id); setTestSessionKey(payload.test_session_key); const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(Number(practiceDuration || config.duration_minutes || 10) * 60); } else { setSeconds(Number(practiceDuration || examConfig.duration_minutes || 10) * 60); }
       if (response.ok && payload.test_session_id && payload.test_session_key && Array.isArray(payload.data) && payload.data.length) {
@@ -577,7 +584,16 @@ export default function HomePage() {
           sourceYear: item.source_year || null,
           predictionScore: Number(item.prediction_score || 0)
         })).filter(item => item.options.length === 4);
-        if (mapped.length) { setTestQuestions(mapped); setView("test"); }
+        if (mapped.length) {
+          try {
+            const stored = JSON.parse(localStorage.getItem(historyKey) || "[]");
+            const previous = Array.isArray(stored) ? stored.filter(id => typeof id === "string") : [];
+            const seen = [...new Set([...previous, ...mapped.map(item => item.sourceId).filter(Boolean)])].slice(-250);
+            localStorage.setItem(historyKey, JSON.stringify(seen));
+          } catch {}
+          setTestQuestions(mapped);
+          setView("test");
+        }
         else {
           setTestQuestions([]);
           setAuthMessage(t("इस परीक्षा के सवाल वैध format में उपलब्ध नहीं हैं।","This exam's questions are not available in a valid format."));
