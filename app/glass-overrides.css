@@ -4189,3 +4189,25 @@ button{cursor:pointer}
 @media (min-width: 801px) {
   .test-content .test-progress { position: static !important; }
 }
+
+
+/* MOBILE TEST ORDER FIX v39
+   Keep the active question before the question palette on small screens. */
+@media (max-width: 800px) {
+  .test-content .test-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+  .test-content .test-layout > .question-panel {
+    order: 1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .test-content .test-layout > .question-nav {
+    order: 2 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
