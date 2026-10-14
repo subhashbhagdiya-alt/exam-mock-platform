@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 const pagePath = new URL("../app/page.jsx", import.meta.url);
 const source = fs.readFileSync(pagePath, "utf8");
+const questionApiPath = new URL("../app/api/questions/route.js", import.meta.url);
+const questionApiSource = fs.readFileSync(questionApiPath, "utf8");
 
 function extractObject(startMarker, endMarker) {
   const start = source.indexOf(startMarker);
@@ -127,5 +129,22 @@ for (const question of knownHindiOverrides) {
   assert.ok(entry, `Missing Hindi override localization: ${question.id}`);
   assert.deepEqual(hindiOptions[question.id] || entry.optionsHi, question.hi, `Hindi A/B/C/D order changed: ${question.id}`);
 }
+
+// Correct answers and explanations must stay server-side until submission.
+assert.match(
+  questionApiSource,
+  /const safeQuestions = selected\\.map\\(\\(\\{\\s*answer_index,\\s*explanation_hi,\\s*explanation_en,\\s*\\.\\.\\.question\\s*\\}\\) => question\\);/,
+  "Question API must strip answer_index and explanations from test payloads"
+);
+assert.match(
+  questionApiSource,
+  /data:\\s*safeQuestions/,
+  "Question API must return sanitized question objects"
+);
+assert.doesNotMatch(
+  questionApiSource,
+  /data:\\s*selected\\b/,
+  "Question API must not return raw selected rows"
+);
 
 console.log(`Localization regression checks passed: ${Object.keys(hindiOptions).length} Hindi option sets, ${localizationEntries.size} localized questions, and age, Green Revolution, National Sports Day, Parliament, Kanha, and Fundamental Rights option order.`);
