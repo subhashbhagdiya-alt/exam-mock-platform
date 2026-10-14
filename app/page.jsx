@@ -133,6 +133,27 @@ export default function HomePage() {
 
   const hi = language === "hi";
   const t = (h, e) => hi ? h : e;
+  const formatQuestionCategory = (value) => {
+    const labels = {
+      "General Knowledge": ["सामान्य ज्ञान", "General Knowledge"],
+      "General Studies": ["सामान्य अध्ययन", "General Studies"],
+      "Reasoning": ["रीज़निंग", "Reasoning"],
+      "Science": ["विज्ञान", "Science"],
+      "Age": ["आयु आधारित प्रश्न", "Age"],
+      "Biology": ["जीव विज्ञान", "Biology"],
+      "Constitution": ["भारतीय संविधान", "Constitution"],
+      "Current Affairs": ["समसामयिक घटनाएँ", "Current Affairs"],
+      "Geography": ["भूगोल", "Geography"],
+      "History": ["इतिहास", "History"],
+      "Madhya Pradesh": ["मध्य प्रदेश", "Madhya Pradesh"],
+      "Physics": ["भौतिक विज्ञान", "Physics"],
+      "Police Constable GD 2026 syllabus-aligned": ["पुलिस कांस्टेबल GD 2026 पाठ्यक्रम आधारित", "Police Constable GD 2026 syllabus-aligned"],
+      "बौद्धिक क्षमता एवं मानसिक अभिरुचि": ["बौद्धिक क्षमता एवं मानसिक अभिरुचि", "Logical Ability & Mental Aptitude"],
+      "विज्ञान एवं सरल अंक गणित": ["विज्ञान एवं सरल अंक गणित", "Science & Simple Arithmetic"],
+      "सामान्य ज्ञान एवं तार्किक ज्ञान": ["सामान्य ज्ञान एवं तार्किक ज्ञान", "General Knowledge & Logical Reasoning"]
+    };
+    return labels[value] ? (hi ? labels[value][0] : labels[value][1]) : value;
+  };
   const q = testQuestions[current];
   const answered = Object.keys(answers).length;
   const filteredJobTracks = jobTracks.filter(track => {
@@ -372,9 +393,13 @@ export default function HomePage() {
         if (!active) return;
         const actual = Number(payload?.meta?.available ?? (Array.isArray(payload.data) ? payload.data.length : 0));
         setAvailableQuestionCount(actual);
-        setPracticeQuestionCount(current => actual > 0
-          ? Math.min(current > 0 ? current : 10, actual)
-          : 0);
+        setPracticeQuestionCount(current => {
+          const validChoices = Array.from(new Set(
+            [10, 20, 30, 40, 50, Math.min(100, actual)].filter(n => n > 0 && n <= actual)
+          )).sort((a, b) => a - b);
+          if (!validChoices.length) return 0;
+          return validChoices.includes(current) ? current : validChoices[0];
+        });
       } catch (error) {
         if (active) {
           setAvailableQuestionCount(0);
@@ -916,9 +941,9 @@ export default function HomePage() {
     {(selectedTrackData.analysis_candidates || []).slice(0,5).map((item,i) => <div className="analysis-candidate" key={item.subject+"-"+item.topic+"-"+i}><span>{String(i+1).padStart(2,"0")}</span><div><b>{item.subject || t("सामान्य","General")}</b><small>{item.topic || t("मिश्रित","Mixed")}</small></div><em>{Math.round(Number(item.prediction_score || 0))}</em></div>)}
   </div>
 </div>
-<div className="subject-chapter-panel"><div className="section-heading"><div><h2>{t("विषय और अध्याय चुनें","Choose subject & chapter")}</h2><p>{t("पूरे exam की जगह किसी एक subject/topic पर focused practice करें।","Practice a specific subject or topic instead of the full exam.")}</p></div><span className="section-count">FOCUSED PRACTICE</span></div><div className="subject-selector" role="group" aria-label={t("विषय चुनें","Choose subject")}><button type="button" aria-pressed={selectedSubject==="all"} className={selectedSubject==="all"?"active":""} onClick={()=>{setSelectedSubject("all");setSelectedTopic("all");setAuthMessage("")}}>{t("सभी विषय","All subjects")}{selectedSubject==="all" && <Check size={13} className="selector-check"/>}</button>{subjectOptions.map(subject=><button type="button" key={subject} aria-pressed={selectedSubject===subject} className={selectedSubject===subject?"active":""} onClick={()=>{setSelectedSubject(subject);setSelectedTopic("all");setAuthMessage("")}}>{subject}{selectedSubject===subject && <Check size={13} className="selector-check"/>}</button>)}</div>{selectedSubject!=="all" && <div className="topic-selector" role="group" aria-label={t("अध्याय चुनें","Choose topic")}><span>{t("अध्याय","CHAPTER")}</span><button type="button" aria-pressed={selectedTopic==="all"} className={selectedTopic==="all"?"active":""} onClick={()=>{setSelectedTopic("all");setAuthMessage("")}}>{t("सभी अध्याय","All chapters")}{selectedTopic==="all" && <Check size={13} className="selector-check"/>}</button>{topicOptions.map(topic=><button type="button" key={topic} aria-pressed={selectedTopic===topic} className={selectedTopic===topic?"active":""} onClick={()=>{setSelectedTopic(topic);setAuthMessage("")}}>{topic}{selectedTopic===topic && <Check size={13} className="selector-check"/>}</button>)}</div>}{selectedSubject!=="all" && questionCatalogMeta.loaded && topicOptions.length===0 && <div className="topic-empty">{t("इस विषय के लिए कोई verified chapter उपलब्ध नहीं है।","No verified chapters are available for this subject.")}</div>}</div>
+<div className="subject-chapter-panel"><div className="section-heading"><div><h2>{t("विषय और अध्याय चुनें","Choose subject & chapter")}</h2><p>{t("पूरे exam की जगह किसी एक subject/topic पर focused practice करें।","Practice a specific subject or topic instead of the full exam.")}</p></div><span className="section-count">FOCUSED PRACTICE</span></div><div className="subject-selector" role="group" aria-label={t("विषय चुनें","Choose subject")}><button type="button" aria-pressed={selectedSubject==="all"} className={selectedSubject==="all"?"active":""} onClick={()=>{setSelectedSubject("all");setSelectedTopic("all");setAuthMessage("")}}>{t("सभी विषय","All subjects")}{selectedSubject==="all" && <Check size={13} className="selector-check"/>}</button>{subjectOptions.map(subject=><button type="button" key={subject} aria-pressed={selectedSubject===subject} className={selectedSubject===subject?"active":""} onClick={()=>{setSelectedSubject(subject);setSelectedTopic("all");setAuthMessage("")}}>{formatQuestionCategory(subject)}{selectedSubject===subject && <Check size={13} className="selector-check"/>}</button>)}</div>{selectedSubject!=="all" && <div className="topic-selector" role="group" aria-label={t("अध्याय चुनें","Choose topic")}><span>{t("अध्याय","CHAPTER")}</span><button type="button" aria-pressed={selectedTopic==="all"} className={selectedTopic==="all"?"active":""} onClick={()=>{setSelectedTopic("all");setAuthMessage("")}}>{t("सभी अध्याय","All chapters")}{selectedTopic==="all" && <Check size={13} className="selector-check"/>}</button>{topicOptions.map(topic=><button type="button" key={topic} aria-pressed={selectedTopic===topic} className={selectedTopic===topic?"active":""} onClick={()=>{setSelectedTopic(topic);setAuthMessage("")}}>{formatQuestionCategory(topic)}{selectedTopic===topic && <Check size={13} className="selector-check"/>}</button>)}</div>}{selectedSubject!=="all" && questionCatalogMeta.loaded && topicOptions.length===0 && <div className="topic-empty">{t("इस विषय के लिए कोई verified chapter उपलब्ध नहीं है।","No verified chapters are available for this subject.")}</div>}</div>
 <div className="practice-config">
-  <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{Array.from(new Set([10,20,30,40,50,Math.min(100,availableQuestionCount)].filter(n => n > 0 && n <= availableQuestionCount))).sort((a,b) => a-b).map(n=><button type="button" key={n} aria-pressed={practiceQuestionCount===n} className={practiceQuestionCount===n?"active":""} onClick={()=>{setPracticeQuestionCount(n);setAuthMessage("")}}>{n}</button>)}</div><small>{questionBankLoading ? t("इस चयन के लिए सवाल गिने जा रहे हैं…","Checking questions for this selection…") : availableQuestionCount ? t(availableQuestionCount + " verified/active सवाल इस चयन के लिए उपलब्ध हैं।","There are " + availableQuestionCount + " active/verified questions for this selection.") : t("इस विषय/अध्याय में verified सवाल नहीं मिले। दूसरा चयन करें।","No verified questions for this subject/topic. Choose another selection.")}</small></div>
+  <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{Array.from(new Set([10,20,30,40,50,Math.min(100,availableQuestionCount)].filter(n => n > 0 && n <= availableQuestionCount))).sort((a,b) => a-b).map(n=><button type="button" key={n} aria-pressed={practiceQuestionCount===n} className={practiceQuestionCount===n?"active":""} onClick={()=>{setPracticeQuestionCount(n);setAuthMessage("")}}>{n}</button>)}</div><small>{questionBankLoading ? t("इस चयन के लिए सवाल गिने जा रहे हैं…","Checking questions for this selection…") : availableQuestionCount ? t(availableQuestionCount + " verified/active सवाल · " + (selectedSubject === "all" ? "सभी विषय" : formatQuestionCategory(selectedSubject)) + (selectedTopic !== "all" ? " · " + formatQuestionCategory(selectedTopic) : "") + " के लिए उपलब्ध हैं।","" + availableQuestionCount + " verified/active questions available for " + (selectedSubject === "all" ? "all subjects" : formatQuestionCategory(selectedSubject)) + (selectedTopic !== "all" ? " · " + formatQuestionCategory(selectedTopic) : "") + ".") : t("इस विषय/अध्याय में verified सवाल नहीं मिले। दूसरा चयन करें।","No verified questions for this subject/topic. Choose another selection.")}</small></div>
   <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60,120].map(n=><button type="button" key={n} aria-pressed={practiceDuration===n} className={practiceDuration===n?"active":""} onClick={()=>{setPracticeDuration(n);setAuthMessage("")}}>{n}m</button>)}</div><small>{t("चुना गया समय: "+practiceDuration+" मिनट","Selected duration: "+practiceDuration+" minutes")}</small></div>
   <div className="config-block device-security"><b>{t("SIM / डिवाइस सुरक्षा","SIM / Device security")}</b><div className="config-options"><button onClick={requestNativeSimPermission}>{nativeSimStatus === "sim-ready" ? t("SIM चालू ✓","SIM active ✓") : t("SIM अनुमति दें","Allow SIM")}</button>{user && <button onClick={createRecoveryCode}>{t("नए फोन के लिए recovery code","Create recovery code")}</button>}</div><small>{t("Recovery code trusted device से बनता है, 15 मिनट में expire होता है और एक बार इस्तेमाल होता है।","Recovery code is created on the trusted device, expires in 15 minutes, and works once.")}</small></div>
 </div>
