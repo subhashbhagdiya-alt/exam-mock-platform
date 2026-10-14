@@ -22,4 +22,5 @@ jobs:
             npm install
           fi
       - run: npm run lint
+      - run: npm run check:localizations
       - run: npm run build
