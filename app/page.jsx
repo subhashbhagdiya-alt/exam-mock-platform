@@ -45,7 +45,7 @@ const formatTime = (seconds) => {
 };
 
 export default function HomePage() {
-  const [language, setLanguage] = useState("hi");
+  const [language, setLanguage] = useState("en");
   const [view, setView] = useState("boards");
   const [settingsSection, setSettingsSection] = useState("profile");
   const [answers, setAnswers] = useState({});
