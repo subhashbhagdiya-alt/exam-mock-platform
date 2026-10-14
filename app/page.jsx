@@ -38,6 +38,29 @@ async function ensureSessionKey() {
   }
   return key;
 }
+const QUESTION_LOCALIZATIONS = {
+  "00276434-e4a5-4bfd-95d4-fbca1d811567": { hi: "भारतीय संविधान का कौन-सा अनुच्छेद मौलिक अधिकारों से संबंधित है?", optionsHi: ["अनुच्छेद 12–35", "अनुच्छेद 36–51", "अनुच्छेद 52–78", "अनुच्छेद 79–122"] },
+  "248f4ea3-a93a-421f-ab19-432da695461f": { hi: "यदि A की आयु B की आयु से दोगुनी है और B की आयु 10 वर्ष है, तो A की आयु कितनी है?", optionsHi: ["15", "20", "25", "30"] },
+  "45648cdd-6d6b-42f0-93e5-c3ec89f43a72": { hi: "मध्य प्रदेश का पहला टाइगर रिज़र्व कौन-सा है?", optionsHi: ["पेंच", "कान्हा", "सतपुड़ा", "बांधवगढ़"] },
+  "4580f8e0-a5b8-4a71-bf4a-2a7cacf240c5": { hi: "भारतीय विदेश व्यापार संस्थान (IIFT) ने किस देश में अपना पहला विदेशी कैंपस खोलने की घोषणा की?", optionsHi: ["सिंगापुर", "दक्षिण अफ्रीका", "ऑस्ट्रेलिया", "संयुक्त अरब अमीरात"] },
+  "4c669579-6b68-4b65-8f54-0ebde21a30ce": { hi: "मानव शरीर में पूरे शरीर में रक्त पंप करने वाला अंग कौन-सा है?", optionsHi: ["फेफड़े", "गुर्दा", "हृदय", "यकृत"] },
+  "be6fc4bd-42ca-44d9-8aeb-c9a9763aa0a0": { hi: "Heimtextil 2025 में भारत मंडप का उद्घाटन वस्त्र मंत्री ने किस शहर में किया था?", optionsHi: ["बर्लिन", "फ्रैंकफर्ट", "पेरिस", "लंदन"] },
+  "c05e4790-153d-4758-a797-5dc3550ee815": { hi: "लोकमान्य बाल गंगाधर तिलक किन समाचारपत्रों के संस्थापक थे?", optionsHi: ["मराठा और केसरी", "अमृत बाज़ार पत्रिका", "इंडियन मिरर", "बंगाली टाइम्स"] },
+  "daaed804-67f7-4d8e-ac32-5add037251b2": { hi: "जल का रासायनिक सूत्र क्या है?", optionsHi: ["CO₂", "H₂O", "O₂", "H₂SO₄"] },
+  "efc1e502-5fd3-4c1f-a764-2272ce9c4d96": { hi: "गुरु शिखर किस पर्वत श्रेणी की सबसे ऊँची चोटी है?", optionsHi: ["पूर्वी घाट", "अरावली पर्वतमाला", "पश्चिमी घाट", "हिमालय"] },
+  "f822b19a-7f9a-4eb1-b712-e784db06ad18": { hi: "प्रकाश-वर्ष किसकी इकाई है?", optionsHi: ["समय", "दूरी", "चाल", "प्रकाश की तीव्रता"] }
+};
+
+function getQuestionSourceLabel(sourceType, hi) {
+  const labels = {
+    pyq: hi ? "पिछले वर्ष का प्रश्न" : "PREVIOUS YEAR",
+    official: hi ? "आधिकारिक" : "OFFICIAL",
+    memory_based: hi ? "स्मृति-आधारित" : "MEMORY-BASED",
+    curated: hi ? "अभ्यास प्रश्न" : "PRACTICE"
+  };
+  return labels[sourceType] || (hi ? "अभ्यास प्रश्न" : "PRACTICE");
+}
+
 const formatTime = (seconds) => {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
   const s = (seconds % 60).toString().padStart(2, "0");
@@ -155,6 +178,8 @@ export default function HomePage() {
     return labels[value] ? (hi ? labels[value][0] : labels[value][1]) : value;
   };
   const q = testQuestions[current];
+  const displayQuestion = q ? (hi ? (q.hi || q.en) : (q.en || q.hi)) : "";
+  const displayOptions = q ? (hi && q.optionsHi ? q.optionsHi : q.options) : [];
   const answered = Object.keys(answers).length;
   const filteredJobTracks = jobTracks.filter(track => {
     const categoryMatch = examFilter === "all" || track.exam_category === examFilter;
@@ -678,18 +703,22 @@ export default function HomePage() {
       const payload = await response.json();
       if (response.ok && payload.exam && payload.test_session_id && payload.test_session_key) { setTestSessionId(payload.test_session_id); setTestSessionKey(payload.test_session_key); const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(Number(practiceDuration || config.duration_minutes || 10) * 60); } else { setSeconds(Number(practiceDuration || examConfig.duration_minutes || 10) * 60); }
       if (response.ok && payload.test_session_id && payload.test_session_key && Array.isArray(payload.data) && payload.data.length) {
-        const mapped = payload.data.map((item, index) => ({
-          id: index + 1,
-          sourceId: item.id,
-          subject: item.subject || "General",
-          topic: item.topic || "",
-          en: item.question_en || item.question_hi,
-          hi: item.question_hi || item.question_en,
-          options: Array.isArray(item.options) ? item.options : [],
-          sourceType: item.source_type || "curated",
-          sourceYear: item.source_year || null,
-          predictionScore: Number(item.prediction_score || 0)
-        })).filter(item => item.options.length === 4);
+        const mapped = payload.data.map((item, index) => {
+          const locale = QUESTION_LOCALIZATIONS[item.id];
+          return {
+            id: index + 1,
+            sourceId: item.id,
+            subject: item.subject || "General",
+            topic: item.topic || "",
+            en: locale?.en || item.question_en || item.question_hi,
+            hi: locale?.hi || item.question_hi || item.question_en,
+            options: Array.isArray(item.options) ? item.options : [],
+            optionsHi: locale?.optionsHi || null,
+            sourceType: item.source_type || "curated",
+            sourceYear: item.source_year || null,
+            predictionScore: Number(item.prediction_score || 0)
+          };
+        }).filter(item => item.options.length === 4);
         if (mapped.length) {
           try {
             const stored = JSON.parse(localStorage.getItem(historyKey) || "[]");
@@ -1013,8 +1042,8 @@ export default function HomePage() {
 
         {view === "instructions" && <div className="content instructions-content"><div className="instructions-hero"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("टेस्ट से पहले","BEFORE YOU START")}</div><h1>{examName}</h1><p className="intro">{t("एक बार नियम देख लें, फिर बिना distraction के टेस्ट शुरू करें।","Review the rules once, then start the test without distractions.")}</p></div><div className="instruction-orb"><BookOpen size={38}/></div></div><div className="instruction-grid"><div className="instruction-stat"><span>{t("सवाल","QUESTIONS")}</span><b>{practiceQuestionCount}</b><small>{selectedSubject === "all" ? t("पूरा syllabus pool","Full syllabus pool") : selectedSubject}</small></div><div className="instruction-stat"><span>{t("समय","TIME")}</span><b>{practiceDuration} min</b><small>{t("Timer test शुरू होते ही चलेगा","Timer starts with the test")}</small></div><div className="instruction-stat"><span>{t("सही उत्तर","CORRECT")}</span><b>+{examConfig.marks_per_question}</b><small>{t("हर सही जवाब","For each correct answer")}</small></div><div className="instruction-stat negative"><span>{t("गलत उत्तर","WRONG")}</span><b>-{examConfig.negative_marks}</b><small>{t("Negative marking","Negative marking")}</small></div></div><div className="rules-card"><div className="section-heading"><div><h2>{t("महत्वपूर्ण निर्देश","Important instructions")}</h2><p>{t("इन नियमों को ध्यान से पढ़ें।","Read these rules carefully.")}</p></div><span className="section-count">RULES</span></div><div className="rules-list"><div><b>01</b><span>{t("हर सवाल का एक सही विकल्प चुनें। जवाब बाद में बदला जा सकता है।","Choose one option for each question. Answers can be changed before submission.")}</span></div><div><b>02</b><span>{t("Review के लिए सवाल mark कर सकते हैं और question palette से वापस जा सकते हैं।","You can mark questions for review and jump back using the question palette.")}</span></div><div><b>03</b><span>{t("Timer समाप्त होने पर test submit हो जाएगा।","The test will submit when the timer reaches zero.")}</span></div><div><b>04</b><span>{t("सवालों के source labels test में दिखाई देंगे: PYQ, OFFICIAL, MEMORY-BASED या PRACTICE।","Question source labels appear in the test: PYQ, OFFICIAL, MEMORY-BASED, or PRACTICE.")}</span></div></div></div><div className="instruction-bottom"><span>{!user ? t("Guest mode: result इसी device पर save होगा।","Guest mode: your result will be saved on this device.") : t("आप logged in हैं; result cloud history में save किया जा सकता है।","You are logged in; your result can be saved to cloud history.")}</span><div><button className="secondary-button" onClick={()=>setView("home")}>{t("वापस","Back")}</button><button className="primary-button" onClick={runTest}>{t("मैं तैयार हूँ — टेस्ट शुरू करें","I’m ready — Start test")}<ArrowRight size={17}/></button></div></div></div>}
 
-        {view === "test" && <div className="content test-content anti-cheat-screen" onContextMenu={e=>e.preventDefault()} onCopy={e=>e.preventDefault()} onCut={e=>e.preventDefault()}><div className="question-screen-top">{testFocusWarning && <div className="test-focus-warning"><ShieldCheck size={15}/> {t("टेस्ट स्क्रीन से बाहर गए थे। ध्यान रखें—यह session जारी है।","You left the test screen. Stay focused—this session is still active.")}</div>}<div className="live-test-badge"><span/> LIVE TEST</div><div className="test-title-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("मॉक टेस्ट / परीक्षा","MOCK TEST / EXAM")}</div><h1>{examName}</h1><p className="intro">{t("सवाल ध्यान से पढ़ें। जरूरत हो तो रिव्यू के लिए मार्क करें।","Read carefully. Mark questions for review when needed.")}</p></div><div className={"timer-card " + (seconds < 60 ? "timer-warning" : "")}><Clock3 size={19}/><div><small>{t("बचा हुआ समय","TIME LEFT")}</small><strong>{formatTime(seconds)}</strong></div></div></div><div className="quick-test-meta"><span>✓ {testQuestions.length} {t("सवाल","questions")}</span><span>◉ {q.sourceType === "pyq" ? `PYQ ${q.sourceYear || ""}` : q.sourceType === "official" ? "OFFICIAL" : q.sourceType === "memory_based" ? "MEMORY-BASED" : "PRACTICE"}</span></div></div><div className="test-progress"><div><span>{t("टेस्ट की प्रगति","TEST PROGRESS")}</span><b>{answered} / {testQuestions.length} {t("जवाब दिए","answered")}</b></div><div className="progress-track"><span style={{width: (answered/testQuestions.length*100)+"%"}}/></div></div>
-          <div className="test-layout"><div className="question-panel"><div className="question-meta"><span className="question-number">{t("सवाल","QUESTION")} {current + 1} <i/> {testQuestions.length}</span><span className="subject-chip">{q.subject}</span>{q.topic ? <span className="topic-chip">{q.topic}</span> : null}<span className="source-chip">{q.sourceType === "pyq" ? `PYQ${q.sourceYear ? ` ${q.sourceYear}` : ""}` : q.sourceType === "official" ? "OFFICIAL" : q.sourceType === "memory_based" ? "MEMORY-BASED" : "PRACTICE"}</span></div><h2>{hi ? q.hi : q.en}</h2><p className="question-hint">{t("सही विकल्प चुनें। आप अपना जवाब बदल सकते हैं।","Select one option. You can change your answer before submitting.")}</p><div className="options">{q.options.map((option,i)=><button key={option} className={"option " + (answers[q.id] === i ? "selected" : "")} onClick={() => chooseAnswer(i)}><span className="option-letter">{String.fromCharCode(65+i)}</span><span>{option}</span>{answers[q.id] === i ? <span className="radio-selected"/> : null}</button>)}</div>
+        {view === "test" && <div className="content test-content anti-cheat-screen" onContextMenu={e=>e.preventDefault()} onCopy={e=>e.preventDefault()} onCut={e=>e.preventDefault()}><div className="question-screen-top">{testFocusWarning && <div className="test-focus-warning"><ShieldCheck size={15}/> {t("टेस्ट स्क्रीन से बाहर गए थे। ध्यान रखें—यह session जारी है।","You left the test screen. Stay focused—this session is still active.")}</div>}<div className="live-test-badge"><span/> LIVE TEST</div><div className="test-title-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("मॉक टेस्ट / परीक्षा","MOCK TEST / EXAM")}</div><h1>{examName}</h1><p className="intro">{t("सवाल ध्यान से पढ़ें। जरूरत हो तो रिव्यू के लिए मार्क करें।","Read carefully. Mark questions for review when needed.")}</p></div><div className={"timer-card " + (seconds < 60 ? "timer-warning" : "")}><Clock3 size={19}/><div><small>{t("बचा हुआ समय","TIME LEFT")}</small><strong>{formatTime(seconds)}</strong></div></div></div><div className="quick-test-meta"><span>✓ {testQuestions.length} {t("सवाल","questions")}</span><span>◉ {getQuestionSourceLabel(q.sourceType, hi) + (q.sourceType === "pyq" && q.sourceYear ? " " + q.sourceYear : "")}</span></div></div><div className="test-progress"><div><span>{t("टेस्ट की प्रगति","TEST PROGRESS")}</span><b>{answered} / {testQuestions.length} {t("जवाब दिए","answered")}</b></div><div className="progress-track"><span style={{width: (answered/testQuestions.length*100)+"%"}}/></div></div>
+          <div className="test-layout"><div className="question-panel"><div className="question-meta"><span className="question-number">{t("सवाल","QUESTION")} {current + 1} <i/> {testQuestions.length}</span><span className="subject-chip">{formatQuestionCategory(q.subject)}</span>{q.topic ? <span className="topic-chip">{formatQuestionCategory(q.topic)}</span> : null}<span className="source-chip">{getQuestionSourceLabel(q.sourceType, hi)}</span></div><h2>{displayQuestion}</h2><p className="question-hint">{t("सही विकल्प चुनें। आप अपना जवाब बदल सकते हैं।","Select one option. You can change your answer before submitting.")}</p><div className="options">{displayOptions.map((option,i)=><button key={q.id + "-" + i} className={"option " + (answers[q.id] === i ? "selected" : "")} onClick={() => chooseAnswer(i)}><span className="option-letter">{String.fromCharCode(65+i)}</span><span>{option}</span>{answers[q.id] === i ? <span className="radio-selected"/> : null}</button>)}</div>
           <div className="question-controls"><button className="secondary-button" disabled={current===0} onClick={() => setCurrent(c=>c-1)}><ChevronLeft size={17}/>{t("पिछला","Previous")}</button><button className={"review-button " + (review.includes(q.id) ? "review-on" : "")} onClick={toggleReview}><Flag size={16}/>{review.includes(q.id) ? t("रिव्यू हटाएँ","Unmark review") : t("रिव्यू के लिए","Mark for review")}</button>{current < testQuestions.length-1 ? <button className="primary-button next-button" onClick={() => setCurrent(c=>c+1)}>{t("अगला सवाल","Next question")}<ChevronRight size={17}/></button> : <button className="primary-button next-button" onClick={() => setShowSubmit(true)}>{t("टेस्ट सबमिट करें","Submit test")}<ArrowRight size={17}/></button>}</div></div>
           <aside className="question-nav"><div className="nav-heading"><h3>{t("सवालों की सूची","Question palette")}</h3><span>{answered}/{testQuestions.length}</span></div><p>{t("किसी सवाल पर जाने के लिए नंबर चुनें।","Tap a number to jump to a question.")}</p><div className="number-grid">{testQuestions.map((item,i)=><button key={item.id} onClick={() => setCurrent(i)} className={"number-cell " + (current===i ? "current" : "") + (answers[item.id] !== undefined ? " answered" : "") + (review.includes(item.id) ? " marked" : "")}>{String(item.id).padStart(2,"0")}{review.includes(item.id) && <i/>}</button>)}</div><div className="legend"><span><i className="legend-answered"/> {t("जवाब दिया","Answered")}</span><span><i className="legend-marked"/> {t("रिव्यू","Review")}</span><span><i className="legend-empty"/> {t("बाकी","Not answered")}</span></div><div className="nav-summary"><div><span>{t("जवाब दिए","Answered")}</span><b>{answered}</b></div><div><span>{t("बाकी सवाल","Remaining")}</span><b>{testQuestions.length-answered}</b></div><div><span>{t("रिव्यू के लिए","For review")}</span><b>{review.length}</b></div></div><button className="submit-full" onClick={() => setShowSubmit(true)}>{t("टेस्ट समाप्त करें","Finish test")}<ArrowRight size={16}/></button></aside></div>
           {showSubmit && <div className="modal-backdrop"><div className="confirm-modal"><div className="modal-icon"><Flag size={22}/></div><h2>{t("टेस्ट सबमिट करें?","Submit your test?")}</h2><p>{t("आपने","You have answered")} {answered} {t("में से "+testQuestions.length+" सवालों के जवाब दिए हैं। सबमिट करने के बाद जवाब नहीं बदल पाएँगे।","of the selected questions. You cannot change answers after submission.")}</p>{authMessage && <p role="alert" className="setup-message">{authMessage}</p>}<div className="modal-actions"><button className="secondary-button" onClick={() => setShowSubmit(false)}>{t("वापस जाएँ","Go back")}</button><button className="primary-button" onClick={finishTest} disabled={grading}>{grading ? t("जाँच हो रही है…","Grading…") : t("हाँ, सबमिट करें","Yes, submit")}</button></div></div></div>}
@@ -1068,7 +1097,7 @@ export default function HomePage() {
               const correctAnswer = reviewAnswers[String(item.id)]?.answer;
               const explanation = reviewAnswers[String(item.id)]?.explanation || "";
               const isRight = answer !== undefined && answer === correctAnswer;
-              return <div className="review-question" key={item.id}><div className={"review-status " + (answer === undefined ? "status-empty" : isRight ? "status-right" : "status-wrong")}>{answer === undefined ? "—" : isRight ? <Check size={16}/> : <X size={16}/>}</div><div className="review-body"><b>{i+1}. {hi ? item.hi : item.en}</b><span>{t("आपका जवाब:","Your answer:")} {answer === undefined ? t("जवाब नहीं दिया","Not answered") : item.options[answer]}</span><span className="correct-answer">{t("सही जवाब:","Correct answer:")} {item.options[correctAnswer]}</span><p>{explanation}</p></div></div>;
+              return <div className="review-question" key={item.id}><div className={"review-status " + (answer === undefined ? "status-empty" : isRight ? "status-right" : "status-wrong")}>{answer === undefined ? "—" : isRight ? <Check size={16}/> : <X size={16}/>}</div><div className="review-body"><b>{i+1}. {hi ? item.hi : item.en}</b><span>{t("आपका जवाब:","Your answer:")} {answer === undefined ? t("जवाब नहीं दिया","Not answered") : (hi && item.optionsHi ? item.optionsHi : item.options)[answer]}</span><span className="correct-answer">{t("सही जवाब:","Correct answer:")} {(hi && item.optionsHi ? item.optionsHi : item.options)[correctAnswer]}</span><p>{explanation}</p></div></div>;
             })}
           </div>
           <div className="result-actions"><button className="secondary-button" onClick={() => setView("home")}><Home size={17}/>{t("डैशबोर्ड","Dashboard")}</button><button className="primary-button" onClick={startTest}><RotateCcw size={17}/>{t("फिर से टेस्ट दें","Retake test")}</button></div>
