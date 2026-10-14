@@ -131,19 +131,16 @@ for (const question of knownHindiOverrides) {
 }
 
 // Correct answers and explanations must stay server-side until submission.
-assert.match(
-  questionApiSource,
-  /const safeQuestions = selected\\.map\\(\\(\\{\\s*answer_index,\\s*explanation_hi,\\s*explanation_en,\\s*\\.\\.\\.question\\s*\\}\\) => question\\);/,
+assert.ok(
+  questionApiSource.includes("const safeQuestions = selected.map(({ answer_index, explanation_hi, explanation_en, ...question }) => question);"),
   "Question API must strip answer_index and explanations from test payloads"
 );
-assert.match(
-  questionApiSource,
-  /data:\\s*safeQuestions/,
+assert.ok(
+  questionApiSource.includes("data: safeQuestions"),
   "Question API must return sanitized question objects"
 );
-assert.doesNotMatch(
-  questionApiSource,
-  /data:\\s*selected\\b/,
+assert.ok(
+  !questionApiSource.includes("data: selected"),
   "Question API must not return raw selected rows"
 );
 
