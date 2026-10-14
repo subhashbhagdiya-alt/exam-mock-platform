@@ -4304,3 +4304,28 @@ button{cursor:pointer}
   .review-explanation { padding: 11px 12px !important; }
   .review-explanation p { font-size: 13px !important; }
 }
+
+
+/* v41 — expose subject/topic filtering on the dedicated test setup screen */
+.setup-filter-panel{
+  margin-top:18px!important;
+  padding:16px!important;
+  border:1px solid rgba(139,92,246,.18)!important;
+  border-radius:16px!important;
+  background:rgba(10,13,29,.42)!important;
+}
+.setup-filter-head{display:flex!important;flex-direction:column!important;gap:5px!important}
+.setup-filter-head>b{color:#ece9fb!important;font-size:14px!important;font-weight:900!important}
+.setup-filter-head>small,.setup-filter-loading{color:#a9a8bd!important;font-size:11px!important;line-height:1.5!important}
+.setup-filter-panel .subject-selector{margin-top:12px!important;gap:7px!important}
+.setup-filter-panel .subject-selector button,.setup-filter-panel .topic-selector button{
+  min-height:36px!important;padding:8px 11px!important;font-size:11px!important;
+}
+.setup-filter-panel .topic-selector{margin-top:12px!important;padding-top:12px!important}
+.setup-filter-panel .topic-empty{margin-top:10px!important}
+.shell.theme-light .setup-filter-panel{
+  background:rgba(244,241,235,.82)!important;
+  border-color:rgba(76,73,66,.15)!important;
+}
+.shell.theme-light .setup-filter-head>b{color:#282621!important}
+.shell.theme-light .setup-filter-head>small,.shell.theme-light .setup-filter-loading{color:#6d695f!important}
