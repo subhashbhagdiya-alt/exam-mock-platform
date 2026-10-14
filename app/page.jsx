@@ -384,14 +384,21 @@ export default function HomePage() {
   useEffect(() => {
     let active = true;
     async function loadHistory() {
+      let localHistory = [];
       try {
         const localRaw = typeof window !== "undefined" ? localStorage.getItem("exam_prep_local_history") : "[]";
-        const localHistory = localRaw ? JSON.parse(localRaw) : [];
+        const parsedLocal = localRaw ? JSON.parse(localRaw) : [];
+        localHistory = Array.isArray(parsedLocal) ? parsedLocal : [];
+
+        // Keep locally saved guest results visible even if Supabase is unavailable.
+        if (!supabaseBrowser) {
+          if (active) setHistory(localHistory.slice(0, 50));
+          return;
+        }
         const { data: sessionData } = await supabaseBrowser.auth.getSession();
         const accessToken = sessionData.session?.access_token || "";
-
         if (!accessToken) {
-          if (active) setHistory(Array.isArray(localHistory) ? localHistory.slice(0, 50) : []);
+          if (active) setHistory(localHistory.slice(0, 50));
           return;
         }
 
@@ -402,14 +409,35 @@ export default function HomePage() {
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error || "Could not load saved results");
-        if (active) { setHistory([...(payload.data || []), ...(Array.isArray(localHistory) ? localHistory : [])].slice(0, 50)); setStorageMessage(""); }
+
+        const cloudHistory = Array.isArray(payload.data) ? payload.data : [];
+        // A result may exist in both cloud history and a local cache. Prefer the
+        // cloud row when the same attempt has matching answers and near-identical timestamps.
+        const signature = item => [
+          item.exam_id || "", item.test_name || "", item.total_questions ?? "",
+          item.score ?? "", item.correct ?? "", item.wrong ?? "", item.unanswered ?? "",
+          JSON.stringify(item.answers && typeof item.answers === "object" ? item.answers : {})
+        ].join("|");
+        const merged = [];
+        for (const item of [...cloudHistory, ...localHistory]) {
+          const stamp = Date.parse(item.created_at || "");
+          const keyForItem = signature(item);
+          const duplicate = merged.some(previous => {
+            if (signature(previous) !== keyForItem) return false;
+            const previousStamp = Date.parse(previous.created_at || "");
+            return Number.isFinite(stamp) && Number.isFinite(previousStamp) && Math.abs(stamp - previousStamp) <= 120000;
+          });
+          if (!duplicate) merged.push(item);
+        }
+        merged.sort((a, b) => (Date.parse(b.created_at || "") || 0) - (Date.parse(a.created_at || "") || 0));
+        if (active) { setHistory(merged.slice(0, 50)); setStorageMessage(""); }
       } catch (error) {
-        if (active) setHistory(old => old.length ? old : []);
+        if (active) setHistory(localHistory.slice(0, 50));
       }
     }
     loadHistory();
     return () => { active = false; };
-  }, [user]);;
+  }, [user]);
 
   async function signInWithGoogle() {
     if (!supabaseBrowser) {
