@@ -814,6 +814,7 @@ export default function HomePage() {
             hi: locale?.hi || item.question_hi || item.question_en,
             options: Array.isArray(item.options) ? item.options : [],
             optionsHi: locale?.optionsHi || null,
+            optionsEn: locale?.optionsEn || null,
             sourceType: item.source_type || "curated",
             sourceYear: item.source_year || null,
             predictionScore: Number(item.prediction_score || 0)
