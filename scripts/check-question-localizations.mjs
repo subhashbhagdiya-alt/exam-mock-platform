@@ -69,4 +69,63 @@ for (const key of ["optionsHi", "optionsEn"]) {
 assert.match(ageBody, /hi:\s*"/, "Age question needs Hindi text");
 assert.match(ageBody, /en:\s*"/, "Age question needs English text");
 
-console.log(`Localization regression checks passed: ${Object.keys(hindiOptions).length} Hindi option sets, ${localizationEntries.size} localized questions, and age-question A/B/C/D order.`);
+
+// Guard known high-risk bilingual choices against accidental A/B/C/D reordering.
+// These cases are also covered by live manual browser regression checks.
+const knownQuestionOptions = [
+  {
+    id: "4b96228e-a951-4006-83fc-d5fd7897ead0",
+    en: ["Industry", "Agricultural production", "Transport", "Mining"],
+    hi: ["उद्योग", "कृषि उत्पादन", "परिवहन", "खनन"]
+  },
+  {
+    id: "290db196-3a40-4d8a-8691-6c3e7f154bfc",
+    en: ["Major Dhyan Chand", "Milkha Singh", "Kapil Dev", "Sachin Tendulkar"],
+    hi: ["मेजर ध्यानचंद", "मिल्खा सिंह", "कपिल देव", "सचिन तेंदुलकर"]
+  },
+  {
+    id: "9ee92455-c740-41cb-a999-0a4cee5d5374",
+    en: [
+      "Lok Sabha and Legislative Assembly",
+      "Lok Sabha and Rajya Sabha",
+      "Rajya Sabha and Legislative Council",
+      "Legislative Assembly and Legislative Council"
+    ],
+    hi: [
+      "लोकसभा और विधानसभा",
+      "लोकसभा और राज्यसभा",
+      "राज्यसभा और विधान परिषद",
+      "विधानसभा और विधान परिषद"
+    ]
+  },
+  {
+    id: "054cfd5c-0eb4-4830-b913-f6dc1c767da3",
+    en: ["Madhya Pradesh", "Rajasthan", "Gujarat", "Maharashtra"],
+    hi: ["मध्य प्रदेश", "राजस्थान", "गुजरात", "महाराष्ट्र"]
+  }
+];
+
+for (const question of knownQuestionOptions) {
+  const entry = localizationEntries.get(question.id);
+  assert.ok(entry, `Missing high-risk question localization: ${question.id}`);
+  assert.deepEqual(entry.optionsEn, question.en, `English A/B/C/D order changed: ${question.id}`);
+  assert.deepEqual(hindiOptions[question.id] || entry.optionsHi, question.hi, `Hindi A/B/C/D order changed: ${question.id}`);
+}
+
+const knownHindiOverrides = [
+  {
+    id: "45648cdd-6d6b-42f0-93e5-c3ec89f43a72",
+    hi: ["पेंच", "कान्हा", "सतपुड़ा", "बांधवगढ़"]
+  },
+  {
+    id: "00276434-e4a5-4bfd-95d4-fbca1d811567",
+    hi: ["अनुच्छेद 12–35", "अनुच्छेद 36–51", "अनुच्छेद 52–78", "अनुच्छेद 79–122"]
+  }
+];
+for (const question of knownHindiOverrides) {
+  const entry = localizationEntries.get(question.id);
+  assert.ok(entry, `Missing Hindi override localization: ${question.id}`);
+  assert.deepEqual(hindiOptions[question.id] || entry.optionsHi, question.hi, `Hindi A/B/C/D order changed: ${question.id}`);
+}
+
+console.log(`Localization regression checks passed: ${Object.keys(hindiOptions).length} Hindi option sets, ${localizationEntries.size} localized questions, and age, Green Revolution, National Sports Day, Parliament, Kanha, and Fundamental Rights option order.`);
