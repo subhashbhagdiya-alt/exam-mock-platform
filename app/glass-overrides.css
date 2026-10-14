@@ -3273,3 +3273,55 @@ button{cursor:pointer}
 .shell.theme-dark .boards-content .exam-board-tab.active{background:linear-gradient(120deg,rgba(65,52,119,.9),rgba(28,31,57,.98) 60%,rgba(52,42,93,.92))!important;box-shadow:0 0 0 2px rgba(139,113,255,.18),0 12px 28px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.13)!important}
 .shell.theme-dark .boards-content .exam-board-tab.active .board-tab-copy b{color:#d4c8ff!important}
 @media(prefers-reduced-motion:reduce){.shell .boards-content .exam-board-tab,.shell .boards-content .exam-board-tab:before,.shell .boards-content .exam-board-tab .board-tab-icon{transition:none!important;animation:none!important}.shell .boards-content .exam-board-tab.active{transform:none!important}.shell .boards-content .exam-board-tab.active:after{display:none!important}}
+
+
+/* Always-visible Home shortcut + repair mobile settings alignment */
+.shell .top-actions{gap:8px!important}
+.shell .home-quick-button{
+  min-height:42px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;
+  padding:0 11px!important;border-radius:14px!important;white-space:nowrap!important;
+  color:var(--ep-text,#25263b)!important;background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(239,237,230,.92))!important;
+  border:1px solid rgba(130,113,214,.22)!important;box-shadow:0 5px 14px rgba(43,37,84,.09),inset 0 1px 0 #fff!important;
+  font-size:12px!important;font-weight:750!important;transition:transform .18s ease,box-shadow .18s ease!important;
+}
+.shell .home-quick-button svg{flex-shrink:0!important}
+.shell .home-quick-button:active{transform:scale(.95)!important;box-shadow:inset 0 2px 7px rgba(42,34,92,.13)!important}
+.shell.theme-dark .home-quick-button{color:#f2f0ff!important;background:linear-gradient(145deg,#272642,#17172b)!important;border-color:rgba(154,135,255,.28)!important;box-shadow:0 5px 14px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.09)!important}
+.shell .settings-content .settings-profile-card{display:grid!important;grid-template-columns:64px minmax(0,1fr)!important;align-items:center!important;gap:12px!important;padding:20px!important;min-width:0!important}
+.shell .settings-content .settings-profile-copy{min-width:0!important;overflow-wrap:anywhere!important}
+.shell .settings-content .settings-avatar{width:64px!important;height:64px!important;display:grid!important;place-items:center!important;border-radius:20px!important;font-size:28px!important}
+.shell .settings-content .settings-profile-copy h2{font-size:clamp(18px,4vw,24px)!important;line-height:1.25!important;margin:5px 0!important}
+.shell .settings-content .settings-profile-copy p{font-size:13px!important;line-height:1.5!important;margin:4px 0!important;overflow-wrap:anywhere!important}
+.shell .settings-content .settings-status{grid-column:1/-1!important;justify-self:start!important;margin-top:3px!important}
+.shell .settings-content .settings-card{min-width:0!important;overflow:hidden!important}
+.shell .settings-content .settings-card-head{gap:10px!important;align-items:center!important}
+.shell .settings-content .settings-card-head>div:first-child{min-width:0!important}
+.shell .settings-content .settings-option-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}
+.shell .settings-content .setting-choice{min-width:0!important;width:100%!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:5px!important;padding:14px 12px!important;border-radius:16px!important}
+.shell .settings-content .setting-choice b{font-size:14px!important;line-height:1.25!important}
+.shell .settings-content .setting-choice small{font-size:11px!important;line-height:1.4!important;white-space:normal!important}
+.shell .settings-content .settings-inline-row{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;flex-wrap:wrap!important}
+.shell .settings-content .settings-inline-row>div{min-width:0!important;flex:1 1 180px!important}
+.shell .settings-content .settings-inline-row>div span{line-height:1.5!important}
+.shell .settings-content .settings-card-icon{flex-shrink:0!important}
+.shell .sources-content .source-index-card{position:relative!important;display:flex!important;align-items:center!important;gap:14px!important;min-height:96px!important;padding:16px 18px 16px 72px!important;border-radius:18px!important;text-decoration:none!important;background:linear-gradient(145deg,rgba(255,255,255,.78),rgba(238,236,228,.88))!important;border:1px solid rgba(255,255,255,.92)!important;box-shadow:0 10px 22px rgba(48,43,76,.09),inset 0 1px 0 #fff!important;transition:transform .2s ease,box-shadow .2s ease!important}
+.shell .sources-content .source-index-card:before{content:"↗"!important;position:absolute!important;left:17px!important;top:50%!important;transform:translateY(-50%)!important;width:40px!important;height:40px!important;display:grid!important;place-items:center!important;border-radius:13px!important;color:#fff!important;font-size:20px!important;font-weight:800!important;background:linear-gradient(145deg,#927af7,#6346cf 60%,#422b9d)!important;box-shadow:0 7px 15px rgba(91,66,201,.24),inset 0 1px 0 rgba(255,255,255,.35)!important}
+.shell .sources-content .source-index-card .job-copy{display:flex!important;flex-direction:column!important;gap:5px!important;min-width:0!important}
+.shell .sources-content .source-index-card .job-copy b{font-size:14px!important;text-decoration:none!important}
+.shell .sources-content .source-index-card .job-copy span{font-size:12px!important;line-height:1.45!important;text-decoration:none!important}
+.shell .sources-content .source-index-card em{margin-left:auto!important;flex-shrink:0!important;font-style:normal!important;font-size:10px!important;font-weight:800!important;letter-spacing:.04em!important;color:#6651b4!important}
+.shell .sources-content .source-index-card:hover{transform:translateY(-4px)!important;box-shadow:0 15px 26px rgba(48,43,76,.13)!important}
+.shell.theme-dark .sources-content .source-index-card{background:linear-gradient(145deg,#151a30,#0d1222)!important;border-color:#2a3150!important}
+@media(max-width:700px){
+ .shell .top-actions{gap:5px!important}
+ .shell .home-quick-button{width:38px!important;min-width:38px!important;height:38px!important;min-height:38px!important;padding:0!important;border-radius:12px!important}
+ .shell .home-quick-button span{display:none!important}
+ .shell .settings-content .settings-profile-card{grid-template-columns:54px minmax(0,1fr)!important;gap:10px!important;padding:16px!important}
+ .shell .settings-content .settings-avatar{width:54px!important;height:54px!important;border-radius:16px!important;font-size:24px!important}
+ .shell .settings-content .settings-option-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+ .shell .settings-content .setting-choice{padding:12px 10px!important}
+ .shell .settings-content .setting-choice:last-child{grid-column:1/-1!important}
+ .shell .sources-content .source-index-card{min-height:82px!important;padding:14px 12px 14px 62px!important}
+ .shell .sources-content .source-index-card:before{left:12px!important;width:38px!important;height:38px!important}
+ .shell .sources-content .source-index-card em{font-size:9px!important}
+}
