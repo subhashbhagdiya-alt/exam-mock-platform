@@ -1011,7 +1011,7 @@ export default function HomePage() {
         </div>}
 
 
-        {view === "sources" && <div className="content">
+        {view === "sources" && <div className="content sources-content">
           <div className="eyebrow"><span className="eyebrow-line"/> SOURCE LIBRARY</div>
           <h1>{t("Source PDFs","Source PDFs")}</h1>
           <p className="intro">{t("हर परीक्षा के मूल/स्रोत question-paper pages यहाँ मिलेंगे। PDF खोलकर सीधे डाउनलोड कर सकते हैं।","Open the original source-paper page for each exam and download the PDF directly.")}</p>
