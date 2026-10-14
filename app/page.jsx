@@ -90,6 +90,7 @@ export default function HomePage() {
   const [selectedSubject, setSelectedSubject] = useState("all");
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [availableQuestionCount, setAvailableQuestionCount] = useState(0);
+  const [questionCatalogMeta, setQuestionCatalogMeta] = useState({ loaded: false, subjects: [], subjectTopics: [] });
   const [questionBankLoading, setQuestionBankLoading] = useState(false);
   const [questionLoadError, setQuestionLoadError] = useState("");
   const [nativeSimStatus, setNativeSimStatus] = useState("web");
@@ -141,8 +142,18 @@ export default function HomePage() {
     return categoryMatch && (!needle || text.includes(needle));
   });
   const selectedTrackData = jobTracks.find(track => track.slug === selectedJobTrack) || null;
-  const subjectOptions = Array.from(new Set((selectedTrackData?.subjects || []).map(item => String(item).trim()).filter(Boolean)));
-  const topicOptions = Array.from(new Set((selectedTrackData?.topics || []).map(item => String(item).trim()).filter(Boolean)));
+  const subjectOptions = Array.from(new Set(
+    ((questionCatalogMeta.loaded ? questionCatalogMeta.subjects : selectedTrackData?.subjects) || [])
+      .map(item => String(item).trim()).filter(Boolean)
+  ));
+  const topicOptions = questionCatalogMeta.loaded && selectedSubject !== "all"
+    ? Array.from(new Set(questionCatalogMeta.subjectTopics
+        .filter(item => item.subject === selectedSubject)
+        .map(item => String(item.topic || "").trim()).filter(Boolean)))
+    : Array.from(new Set((questionCatalogMeta.loaded
+        ? questionCatalogMeta.subjectTopics.map(item => item.topic)
+        : selectedTrackData?.topics || [])
+        .map(item => String(item).trim()).filter(Boolean)));
   const examGroups = [
     { key: "MPESB", labelHi: "MPESB", labelEn: "MPESB", icon: "🏛️" },
     { key: "SSC", labelHi: "SSC", labelEn: "SSC", icon: "📝" },
@@ -325,29 +336,58 @@ export default function HomePage() {
 
   useEffect(() => {
     let active = true;
-    async function loadQuestionAvailability() {
-      setQuestionBankLoading(true);
+    setQuestionCatalogMeta({ loaded: false, subjects: [], subjectTopics: [] });
+    async function loadQuestionCatalogMeta() {
       try {
         const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=100&mode=availability`, { cache: "no-store" });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error || "Question bank unavailable");
-        if (active) {
-          const actual = Number(payload?.meta?.available || (Array.isArray(payload.data) ? payload.data.length : 0));
-          setAvailableQuestionCount(actual);
-          setQuestionLoadError("");
-        }
+        if (!active) return;
+        const subjectTopics = Array.isArray(payload?.meta?.subject_topics) ? payload.meta.subject_topics : [];
+        setQuestionCatalogMeta({
+          loaded: true,
+          subjects: Array.isArray(payload?.meta?.subjects) ? payload.meta.subjects : [],
+          subjectTopics
+        });
+      } catch {
+        if (active) setQuestionCatalogMeta({ loaded: false, subjects: [], subjectTopics: [] });
+      }
+    }
+    loadQuestionCatalogMeta();
+    return () => { active = false; };
+  }, [selectedExam]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadFilteredQuestionAvailability() {
+      setQuestionBankLoading(true);
+      setQuestionLoadError("");
+      try {
+        const params = new URLSearchParams({ exam: selectedExam, limit: "100", mode: "availability" });
+        if (selectedSubject !== "all") params.set("subject", selectedSubject);
+        if (selectedTopic !== "all") params.set("topic", selectedTopic);
+        const response = await fetch(`/api/questions?${params.toString()}`, { cache: "no-store" });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.error || "Question bank unavailable");
+        if (!active) return;
+        const actual = Number(payload?.meta?.available ?? (Array.isArray(payload.data) ? payload.data.length : 0));
+        setAvailableQuestionCount(actual);
+        setPracticeQuestionCount(current => actual > 0
+          ? Math.min(current > 0 ? current : 10, actual)
+          : 0);
       } catch (error) {
         if (active) {
           setAvailableQuestionCount(0);
+          setPracticeQuestionCount(0);
           setQuestionLoadError(error?.message || "Question bank unavailable");
         }
       } finally {
         if (active) setQuestionBankLoading(false);
       }
     }
-    loadQuestionAvailability();
+    loadFilteredQuestionAvailability();
     return () => { active = false; };
-  }, [selectedExam]);
+  }, [selectedExam, selectedSubject, selectedTopic]);
 
   async function requestNativeSimPermission() {
     const bridge = typeof window !== "undefined" ? window.ExamPrepNative : null;
@@ -598,7 +638,7 @@ export default function HomePage() {
     if (!user) setAuthMessage(t("Guest practice mode: login के बिना टेस्ट शुरू हो रहा है। रिज़ल्ट इस device पर सेव होगा।","Guest practice mode: starting without login. The result will be saved on this device."));
     if (questionLoadError) { setAuthMessage(questionLoadError); return; }
     if (questionBankLoading) { setAuthMessage(t("सवाल अभी लोड हो रहे हैं। एक सेकंड रुककर फिर दबाएँ।","Questions are still loading. Wait a second and tap again.")); return; }
-    const readyCount = Number(selectedTrackData?.verified_question_count || availableQuestionCount || 0);
+    const readyCount = Number(availableQuestionCount || 0);
     if (!readyCount) { setAuthMessage(t("इस परीक्षा के verified सवाल अभी उपलब्ध नहीं हैं।","Verified questions are not available for this exam yet.")); return; }
     const requestedCount = Math.min(Number(practiceQuestionCount || 10), readyCount);
     setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setReviewAnswers({}); setTestSessionId(""); setTestSessionKey(""); setShowSubmit(false); setTestQuestions([]);
@@ -876,14 +916,14 @@ export default function HomePage() {
     {(selectedTrackData.analysis_candidates || []).slice(0,5).map((item,i) => <div className="analysis-candidate" key={item.subject+"-"+item.topic+"-"+i}><span>{String(i+1).padStart(2,"0")}</span><div><b>{item.subject || t("सामान्य","General")}</b><small>{item.topic || t("मिश्रित","Mixed")}</small></div><em>{Math.round(Number(item.prediction_score || 0))}</em></div>)}
   </div>
 </div>
-<div className="subject-chapter-panel"><div className="section-heading"><div><h2>{t("विषय और अध्याय चुनें","Choose subject & chapter")}</h2><p>{t("पूरे exam की जगह किसी एक subject/topic पर focused practice करें।","Practice a specific subject or topic instead of the full exam.")}</p></div><span className="section-count">FOCUSED PRACTICE</span></div><div className="subject-selector"><button className={selectedSubject==="all"?"active":""} onClick={()=>{setSelectedSubject("all");setSelectedTopic("all")}}>{t("सभी विषय","All subjects")}</button>{subjectOptions.map(subject=><button key={subject} className={selectedSubject===subject?"active":""} onClick={()=>{setSelectedSubject(subject);setSelectedTopic("all")}}>{subject}</button>)}</div>{selectedSubject!=="all" && topicOptions.length>0 && <div className="topic-selector"><span>{t("अध्याय","CHAPTER")}</span><button className={selectedTopic==="all"?"active":""} onClick={()=>setSelectedTopic("all")}>{t("सभी अध्याय","All chapters")}</button>{topicOptions.map(topic=><button key={topic} className={selectedTopic===topic?"active":""} onClick={()=>setSelectedTopic(topic)}>{topic}</button>)}</div>}</div>
+<div className="subject-chapter-panel"><div className="section-heading"><div><h2>{t("विषय और अध्याय चुनें","Choose subject & chapter")}</h2><p>{t("पूरे exam की जगह किसी एक subject/topic पर focused practice करें।","Practice a specific subject or topic instead of the full exam.")}</p></div><span className="section-count">FOCUSED PRACTICE</span></div><div className="subject-selector" role="group" aria-label={t("विषय चुनें","Choose subject")}><button type="button" aria-pressed={selectedSubject==="all"} className={selectedSubject==="all"?"active":""} onClick={()=>{setSelectedSubject("all");setSelectedTopic("all");setAuthMessage("")}}>{t("सभी विषय","All subjects")}{selectedSubject==="all" && <Check size={13} className="selector-check"/>}</button>{subjectOptions.map(subject=><button type="button" key={subject} aria-pressed={selectedSubject===subject} className={selectedSubject===subject?"active":""} onClick={()=>{setSelectedSubject(subject);setSelectedTopic("all");setAuthMessage("")}}>{subject}{selectedSubject===subject && <Check size={13} className="selector-check"/>}</button>)}</div>{selectedSubject!=="all" && <div className="topic-selector" role="group" aria-label={t("अध्याय चुनें","Choose topic")}><span>{t("अध्याय","CHAPTER")}</span><button type="button" aria-pressed={selectedTopic==="all"} className={selectedTopic==="all"?"active":""} onClick={()=>{setSelectedTopic("all");setAuthMessage("")}}>{t("सभी अध्याय","All chapters")}{selectedTopic==="all" && <Check size={13} className="selector-check"/>}</button>{topicOptions.map(topic=><button type="button" key={topic} aria-pressed={selectedTopic===topic} className={selectedTopic===topic?"active":""} onClick={()=>{setSelectedTopic(topic);setAuthMessage("")}}>{topic}{selectedTopic===topic && <Check size={13} className="selector-check"/>}</button>)}</div>}{selectedSubject!=="all" && questionCatalogMeta.loaded && topicOptions.length===0 && <div className="topic-empty">{t("इस विषय के लिए कोई verified chapter उपलब्ध नहीं है।","No verified chapters are available for this subject.")}</div>}}</div>
 <div className="practice-config">
-  <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{Array.from(new Set([10,20,30,40,50,Math.min(100,availableQuestionCount)].filter(n => n > 0 && n <= availableQuestionCount))).sort((a,b) => a-b).map(n=><button key={n} className={practiceQuestionCount===n?"active":""} onClick={()=>setPracticeQuestionCount(n)}>{n}</button>)}</div><small>{availableQuestionCount ? t(availableQuestionCount + " verified/active questions अभी उपलब्ध हैं।","There are " + availableQuestionCount + " active/verified questions right now.") : t("Verified question bank जाँच में है।","The verified question bank is being checked.")}</small></div>
-  <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60,120].map(n=><button key={n} className={practiceDuration===n?"active":""} onClick={()=>setPracticeDuration(n)}>{n}m</button>)}</div></div>
+  <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{Array.from(new Set([10,20,30,40,50,Math.min(100,availableQuestionCount)].filter(n => n > 0 && n <= availableQuestionCount))).sort((a,b) => a-b).map(n=><button type="button" key={n} aria-pressed={practiceQuestionCount===n} className={practiceQuestionCount===n?"active":""} onClick={()=>{setPracticeQuestionCount(n);setAuthMessage("")}}>{n}</button>)}</div><small>{questionBankLoading ? t("इस चयन के लिए सवाल गिने जा रहे हैं…","Checking questions for this selection…") : availableQuestionCount ? t(availableQuestionCount + " verified/active सवाल इस चयन के लिए उपलब्ध हैं।","There are " + availableQuestionCount + " active/verified questions for this selection.") : t("इस विषय/अध्याय में verified सवाल नहीं मिले। दूसरा चयन करें।","No verified questions for this subject/topic. Choose another selection.")}</small></div>
+  <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60,120].map(n=><button type="button" key={n} aria-pressed={practiceDuration===n} className={practiceDuration===n?"active":""} onClick={()=>{setPracticeDuration(n);setAuthMessage("")}}>{n}m</button>)}</div><small>{t("चुना गया समय: "+practiceDuration+" मिनट","Selected duration: "+practiceDuration+" minutes")}</small></div>
   <div className="config-block device-security"><b>{t("SIM / डिवाइस सुरक्षा","SIM / Device security")}</b><div className="config-options"><button onClick={requestNativeSimPermission}>{nativeSimStatus === "sim-ready" ? t("SIM चालू ✓","SIM active ✓") : t("SIM अनुमति दें","Allow SIM")}</button>{user && <button onClick={createRecoveryCode}>{t("नए फोन के लिए recovery code","Create recovery code")}</button>}</div><small>{t("Recovery code trusted device से बनता है, 15 मिनट में expire होता है और एक बार इस्तेमाल होता है।","Recovery code is created on the trusted device, expires in 15 minutes, and works once.")}</small></div>
 </div>
 </> : <div className="selection-empty">{t("ऊपर से READY परीक्षा चुनें।","Choose a READY exam above.")}<span>{t("SOON वाली परीक्षाएँ उपलब्ध होते ही unlock होंगी।","SOON exams unlock when their verified question bank is ready.")}</span></div>}
-<div className="bottom-note"><div className="note-icon"><ShieldCheck size={18}/></div><div><b>{t("आपकी तैयारी, आपकी रफ़्तार","Your preparation, your pace")}</b><p>{t("यह डेमो प्लेटफॉर्म है। अभ्यास के लिए प्रश्न दिए गए हैं; आधिकारिक परीक्षा के लिए नवीनतम सिलेबस देखें।","This is a demo practice platform. Check the latest official syllabus for your target exam.")}</p></div></div>
+<div className={"dashboard-action-message" + (nativeSimStatus === "sim-ready" ? " success" : "")} role="status" aria-live="polite">{authMessage && authMessage}</div><div className="bottom-note"><div className="note-icon"><ShieldCheck size={18}/></div><div><b>{t("आपकी तैयारी, आपकी रफ़्तार","Your preparation, your pace")}</b><p>{t("यह डेमो प्लेटफॉर्म है। अभ्यास के लिए प्रश्न दिए गए हैं; आधिकारिक परीक्षा के लिए नवीनतम सिलेबस देखें।","This is a demo practice platform. Check the latest official syllabus for your target exam.")}</p></div></div>
         </div>}
 
         {view === "setup" && selectedTrackData && <div className="content exam-setup-content">
