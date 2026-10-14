@@ -672,26 +672,28 @@ export default function HomePage() {
       setView("result");
       setShowSubmit(false);
 
-      const saveLocal = (pending = false) => {
+      const saveLocal = (pending = false, syncPayload = null) => {
         try {
           const key = pending ? "exam_prep_offline_results" : "exam_prep_local_history";
           const existing = JSON.parse(localStorage.getItem(key) || "[]");
           const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
-          const canSync = pending && Boolean(user?.id && deviceKey);
-          const item = {...summary, created_at: new Date().toISOString(), ...(canSync ? {offline_pending:true, user_id:user.id, device_key:deviceKey} : {})};
+          const canSync = pending && Boolean(user?.id && deviceKey && syncPayload?.session_key);
+          const item = {...(canSync ? syncPayload : summary), created_at: new Date().toISOString(), ...(canSync ? {offline_pending:true, user_id:user.id, device_key:deviceKey} : {})};
           localStorage.setItem(key, JSON.stringify([item, ...existing].slice(0, 50)));
           setHistory(old => [item, ...old].slice(0, 50));
         } catch {}
       };
 
       let retryableSave = false;
+      let retryablePayload = null;
       try {
         const sessionKey = await ensureSessionKey();
         const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
         const body = { session_key: sessionKey, practice_mode: true, requested_total_questions: practiceQuestionCount, requested_duration_minutes: practiceDuration, user_id: user?.id || null, device_key: deviceKey, ...summary };
+        retryablePayload = body;
         if (!navigator.onLine) {
           const canSync = Boolean(user?.id && deviceKey);
-          saveLocal(canSync);
+          saveLocal(canSync, body);
           setStorageMessage(canSync
             ? t("रिज़ल्ट इस device पर सेव है; इंटरनेट आने पर cloud sync करें।", "Result is saved on this device; sync to cloud when online.")
             : t("Guest result इस device पर सुरक्षित है। Cloud sync के लिए login करें।", "Guest result is saved on this device. Login to sync it to the cloud."));
@@ -721,7 +723,7 @@ export default function HomePage() {
       } catch (error) {
         const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
         const retryable = Boolean(user?.id && deviceKey) && (retryableSave || /failed to fetch|networkerror|network request failed|load failed|timeout|timed out/i.test(String(error?.message || "")));
-        saveLocal(retryable);
+        saveLocal(retryable, retryablePayload);
         setStorageMessage(retryable
           ? t("Cloud save अभी नहीं हो सका; रिज़ल्ट queue में सुरक्षित है और दोबारा sync होगा।", "Cloud save failed temporarily; the result is queued and will sync again.")
           : error?.message || "Result could not be saved to cloud");
