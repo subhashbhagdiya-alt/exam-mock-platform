@@ -816,7 +816,7 @@ export default function HomePage() {
   const [selectedSubject, setSelectedSubject] = useState("all");
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [availableQuestionCount, setAvailableQuestionCount] = useState(0);
-  const [questionCatalogMeta, setQuestionCatalogMeta] = useState({ loaded: false, subjects: [], subjectTopics: [] });
+  const [questionCatalogMeta, setQuestionCatalogMeta] = useState({ loaded: false, examSlug: "", subjects: [], subjectTopics: [] });
   const [questionBankLoading, setQuestionBankLoading] = useState(false);
   const [questionLoadError, setQuestionLoadError] = useState("");
   const [nativeSimStatus, setNativeSimStatus] = useState("web");
@@ -891,15 +891,16 @@ export default function HomePage() {
     return categoryMatch && (!needle || text.includes(needle));
   });
   const selectedTrackData = jobTracks.find(track => track.slug === selectedJobTrack) || null;
+  const hasCurrentQuestionCatalog = questionCatalogMeta.loaded && questionCatalogMeta.examSlug === selectedExam;
   const subjectOptions = Array.from(new Set(
-    ((questionCatalogMeta.loaded ? questionCatalogMeta.subjects : selectedTrackData?.subjects) || [])
+    ((hasCurrentQuestionCatalog ? questionCatalogMeta.subjects : selectedTrackData?.subjects) || [])
       .map(item => String(item).trim()).filter(Boolean)
   ));
-  const topicOptions = questionCatalogMeta.loaded && selectedSubject !== "all"
+  const topicOptions = hasCurrentQuestionCatalog && selectedSubject !== "all"
     ? Array.from(new Set(questionCatalogMeta.subjectTopics
         .filter(item => item.subject === selectedSubject)
         .map(item => String(item.topic || "").trim()).filter(Boolean)))
-    : Array.from(new Set((questionCatalogMeta.loaded
+    : Array.from(new Set((hasCurrentQuestionCatalog
         ? questionCatalogMeta.subjectTopics.map(item => item.topic)
         : selectedTrackData?.topics || [])
         .map(item => String(item).trim()).filter(Boolean)));
@@ -1085,7 +1086,6 @@ export default function HomePage() {
 
   useEffect(() => {
     let active = true;
-    setQuestionCatalogMeta({ loaded: false, subjects: [], subjectTopics: [] });
     async function loadQuestionCatalogMeta() {
       try {
         const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=100&mode=availability`, { cache: "no-store" });
@@ -1095,11 +1095,12 @@ export default function HomePage() {
         const subjectTopics = Array.isArray(payload?.meta?.subject_topics) ? payload.meta.subject_topics : [];
         setQuestionCatalogMeta({
           loaded: true,
+          examSlug: selectedExam,
           subjects: Array.isArray(payload?.meta?.subjects) ? payload.meta.subjects : [],
           subjectTopics
         });
       } catch {
-        if (active) setQuestionCatalogMeta({ loaded: false, subjects: [], subjectTopics: [] });
+        if (active) setQuestionCatalogMeta({ loaded: false, examSlug: selectedExam, subjects: [], subjectTopics: [] });
       }
     }
     loadQuestionCatalogMeta();
@@ -1673,7 +1674,7 @@ export default function HomePage() {
     {(selectedTrackData.analysis_candidates || []).slice(0,5).map((item,i) => <div className="analysis-candidate" key={item.subject+"-"+item.topic+"-"+i}><span>{String(i+1).padStart(2,"0")}</span><div><b>{item.subject || t("सामान्य","General")}</b><small>{item.topic || t("मिश्रित","Mixed")}</small></div><em>{Math.round(Number(item.prediction_score || 0))}</em></div>)}
   </div>
 </div>
-<div className="subject-chapter-panel"><div className="section-heading"><div><h2>{t("विषय और अध्याय चुनें","Choose subject & chapter")}</h2><p>{t("पूरे exam की जगह किसी एक subject/topic पर focused practice करें।","Practice a specific subject or topic instead of the full exam.")}</p></div><span className="section-count">FOCUSED PRACTICE</span></div><div className="subject-selector" role="group" aria-label={t("विषय चुनें","Choose subject")}><button type="button" aria-pressed={selectedSubject==="all"} className={selectedSubject==="all"?"active":""} onClick={()=>{setSelectedSubject("all");setSelectedTopic("all");setAuthMessage("")}}>{t("सभी विषय","All subjects")}{selectedSubject==="all" && <Check size={13} className="selector-check"/>}</button>{subjectOptions.map(subject=><button type="button" key={subject} aria-pressed={selectedSubject===subject} className={selectedSubject===subject?"active":""} onClick={()=>{setSelectedSubject(subject);setSelectedTopic("all");setAuthMessage("")}}>{formatQuestionCategory(subject)}{selectedSubject===subject && <Check size={13} className="selector-check"/>}</button>)}</div>{selectedSubject!=="all" && <div className="topic-selector" role="group" aria-label={t("अध्याय चुनें","Choose topic")}><span>{t("अध्याय","CHAPTER")}</span><button type="button" aria-pressed={selectedTopic==="all"} className={selectedTopic==="all"?"active":""} onClick={()=>{setSelectedTopic("all");setAuthMessage("")}}>{t("सभी अध्याय","All chapters")}{selectedTopic==="all" && <Check size={13} className="selector-check"/>}</button>{topicOptions.map(topic=><button type="button" key={topic} aria-pressed={selectedTopic===topic} className={selectedTopic===topic?"active":""} onClick={()=>{setSelectedTopic(topic);setAuthMessage("")}}>{formatQuestionCategory(topic)}{selectedTopic===topic && <Check size={13} className="selector-check"/>}</button>)}</div>}{selectedSubject!=="all" && questionCatalogMeta.loaded && topicOptions.length===0 && <div className="topic-empty">{t("इस विषय के लिए कोई verified chapter उपलब्ध नहीं है।","No verified chapters are available for this subject.")}</div>}</div>
+<div className="subject-chapter-panel"><div className="section-heading"><div><h2>{t("विषय और अध्याय चुनें","Choose subject & chapter")}</h2><p>{t("पूरे exam की जगह किसी एक subject/topic पर focused practice करें।","Practice a specific subject or topic instead of the full exam.")}</p></div><span className="section-count">FOCUSED PRACTICE</span></div><div className="subject-selector" role="group" aria-label={t("विषय चुनें","Choose subject")}><button type="button" aria-pressed={selectedSubject==="all"} className={selectedSubject==="all"?"active":""} onClick={()=>{setSelectedSubject("all");setSelectedTopic("all");setAuthMessage("")}}>{t("सभी विषय","All subjects")}{selectedSubject==="all" && <Check size={13} className="selector-check"/>}</button>{subjectOptions.map(subject=><button type="button" key={subject} aria-pressed={selectedSubject===subject} className={selectedSubject===subject?"active":""} onClick={()=>{setSelectedSubject(subject);setSelectedTopic("all");setAuthMessage("")}}>{formatQuestionCategory(subject)}{selectedSubject===subject && <Check size={13} className="selector-check"/>}</button>)}</div>{selectedSubject!=="all" && <div className="topic-selector" role="group" aria-label={t("अध्याय चुनें","Choose topic")}><span>{t("अध्याय","CHAPTER")}</span><button type="button" aria-pressed={selectedTopic==="all"} className={selectedTopic==="all"?"active":""} onClick={()=>{setSelectedTopic("all");setAuthMessage("")}}>{t("सभी अध्याय","All chapters")}{selectedTopic==="all" && <Check size={13} className="selector-check"/>}</button>{topicOptions.map(topic=><button type="button" key={topic} aria-pressed={selectedTopic===topic} className={selectedTopic===topic?"active":""} onClick={()=>{setSelectedTopic(topic);setAuthMessage("")}}>{formatQuestionCategory(topic)}{selectedTopic===topic && <Check size={13} className="selector-check"/>}</button>)}</div>}{selectedSubject!=="all" && hasCurrentQuestionCatalog && topicOptions.length===0 && <div className="topic-empty">{t("इस विषय के लिए कोई verified chapter उपलब्ध नहीं है।","No verified chapters are available for this subject.")}</div>}</div>
 <div className="practice-config">
   <div className="config-block"><b>{t("सवाल कितने?","Questions")}</b><div className="config-options">{Array.from(new Set([10,20,30,40,50,Math.min(100,availableQuestionCount)].filter(n => n > 0 && n <= availableQuestionCount))).sort((a,b) => a-b).map(n=><button type="button" key={n} aria-pressed={practiceQuestionCount===n} className={practiceQuestionCount===n?"active":""} onClick={()=>{setPracticeQuestionCount(n);setAuthMessage("")}}>{n}</button>)}</div><small>{questionBankLoading ? t("इस चयन के लिए सवाल गिने जा रहे हैं…","Checking questions for this selection…") : availableQuestionCount ? t(availableQuestionCount + " verified/active सवाल · " + (selectedSubject === "all" ? "सभी विषय" : formatQuestionCategory(selectedSubject)) + (selectedTopic !== "all" ? " · " + formatQuestionCategory(selectedTopic) : "") + " के लिए उपलब्ध हैं।","" + availableQuestionCount + " verified/active questions available for " + (selectedSubject === "all" ? "all subjects" : formatQuestionCategory(selectedSubject)) + (selectedTopic !== "all" ? " · " + formatQuestionCategory(selectedTopic) : "") + ".") : t("इस विषय/अध्याय में verified सवाल नहीं मिले। दूसरा चयन करें।","No verified questions for this subject/topic. Choose another selection.")}</small></div>
   <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60,120].map(n=><button type="button" key={n} aria-pressed={practiceDuration===n} className={practiceDuration===n?"active":""} onClick={()=>{setPracticeDuration(n);setAuthMessage("")}}>{n}m</button>)}</div><small>{t("चुना गया समय: "+practiceDuration+" मिनट","Selected duration: "+practiceDuration+" minutes")}</small></div>
