@@ -33,7 +33,7 @@ export const QUESTION_EXPLANATIONS = {
     "hi": "पानी का सूत्र H₂O है: हर अणु में दो हाइड्रोजन (H) परमाणु और एक ऑक्सीजन (O) परमाणु होता है।",
     "en": "Water is H₂O: each molecule contains two hydrogen atoms and one oxygen atom."
   },
-  "efc1e502-3fd5-4c1f-a764-2272ce9c4d96": {
+  "efc1e502-5fd3-4c1f-a764-2272ce9c4d96": {
     "hi": "गुरु शिखर, माउंट आबू के पास, अरावली पर्वतमाला की सबसे ऊँची चोटी है।",
     "en": "Guru Shikhar, near Mount Abu, is the highest peak of the Aravalli Range."
   },
