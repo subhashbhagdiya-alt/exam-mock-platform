@@ -94,10 +94,28 @@ export async function GET(request) {
 
   const rows = data || [];
   if (searchParams.get("mode") === "availability") {
+    const subjects = Array.from(new Set(
+      rows.map((row) => String(row.subject || "").trim()).filter(Boolean)
+    )).sort((a, b) => a.localeCompare(b));
+    const subjectTopics = Array.from(new Map(
+      rows
+        .map((row) => ({
+          subject: String(row.subject || "").trim(),
+          topic: String(row.topic || "").trim()
+        }))
+        .filter((item) => item.subject && item.topic)
+        .map((item) => [JSON.stringify([item.subject, item.topic]), item])
+    ).values()).sort((a, b) => a.subject.localeCompare(b.subject) || a.topic.localeCompare(b.topic));
+
     return NextResponse.json({
       exam: examRow,
       data: [],
-      meta: { requested: limit, available: rows.length }
+      meta: {
+        requested: limit,
+        available: rows.length,
+        subjects,
+        subject_topics: subjectTopics
+      }
     });
   }
 
