@@ -3325,3 +3325,183 @@ button{cursor:pointer}
  .shell .sources-content .source-index-card:before{left:12px!important;width:38px!important;height:38px!important}
  .shell .sources-content .source-index-card em{font-size:9px!important}
 }
+
+
+/* =====================================================================
+   v36 — PREMIUM PROFILE / SETTINGS + CONSISTENT TOUCH FEEDBACK
+   CSS-only polish: no exam questions or test flow changes.
+   ===================================================================== */
+.shell .settings-content{
+  max-width:1080px!important;
+  padding-top:clamp(20px,3vw,34px)!important;
+}
+.shell .settings-content .settings-hero{
+  display:grid!important;grid-template-columns:minmax(0,1fr) 76px!important;
+  align-items:center!important;gap:18px!important;min-height:0!important;
+  padding:clamp(20px,3vw,30px)!important;border-radius:27px!important;
+  background:radial-gradient(ellipse at 95% 5%,rgba(134,110,245,.22),transparent 42%),linear-gradient(145deg,rgba(255,255,255,.72),rgba(237,235,229,.83))!important;
+  border:1px solid rgba(255,255,255,.86)!important;
+  box-shadow:0 16px 34px rgba(41,34,81,.10),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(103,83,177,.08)!important;
+  animation:epSettingsEnter .48s cubic-bezier(.2,.8,.2,1) both!important;
+}
+.shell .settings-content .settings-hero h1{font-size:clamp(26px,4.4vw,39px)!important;line-height:1.15!important;letter-spacing:-.035em!important;margin:12px 0 9px!important;color:#20213a!important}
+.shell .settings-content .settings-hero .intro{max-width:650px!important;font-size:clamp(12px,1.5vw,15px)!important;line-height:1.7!important;color:#5e657a!important}
+.shell .settings-content .settings-orb{
+  width:72px!important;height:72px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px!important;
+  border-radius:22px!important;background:linear-gradient(145deg,#3c2d81,#201746 65%,#16142d)!important;
+  color:#d5caff!important;border:1px solid rgba(198,180,255,.58)!important;
+  box-shadow:0 12px 24px rgba(53,36,129,.25),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -5px 10px rgba(6,5,20,.25)!important;
+  animation:epSettingsOrbFloat 4.8s ease-in-out infinite!important;
+}
+.shell .settings-content .settings-orb svg{width:25px!important;height:25px!important;filter:drop-shadow(0 3px 5px rgba(0,0,0,.25))!important}
+.shell .settings-content .settings-orb span{font-size:9px!important;letter-spacing:.11em!important;font-weight:800!important;color:#e5dfff!important}
+.shell .settings-content .settings-layout{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;align-items:stretch!important;gap:15px!important;margin-top:16px!important;
+}
+.shell .settings-content .settings-profile-card{
+  grid-column:1/-1!important;display:grid!important;
+  grid-template-columns:68px minmax(0,1fr)!important;
+  grid-template-areas:"avatar copy" "status status"!important;
+  align-items:center!important;justify-items:stretch!important;gap:8px 15px!important;
+  min-height:0!important;padding:20px 22px!important;border-radius:24px!important;
+  background:radial-gradient(ellipse at 0 0,rgba(141,118,245,.15),transparent 48%),linear-gradient(145deg,rgba(255,255,255,.78),rgba(238,236,230,.88))!important;
+  border:1px solid rgba(255,255,255,.92)!important;
+  box-shadow:0 12px 26px rgba(43,35,80,.09),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(104,82,181,.08)!important;
+  animation:epSettingsEnter .5s cubic-bezier(.2,.8,.2,1) .04s both!important;
+}
+.shell .settings-content .settings-avatar{grid-area:avatar!important;width:66px!important;height:66px!important;display:grid!important;place-items:center!important;border-radius:21px!important;font-size:28px!important;color:#eeeaff!important;background:linear-gradient(145deg,#8d76f5 0%,#6044cb 55%,#39277f 100%)!important;border:1px solid rgba(255,255,255,.55)!important;box-shadow:0 10px 22px rgba(91,66,201,.24),inset 0 1px 0 rgba(255,255,255,.4),inset 0 -4px 8px rgba(31,19,88,.22)!important}
+.shell .settings-content .settings-profile-copy{grid-area:copy!important;min-width:0!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:3px!important;overflow-wrap:anywhere!important}
+.shell .settings-content .settings-profile-copy>span{font-size:10px!important;letter-spacing:.12em!important;font-weight:800!important;color:#7664be!important}
+.shell .settings-content .settings-profile-copy h2{font-size:clamp(18px,3vw,23px)!important;line-height:1.25!important;margin:2px 0!important;color:#22233a!important}
+.shell .settings-content .settings-profile-copy p{font-size:12px!important;line-height:1.5!important;margin:1px 0 0!important;color:#70768a!important;overflow-wrap:anywhere!important}
+.shell .settings-content .settings-status{grid-area:status!important;grid-column:auto!important;justify-self:start!important;display:inline-flex!important;align-items:center!important;gap:7px!important;min-height:27px!important;padding:5px 10px!important;margin:4px 0 0!important;border-radius:99px!important;color:#6855ae!important;background:rgba(119,94,218,.09)!important;border:1px solid rgba(119,94,218,.16)!important;font-size:10px!important;font-weight:750!important}
+.shell .settings-content .settings-status i{width:7px!important;height:7px!important;display:inline-block!important;flex-shrink:0!important;border-radius:50%!important;background:#9b91ac!important}
+.shell .settings-content .settings-status.online i{background:#22b883!important;box-shadow:0 0 0 4px rgba(34,184,131,.12)!important}
+.shell .settings-content .settings-card{
+  min-width:0!important;position:relative!important;overflow:hidden!important;
+  padding:21px!important;border-radius:23px!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.79),rgba(239,237,231,.90))!important;
+  border:1px solid rgba(255,255,255,.92)!important;
+  box-shadow:0 11px 25px rgba(41,36,77,.075),inset 0 1px 0 rgba(255,255,255,.96)!important;
+  transition:transform .26s cubic-bezier(.2,.8,.2,1),box-shadow .26s ease,border-color .26s ease!important;
+  animation:epSettingsEnter .48s cubic-bezier(.2,.8,.2,1) both!important;
+}
+.shell .settings-content .settings-card:nth-child(2){animation-delay:.07s!important}
+.shell .settings-content .settings-card:nth-child(3){animation-delay:.12s!important}
+.shell .settings-content .settings-card:nth-child(4){animation-delay:.17s!important}
+.shell .settings-content .settings-card:nth-child(5){animation-delay:.22s!important}
+.shell .settings-content .settings-card:before{content:""!important;position:absolute!important;top:0!important;left:0!important;right:0!important;height:3px!important;z-index:0!important;pointer-events:none!important;background:linear-gradient(90deg,#8f78f5,#b4a7ff 42%,#78cdb9)!important;opacity:.8!important}
+.shell .settings-content .settings-card>*{position:relative!important;z-index:1!important}
+.shell .settings-content .settings-card-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin-bottom:15px!important}
+.shell .settings-content .settings-kicker{font-size:9px!important;letter-spacing:.14em!important;color:#8372c9!important;font-weight:850!important}
+.shell .settings-content .settings-card-head h3{font-size:clamp(16px,2vw,19px)!important;line-height:1.3!important;margin:5px 0 0!important;color:#22243b!important}
+.shell .settings-content .settings-card-icon{width:42px!important;height:42px!important;display:grid!important;place-items:center!important;flex-shrink:0!important;border-radius:14px!important;color:#755bce!important;background:linear-gradient(145deg,#f6f2ff,#e7e1ff)!important;border:1px solid rgba(126,100,218,.17)!important;box-shadow:0 5px 13px rgba(67,48,142,.08),inset 0 1px 0 #fff!important}
+.shell .settings-content .settings-note{display:flex!important;align-items:flex-start!important;gap:10px!important;padding:13px!important;border-radius:15px!important;background:linear-gradient(120deg,rgba(123,98,220,.09),rgba(255,255,255,.38))!important;border:1px solid rgba(122,98,213,.12)!important;color:#646b80!important;font-size:12px!important;line-height:1.65!important}
+.shell .settings-content .settings-note svg{flex-shrink:0!important;color:#7a66c4!important;margin-top:2px!important}
+.shell .settings-content .settings-option-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important;margin-top:5px!important}
+.shell .settings-content .setting-choice{
+  position:relative!important;overflow:hidden!important;isolation:isolate!important;
+  display:grid!important;grid-template-columns:30px minmax(0,1fr)!important;grid-template-rows:auto auto!important;
+  grid-template-areas:"icon title" "icon caption"!important;align-content:center!important;align-items:center!important;
+  justify-items:start!important;gap:3px 8px!important;min-width:0!important;min-height:82px!important;width:100%!important;
+  padding:13px 10px!important;border-radius:17px!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.78),rgba(235,233,228,.9))!important;
+  border:1px solid rgba(54,56,91,.12)!important;
+  box-shadow:0 5px 12px rgba(40,37,75,.045),inset 0 1px 0 rgba(255,255,255,.98)!important;
+  transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,border-color .22s ease,background .22s ease!important;
+}
+.shell .settings-content .setting-choice>span{grid-area:icon!important;width:30px!important;height:30px!important;display:grid!important;place-items:center!important;border-radius:10px!important;background:rgba(119,95,217,.10)!important;font-size:17px!important}
+.shell .settings-content .setting-choice>b{grid-area:title!important;display:block!important;align-self:end!important;font-size:13px!important;line-height:1.2!important;color:#26243e!important;white-space:normal!important}
+.shell .settings-content .setting-choice>small{grid-area:caption!important;display:block!important;align-self:start!important;font-size:9px!important;line-height:1.35!important;color:#74788b!important;white-space:normal!important}
+.shell .settings-content .setting-choice:after{content:""!important;position:absolute!important;top:9px!important;right:9px!important;width:17px!important;height:17px!important;border-radius:50%!important;border:1px solid transparent!important;opacity:0!important;transform:scale(.5)!important;transition:opacity .18s ease,transform .18s ease!important}
+.shell .settings-content .setting-choice.active{
+  border-color:#8c76ed!important;background:linear-gradient(130deg,rgba(239,233,255,.98),rgba(255,255,255,.97) 54%,rgba(233,229,255,.98))!important;
+  box-shadow:0 8px 19px rgba(101,77,195,.15),0 0 0 2px rgba(139,113,245,.09),inset 0 1px 0 #fff!important;
+  transform:translateY(-2px)!important;animation:epThemeChosen .34s cubic-bezier(.2,.8,.2,1) both!important;
+}
+.shell .settings-content .setting-choice.active:after{content:"✓"!important;display:grid!important;place-items:center!important;opacity:1!important;transform:scale(1)!important;color:#fff!important;background:linear-gradient(145deg,#9179f0,#6e50cf)!important;border-color:rgba(255,255,255,.5)!important;box-shadow:0 3px 8px rgba(90,66,185,.2)!important;font-size:10px!important;font-weight:900!important}
+.shell .settings-content .setting-choice.active>span{background:linear-gradient(145deg,#eee8ff,#ded5ff)!important;box-shadow:inset 0 1px 0 #fff!important}
+.shell .settings-content .settings-divider{height:1px!important;background:linear-gradient(90deg,transparent,rgba(99,82,164,.22),transparent)!important;margin:18px 0 15px!important}
+.shell .settings-content .settings-inline-row{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;flex-wrap:wrap!important}
+.shell .settings-content .settings-inline-row>div{min-width:0!important;flex:1 1 165px!important;display:flex!important;flex-direction:column!important;gap:4px!important}
+.shell .settings-content .settings-inline-row>div>b{font-size:13px!important;color:#2b2d45!important}
+.shell .settings-content .settings-inline-row>div>span{font-size:11px!important;line-height:1.5!important;color:#71778b!important}
+.shell .settings-content .settings-inline-row>.secondary-button{min-height:40px!important;border-radius:13px!important}
+.shell .settings-content .settings-security-row{display:grid!important;grid-template-columns:42px minmax(0,1fr) auto!important;align-items:center!important;gap:12px!important}
+.shell .settings-content .settings-security-row>div:nth-child(2){min-width:0!important;display:flex!important;flex-direction:column!important;gap:4px!important}
+.shell .settings-content .settings-security-row>div:nth-child(2)>b{font-size:13px!important;color:#2b2d45!important}
+.shell .settings-content .settings-security-row>div:nth-child(2)>span{font-size:11px!important;line-height:1.5!important;color:#71778b!important}
+.shell .settings-content .security-indicator{width:42px!important;height:42px!important;display:grid!important;place-items:center!important;border-radius:14px!important;background:#f2efff!important;border:1px solid rgba(126,100,218,.18)!important;color:#755bce!important}
+.shell .settings-content .security-indicator.verified{background:#e8f8f0!important;color:#14865b!important;border-color:rgba(20,134,91,.20)!important}
+.shell .settings-content .settings-form-row{display:flex!important;gap:10px!important;align-items:center!important}
+.shell .settings-content .settings-form-row input{min-width:0!important;flex:1 1 auto!important;min-height:44px!important;padding:11px 13px!important;border-radius:13px!important}
+.shell .settings-content .settings-form-row .primary-button{min-height:44px!important;margin:0!important;flex-shrink:0!important;border-radius:13px!important}
+.shell .settings-content .danger-card .settings-card-icon{color:#b74d62!important;background:linear-gradient(145deg,#fff0f2,#f9dde3)!important}
+.shell .settings-content .danger-button{border-color:rgba(195,71,91,.24)!important;color:#b44258!important;background:linear-gradient(145deg,#fff6f7,#ffe9ed)!important}
+@keyframes epSettingsEnter{0%{opacity:0;transform:translateY(12px) scale(.99)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes epSettingsOrbFloat{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-4px) rotate(2deg)}}
+@keyframes epThemeChosen{0%{transform:translateY(1px) scale(.97)}65%{transform:translateY(-3px) scale(1.015)}100%{transform:translateY(-2px) scale(1)}}
+
+/* Other cards: obvious touch press feedback, calm release, no sticky hover */
+.shell .job-card,.shell .exam-detail-panel,.shell .history-item,.shell .history-card,.shell .source-card,.shell .feature-card,.shell .stat-card,.shell .about-card,.shell .exam-board-tab{
+  -webkit-tap-highlight-color:transparent!important;
+  transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,border-color .22s ease,background .22s ease!important;
+}
+@media(hover:none),(pointer:coarse){
+  .shell .settings-content .setting-choice:active,.shell .settings-content .settings-card:active,.shell .home-quick-button:active{
+    transform:scale(.975)!important;filter:brightness(.98)!important;
+  }
+  .shell .job-card:active,.shell .exam-detail-panel:active,.shell .history-item:active,.shell .history-card:active,.shell .source-card:active,.shell .feature-card:active,.shell .stat-card:active,.shell .about-card:active{
+    transform:scale(.985)!important;box-shadow:inset 0 2px 8px rgba(46,35,105,.11)!important;
+  }
+}
+.shell.theme-dark .settings-content .settings-hero,.shell.theme-dark .settings-content .settings-profile-card,.shell.theme-dark .settings-content .settings-card{
+  background:radial-gradient(ellipse at 0 0,rgba(132,109,244,.12),transparent 45%),linear-gradient(145deg,rgba(26,29,52,.98),rgba(13,16,31,.99))!important;
+  border-color:rgba(160,143,255,.17)!important;box-shadow:0 14px 30px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.075)!important;
+}
+.shell.theme-dark .settings-content .settings-hero h1,.shell.theme-dark .settings-content .settings-profile-copy h2,.shell.theme-dark .settings-content .settings-card-head h3,.shell.theme-dark .settings-content .settings-inline-row>div>b,.shell.theme-dark .settings-content .settings-security-row>div:nth-child(2)>b,.shell.theme-dark .settings-content .setting-choice>b{color:#f1efff!important}
+.shell.theme-dark .settings-content .settings-hero .intro,.shell.theme-dark .settings-content .settings-profile-copy p,.shell.theme-dark .settings-content .settings-inline-row>div>span,.shell.theme-dark .settings-content .settings-security-row>div:nth-child(2)>span{color:#a5acc4!important}
+.shell.theme-dark .settings-content .settings-profile-copy>span,.shell.theme-dark .settings-content .settings-kicker{color:#b5a6ff!important}
+.shell.theme-dark .settings-content .settings-status{background:rgba(129,105,228,.13)!important;color:#c9bcff!important;border-color:rgba(153,130,245,.2)!important}
+.shell.theme-dark .settings-content .setting-choice{background:linear-gradient(145deg,#191e34,#111629)!important;border-color:#303957!important;box-shadow:0 6px 14px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.05)!important}
+.shell.theme-dark .settings-content .setting-choice>b{color:#edeaff!important}
+.shell.theme-dark .settings-content .setting-choice>small{color:#a1a9c1!important}
+.shell.theme-dark .settings-content .setting-choice.active{background:linear-gradient(130deg,#33275e,#20213d 60%,#29234d)!important;border-color:#9a86fb!important;box-shadow:0 0 0 2px rgba(139,113,245,.16),0 10px 22px rgba(0,0,0,.22)!important}
+.shell.theme-dark .settings-content .settings-note{background:linear-gradient(120deg,rgba(123,98,220,.13),rgba(255,255,255,.025))!important;border-color:rgba(153,130,245,.18)!important;color:#bac1d7!important}
+.shell.theme-dark .settings-content .settings-inline-row>.secondary-button,.shell.theme-dark .settings-content .settings-form-row .primary-button{color:#f7f4ff!important}
+@media(max-width:760px){
+  .shell .settings-content{padding-top:17px!important;padding-bottom:92px!important}
+  .shell .settings-content .settings-hero{grid-template-columns:minmax(0,1fr) 56px!important;gap:10px!important;padding:19px 16px!important;border-radius:22px!important}
+  .shell .settings-content .settings-orb{width:54px!important;height:54px!important;border-radius:17px!important}
+  .shell .settings-content .settings-orb svg{width:20px!important;height:20px!important}
+  .shell .settings-content .settings-orb span{font-size:7px!important}
+  .shell .settings-content .settings-layout{grid-template-columns:minmax(0,1fr)!important;gap:12px!important;margin-top:13px!important}
+  .shell .settings-content .settings-profile-card{grid-template-columns:54px minmax(0,1fr)!important;gap:7px 12px!important;padding:16px!important;border-radius:20px!important}
+  .shell .settings-content .settings-avatar{width:54px!important;height:54px!important;border-radius:17px!important;font-size:23px!important}
+  .shell .settings-content .settings-profile-copy>span{font-size:9px!important}
+  .shell .settings-content .settings-profile-copy h2{font-size:18px!important}
+  .shell .settings-content .settings-profile-copy p{font-size:11px!important}
+  .shell .settings-content .settings-status{font-size:9px!important;min-height:25px!important}
+  .shell .settings-content .settings-card{padding:17px!important;border-radius:20px!important}
+  .shell .settings-content .settings-option-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+  .shell .settings-content .setting-choice{min-height:72px!important;padding:11px 9px!important;grid-template-columns:27px minmax(0,1fr)!important;gap:3px 7px!important;border-radius:15px!important}
+  .shell .settings-content .setting-choice>span{width:27px!important;height:27px!important;border-radius:9px!important;font-size:15px!important}
+  .shell .settings-content .setting-choice>b{font-size:12px!important}
+  .shell .settings-content .setting-choice>small{font-size:9px!important}
+  .shell .settings-content .settings-security-row{grid-template-columns:38px minmax(0,1fr)!important;gap:10px!important}
+  .shell .settings-content .security-indicator{width:38px!important;height:38px!important}
+  .shell .settings-content .settings-security-row>.secondary-button{grid-column:2!important;justify-self:start!important;min-height:40px!important}
+  .shell .settings-content .settings-form-row{align-items:stretch!important;flex-direction:column!important}
+  .shell .settings-content .settings-form-row .primary-button{width:100%!important}
+}
+@media(max-width:380px){
+  .shell .settings-content .settings-hero{grid-template-columns:minmax(0,1fr) 48px!important}
+  .shell .settings-content .settings-orb{width:48px!important;height:48px!important}
+  .shell .settings-content .setting-choice{grid-template-columns:24px minmax(0,1fr)!important;padding:10px 8px!important}
+  .shell .settings-content .setting-choice>span{width:24px!important;height:24px!important}
+  .shell .settings-content .setting-choice>b{font-size:11px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .shell .settings-content .settings-hero,.shell .settings-content .settings-profile-card,.shell .settings-content .settings-card,.shell .settings-content .settings-orb,.shell .settings-content .setting-choice.active{animation:none!important}
+  .shell .job-card,.shell .exam-detail-panel,.shell .history-item,.shell .history-card,.shell .source-card,.shell .feature-card,.shell .stat-card,.shell .about-card,.shell .exam-board-tab,.shell .settings-content .setting-choice{transition:none!important}
+}
