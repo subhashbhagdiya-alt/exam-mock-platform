@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { QUESTION_EXPLANATIONS } from "./question-explanations";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Target, Trophy, X } from "lucide-react";
 
 const supabaseBrowser = (
@@ -1200,8 +1199,7 @@ export default function HomePage() {
               const reviewItem = reviewAnswers[String(item.id)] || {};
               const correctAnswer = reviewItem.answer;
               const reviewOptions = hi && item.optionsHi ? item.optionsHi : !hi && item.optionsEn ? item.optionsEn : item.options;
-              const localizedExplanation = QUESTION_EXPLANATIONS[item.sourceId];
-              const explanation = (hi ? localizedExplanation?.hi : localizedExplanation?.en) || (hi ? reviewItem.explanation_hi || reviewItem.explanation : reviewItem.explanation_en) || "";
+              const explanation = (hi ? reviewItem.explanation_hi : reviewItem.explanation_en) || (hi ? reviewItem.explanation : "") || "";
               const isRight = answer !== undefined && answer === correctAnswer;
               const reviewQuestionText = hi ? (item.hi || item.en) : (item.en || item.hi);
               return <div className="review-question" key={item.id}><div className={"review-status " + (answer === undefined ? "status-empty" : isRight ? "status-right" : "status-wrong")}>{answer === undefined ? "—" : isRight ? <Check size={16}/> : <X size={16}/>}</div><div className="review-body"><b>{i+1}. {reviewQuestionText}</b><span>{t("आपका जवाब:","Your answer:")} {answer === undefined ? t("जवाब नहीं दिया","Not answered") : reviewOptions[answer]}</span><span className="correct-answer">{t("सही जवाब:","Correct answer:")} {correctAnswer === undefined ? t("उपलब्ध नहीं","Unavailable") : reviewOptions[correctAnswer]}</span>{explanation ? <details className="review-explanation" open={!isRight}><summary>{t("उत्तर की व्याख्या","Explanation")}</summary><p>{explanation}</p></details> : <p className="review-explanation-missing">{t("इस सवाल की विस्तृत व्याख्या अभी उपलब्ध नहीं है।","A detailed explanation is not available for this question yet.")}</p>}</div></div>;
