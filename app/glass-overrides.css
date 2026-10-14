@@ -4211,3 +4211,96 @@ button{cursor:pointer}
     max-width: 100% !important;
   }
 }
+
+
+/* ================================================================
+   EXAM REVIEW + MOBILE FINISH FIX v40
+   Explanation-first review cards and an always reachable finish action.
+   ================================================================ */
+.review-explanation {
+  margin-top: 12px !important;
+  padding: 12px 14px !important;
+  border-radius: 13px !important;
+  border: 1px solid #3b345e !important;
+  background: #111326 !important;
+}
+.review-explanation summary {
+  cursor: pointer !important;
+  color: #c4b6ff !important;
+  font-weight: 800 !important;
+  line-height: 1.45 !important;
+}
+.review-explanation p {
+  color: #d0d3e0 !important;
+  font-size: 13px !important;
+  line-height: 1.8 !important;
+  margin: 9px 0 0 !important;
+  white-space: pre-wrap !important;
+}
+.review-explanation-missing {
+  margin-top: 10px !important;
+  color: #a8aec1 !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+}
+.review-body > span {
+  display: block !important;
+  margin-top: 8px !important;
+  line-height: 1.55 !important;
+}
+.review-body .correct-answer {
+  color: #8fe0b7 !important;
+  font-weight: 750 !important;
+}
+.mobile-finish-test { display: none !important; }
+
+@media (max-width: 760px) {
+  .shell.exam-active {
+    perspective: none !important;
+    transform: none !important;
+    overflow-x: clip !important;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+  }
+  .shell.exam-active .sidebar { display: none !important; }
+  .shell.exam-active .main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-bottom: 0 !important;
+  }
+  .shell.exam-active .home-quick-button,
+  .shell.exam-active .menu-button { display: none !important; }
+  .shell.exam-active .topbar { padding-inline: 12px !important; gap: 8px !important; }
+  .shell.exam-active .top-actions { gap: 8px !important; }
+  .shell.exam-active .test-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 10px 12px calc(88px + env(safe-area-inset-bottom)) !important;
+  }
+  .shell.exam-active .mobile-finish-test {
+    display: flex !important;
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+    width: calc(100% - 24px) !important;
+    min-height: 54px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    border: 1px solid #d8ccff !important;
+    border-radius: 16px !important;
+    background: linear-gradient(110deg,#c0b2ff,#8065eb) !important;
+    color: #17102f !important;
+    font-size: 15px !important;
+    font-weight: 850 !important;
+    box-shadow: 0 10px 30px rgba(104,78,220,.4),inset 0 1px rgba(255,255,255,.6) !important;
+    z-index: 8 !important;
+  }
+  .shell.exam-active .mobile-finish-test:active { transform: scale(.985) !important; }
+  .shell.exam-active .test-content .question-panel { margin-bottom: 0 !important; }
+  .shell.exam-active .test-content .question-nav { margin-top: 2px !important; }
+  .shell.exam-active .modal-backdrop { z-index: 20 !important; }
+  .review-explanation { padding: 11px 12px !important; }
+  .review-explanation p { font-size: 13px !important; }
+}
