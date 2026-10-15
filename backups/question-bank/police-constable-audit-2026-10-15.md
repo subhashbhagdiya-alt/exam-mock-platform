@@ -4,20 +4,27 @@ Repository: subhashbhagdiya-alt/exam-mock-platform
 Database exam slug: mpesb-police-constable-2026
 Exam ID: 0f0d88ab-9cbb-4398-bc9d-123b519a40e3
 
-## Audit findings
-- Active questions at audit start: 342
-- Verified active questions: 342
+## Initial audit
+- Active questions before cleanup: 342
+- Verified active questions before cleanup: 342
 - Missing Hindi/English question text: 0
 - Missing Hindi/English explanations: 0
 - Invalid option count (expected 4): 0
 - Invalid answer index (expected 0–3): 0
-- Exact normalized Hindi duplicate groups: 11 (22 rows before cleanup)
-- Subject taxonomy is fragmented across multiple labels for the same broad sections (e.g. General Knowledge/MP General Knowledge and Science/General Science, including bilingual variants).
+- Exact normalized Hindi duplicate groups: 11 (22 active rows across those groups)
+- Subject taxonomy was fragmented across labels for the same broad sections (e.g. General Knowledge/MP General Knowledge, Science/General Science, and bilingual variants).
 
-## Duplicate rows selected for deactivation
-Keep the earlier row in each normalized-Hindi duplicate group; deactivate only the later duplicate row. No question rows are deleted.
+## Cleanup completed
+- Deactivated 11 later duplicate rows; no rows were deleted.
+- Kept the earlier row for each normalized-Hindi duplicate group.
+- Remaining active duplicate groups: 0.
+- Final active questions: 331.
+- Final verified active questions: 331.
+- Final active validation issues: 0.
+- Final source distribution: 321 curated practice questions and 10 memory-based questions. None are labelled official PYQ in this source-type distribution.
 
-| Duplicate row ID | Question |
+## Duplicate rows deactivated
+| Row ID | Question |
 |---|---|
 | cd8e7db0-62fe-4a6e-8d84-f18277eebe0d | ₹2,000 पर 5% वार्षिक दर से 2 वर्ष का साधारण ब्याज कितना होगा? |
 | 93ba4bb4-ae1e-408e-a4c9-efbf00267b2b | pH मान 7 से कम होने पर विलयन कैसा होता है? |
@@ -27,11 +34,11 @@ Keep the earlier row in each normalized-Hindi duplicate group; deactivate only t
 | cd819773-2c74-40c3-95bf-cb2aa4332fe3 | ध्वनि किस माध्यम में यात्रा नहीं कर सकती? |
 | 45f25050-5589-4f90-983a-319bd299e196 | पुस्तक : पढ़ना :: भोजन : ? |
 | 3fd6a20d-3788-4dc4-bf4d-4b1d70498ccf | भारत छोड़ो आंदोलन किस वर्ष शुरू हुआ था? |
-| d1407a33-bf61-40e1-8aee-02e4b6e06371 | मध्य प्रदेश उच्च न्यायालय की मुख्य पीठ कहाँ स्थित है? |
+| d1407a33-ace7-452e-b9b4-1ed0c03db97a | मध्य प्रदेश उच्च न्यायालय की मुख्य पीठ कहाँ स्थित है? |
 | 3604a1e9-a579-4c34-8b7b-2806f3385771 | विटामिन C की कमी से कौन-सा रोग होता है? |
 | 0ac147c6-da23-4aaa-9f3b-37080c74a2ed | साधारण नमक का रासायनिक सूत्र क्या है? |
 
-## Notes
-- These are curated practice items, not represented as official previous-year questions.
-- This file records the audit and cleanup plan; it is not a full question-bank data export.
-- Next QA step: normalize section labels after reviewing all dependent API/UI filters, then verify source-type distribution and representative answer keys.
+## Notes and next steps
+- Curated items are practice questions and are not represented as official previous-year questions.
+- This file is an audit/cleanup record, not a full question-bank data export.
+- Before normalizing subject labels, inspect API/UI filters and reporting code so existing exam filters are not broken.
