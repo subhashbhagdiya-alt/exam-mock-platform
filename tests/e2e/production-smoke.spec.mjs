@@ -40,6 +40,13 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   expect(bodyText.length, "The homepage should render visible content").toBeGreaterThan(40);
   await expect(page.locator("html")).toHaveAttribute("lang", /^(en|hi)$/);
 
+  // Confirm the no-SMS login fallback is visible and both login methods can be selected.
+  await expect(page.getByTestId("login-email-input")).toBeVisible();
+  await page.getByTestId("login-method-phone").click();
+  await expect(page.getByPlaceholder("10 अंकों का मोबाइल नंबर")).toBeVisible();
+  await page.getByTestId("login-method-email").click();
+  await expect(page.getByTestId("login-email-input")).toBeVisible();
+
   const dimensions = await page.evaluate(() => ({
     viewportWidth: window.innerWidth,
     documentWidth: document.documentElement.scrollWidth
