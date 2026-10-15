@@ -18,11 +18,11 @@ A job track is only treated as test-ready when it has an active exam configurati
 
 ## Weekly exam analysis and question batches
 - A weekly Vercel cron selects one active exam, prioritizing the exam with the oldest/missing analysis and then the smallest question bank.
-- The analysis uses available stored PYQ/official-tagged questions, exam configuration, topic coverage, and web search for official syllabus/past-paper sources where available; discovered source URLs are saved in the analysis history.
+- The analysis uses available stored PYQ/official-tagged questions, exam configuration, topic coverage, and metadata from the configured official-source registry. The free-tier workflow does not claim it has opened or searched those URLs; if authentic past-paper content is missing, the analysis must disclose that limitation.
 - It generates a target batch of 50 new bilingual practice questions, stages the result, then runs a separate AI review pass on a later scheduled worker run.
 - Questions are inserted only when the batch has at least 50 unique, structurally valid questions with four distinct options, a valid answer index, Hindi/English text, and explanations.
 - New questions are labelled `curated`; they are not presented as official PYQs. When authentic past-paper evidence is missing, the analysis must disclose that limitation instead of inventing frequency claims.
-- Weekly automation requires server-side `CRON_SECRET`, `SUPABASE_URL` (or `NEXT_PUBLIC_SUPABASE_URL`), `SUPABASE_SERVICE_ROLE_KEY`, and `GEMINI_API_KEY`. The workflow defaults to Gemini 2.5 Flash and has no OpenAI/paid-provider fallback. Use a Google AI Studio key on a project that remains on the free tier; free quotas and Google Search grounding limits apply, so a batch may wait until quota resets. Do not attach billing or choose a paid model if your requirement is ₹0. Never expose server secrets in client-side variables.
+- Weekly automation requires server-side `CRON_SECRET`, `SUPABASE_URL` (or `NEXT_PUBLIC_SUPABASE_URL`), `SUPABASE_SERVICE_ROLE_KEY`, and `GEMINI_API_KEY`. It uses Gemini 3.6 Flash text generation on the free tier and has no OpenAI/paid-provider fallback. Google Search grounding is not enabled because it is unavailable on this model's free tier; the workflow relies on stored question evidence and source metadata, and reports weak evidence instead of claiming to have browsed sources. Free quotas still apply, so a batch may wait until quota resets. Do not attach billing or enable a paid provider if your requirement is ₹0. Never expose server secrets in client-side variables.
 
 ## Run locally
 ```bash
