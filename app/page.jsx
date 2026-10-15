@@ -801,7 +801,7 @@ export default function HomePage() {
   const [openExamGroup, setOpenExamGroup] = useState("MPESB");
   const [examFilter, setExamFilter] = useState("all");
   const [examQuery, setExamQuery] = useState("");
-  const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
+  const [isOnline, setIsOnline] = useState(true);
   const [user, setUser] = useState(null);
   const [profileName, setProfileName] = useState("");
   const [needsProfileName, setNeedsProfileName] = useState(false);
@@ -989,6 +989,8 @@ export default function HomePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // Initialize after hydration so server and client render the same first state.
+    setIsOnline(navigator.onLine);
     const onOnline = () => setIsOnline(true);
     const onOffline = () => setIsOnline(false);
     window.addEventListener("online", onOnline);
