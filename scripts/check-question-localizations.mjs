@@ -174,6 +174,7 @@ assert.equal(
 );
 assert.deepEqual(sampleCatalog.subjects, ["General Knowledge", "Indian Polity", "Mathematics"]);
 assert.deepEqual(sampleCatalog.subject_topics, [
+  { subject: "General Knowledge", topic: "Indian History" },
   { subject: "Indian Polity", topic: "Constitution" },
   { subject: "Indian Polity", topic: "Indian History" },
   { subject: "Mathematics", topic: "Profit and Loss" }
