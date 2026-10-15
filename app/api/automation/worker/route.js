@@ -34,7 +34,11 @@ async function callModel(apiKey, prompt, maxOutputTokens = 16000, enableWebSearc
     }),
     signal: AbortSignal.timeout(50000)
   });
-  if (!response.ok) throw new Error(`Gemini API returned HTTP ${response.status}; no paid-provider fallback was attempted.`);
+  if (!response.ok) {
+    const failure = new Error(`Gemini API returned HTTP ${response.status}; no paid-provider fallback was attempted.`);
+    if (response.status === 429) failure.code = "FREE_QUOTA_EXHAUSTED";
+    throw failure;
+  }
   const body = await response.json();
   const text = extractGeminiText(body).replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
   try { return JSON.parse(text); } catch { throw new Error("Gemini response was not valid JSON; no questions were published."); }
@@ -272,9 +276,19 @@ export async function GET(request) {
     }).eq("id", task.id);
     return NextResponse.json({ ok: true, processed: true, task_id: task.id, task_type: task.task_type, status: deferred ? "queued" : blocked ? "blocked" : "done", result });
   } catch (err) {
+    const quotaDeferred = err?.code === "FREE_QUOTA_EXHAUSTED";
     await db.from("background_manager_tasks").update({
-      status: "failed", error_message: err?.message || "Task failed", completed_at: new Date().toISOString()
+      status: quotaDeferred ? "queued" : "failed",
+      error_message: err?.message || "Task failed",
+      completed_at: quotaDeferred ? null : new Date().toISOString()
     }).eq("id", task.id);
-    return NextResponse.json({ ok: false, processed: true, task_id: task.id, status: "failed", error: err?.message || "Task failed" }, { status: 500 });
+    return NextResponse.json({
+      ok: quotaDeferred,
+      processed: true,
+      task_id: task.id,
+      status: quotaDeferred ? "queued" : "failed",
+      error: err?.message || "Task failed",
+      retry: quotaDeferred ? "The next scheduled worker run will retry; no paid-provider fallback is used." : undefined
+    }, { status: quotaDeferred ? 202 : 500 });
   }
 }
