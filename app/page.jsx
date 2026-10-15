@@ -957,34 +957,19 @@ export default function HomePage() {
     const existing = localStorage.getItem("exam_prep_device_key") || crypto.randomUUID();
     localStorage.setItem("exam_prep_device_key", existing);
     (async () => {
-      const { data: device, error } = await supabaseBrowser.from("user_devices").select("device_key").eq("user_id", user.id).maybeSingle();
+      const { data: isTrusted, error } = await supabaseBrowser.rpc("bind_or_verify_trusted_device", {
+        p_device_key: existing,
+        p_phone: user.phone || null
+      });
       if (error) {
         setAuthMessage(t("Trusted device की जाँच नहीं हो सकी।","Trusted-device verification could not be completed."));
         await supabaseBrowser.auth.signOut();
         return;
       }
-      if (device && device.device_key !== existing) {
+      if (isTrusted !== true) {
         setAuthStep("recovery");
         setAuthMessage(t("यह अकाउंट दूसरे trusted device से जुड़ा है। पुराने device से recovery code लेकर यहाँ दर्ज करें।","This account is bound to another trusted device. Enter a recovery code generated on the old trusted device."));
         return;
-      }
-      if (!device) {
-        const { error: bindError } = await supabaseBrowser.from("user_devices").insert({
-          user_id: user.id,
-          device_key: existing,
-          phone: user.phone || null,
-          last_seen_at: new Date().toISOString()
-        });
-        if (bindError) {
-          setAuthMessage(t("यह डिवाइस trusted नहीं बन सका।","This device could not be trusted."));
-          await supabaseBrowser.auth.signOut();
-          return;
-        }
-      } else {
-        await supabaseBrowser.from("user_devices").update({
-          phone: user.phone || null,
-          last_seen_at: new Date().toISOString()
-        }).eq("user_id", user.id);
       }
       setTrustedDeviceVerified(true);
       setAuthMessage(t("लॉगिन सफल। यह डिवाइस trusted है।","Login successful. This device is trusted."));
