@@ -35,8 +35,17 @@ async function cleanResult(body, client, authUserId = null) {
   if (examError) throw new Error(examError.message);
   if (!exam) throw new Error("Exam not found");
 
-  const sourceIds = [...new Set(Object.values(body.question_ids).filter(v => /^[0-9a-f-]{36}$/i.test(String(v))).map(String))];
-  if (!sourceIds.length) throw new Error("No valid question ids");
+  const mappedIds = Object.values(body.question_ids);
+  if (!mappedIds.length || mappedIds.some(id => typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id))) {
+    throw new Error("Invalid question mapping");
+  }
+  const sourceIds = mappedIds.map(id => id.toLowerCase());
+  if (new Set(sourceIds).size !== sourceIds.length) {
+    throw new Error("Duplicate question ids are not allowed");
+  }
+  if (!Number.isInteger(Number(body.total_questions)) || Number(body.total_questions) !== sourceIds.length) {
+    throw new Error("Question count does not match result payload");
+  }
 
   const { data: questions, error: qError } = await client.from("question_bank")
     .select("id,answer_index,exam_id,active,verified")
