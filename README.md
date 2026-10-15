@@ -18,7 +18,7 @@ A job track is only treated as test-ready when it has an active exam configurati
 
 ## Weekly exam analysis and question batches
 - A weekly Vercel cron selects one active exam, prioritizing the exam with the oldest/missing analysis and then the smallest question bank.
-- The analysis uses available stored PYQ/official-tagged questions, exam configuration, topic coverage, and web search for official syllabus/past-paper sources where available.
+- The analysis uses available stored PYQ/official-tagged questions, exam configuration, topic coverage, and web search for official syllabus/past-paper sources where available; discovered source URLs are saved in the analysis history.
 - It generates a target batch of 50 new bilingual practice questions, stages the result, then runs a separate AI review pass on a later scheduled worker run.
 - Questions are inserted only when the batch has at least 50 unique, structurally valid questions with four distinct options, a valid answer index, Hindi/English text, and explanations.
 - New questions are labelled `curated`; they are not presented as official PYQs. When authentic past-paper evidence is missing, the analysis must disclose that limitation instead of inventing frequency claims.
