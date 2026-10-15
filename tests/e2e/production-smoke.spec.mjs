@@ -68,6 +68,49 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   ).toEqual([]);
 });
 
+test("mock test API grades an attempt and keeps repeated submission idempotent", async ({ request }) => {
+  const sessionResponse = await request.get(
+    `${baseURL}/api/questions?exam=mpesb-police-constable-2026&limit=10`,
+    { timeout: 30_000 }
+  );
+  expect(sessionResponse.status()).toBe(200);
+  const session = await sessionResponse.json();
+
+  expect(session.data.length).toBe(10);
+  expect(session.test_session_id).toMatch(/^[0-9a-f-]{36}$/i);
+  expect(session.test_session_key).toMatch(/^[0-9a-f-]{36}$/i);
+  for (const question of session.data) {
+    expect(question).not.toHaveProperty("answer_index");
+    expect(question).not.toHaveProperty("explanation_hi");
+    expect(question).not.toHaveProperty("explanation_en");
+  }
+
+  const payload = {
+    test_session_id: session.test_session_id,
+    test_session_key: session.test_session_key,
+    answers: {}
+  };
+  const firstResponse = await request.post(`${baseURL}/api/grade`, {
+    data: payload,
+    timeout: 30_000
+  });
+  expect(firstResponse.status()).toBe(200);
+  const first = await firstResponse.json();
+  expect(first.data.total_questions).toBe(10);
+  expect(first.data.correct).toBe(0);
+  expect(first.data.wrong).toBe(0);
+  expect(first.data.unanswered).toBe(10);
+  expect(first.data.score).toBe(0);
+  expect(first.data.review).toHaveLength(10);
+
+  const retryResponse = await request.post(`${baseURL}/api/grade`, {
+    data: payload,
+    timeout: 30_000
+  });
+  expect(retryResponse.status()).toBe(200);
+  expect(await retryResponse.json()).toEqual(first);
+});
+
 test("question catalog supports normalized subject and topic filters", async ({ request }) => {
   const catalogResponse = await request.get(
     `${baseURL}/api/questions?exam=mpesb-police-constable-2026&limit=100&mode=availability`,
