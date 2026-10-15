@@ -1293,8 +1293,8 @@ export default function HomePage() {
     const { error } = await supabaseBrowser.auth.signInWithOtp({ phone: normalized, options: { channel: "sms" } });
     if (error) {
       const message = String(error.message || "");
-      if (/unsupported phone provider/i.test(message) || /sms provider/i.test(message)) {
-        setAuthMessage(t("SMS OTP सेवा अभी configured नहीं है। Supabase में SMS provider (जैसे Twilio/MessageBird/Vonage) configure करना होगा।","SMS OTP is not configured yet. Configure an SMS provider such as Twilio, MessageBird, or Vonage in Supabase Auth."));
+      if (/phone[_\\s-]*provider[_\\s-]*disabled|phone provider.*disabled|phone.*not enabled|unsupported phone provider/i.test(message) || /sms provider/i.test(message)) {
+        setAuthMessage(t("Supabase में Phone OTP disabled है या SMS provider सेट नहीं है। Supabase Dashboard → Authentication → Sign In / Providers में Phone enable करके SMS provider configure करें।","Phone OTP is disabled or the SMS provider is not configured in Supabase. In Supabase Dashboard → Authentication → Sign In / Providers, enable Phone and configure an SMS provider."));
       } else {
         setAuthMessage(message);
       }
