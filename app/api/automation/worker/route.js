@@ -17,31 +17,32 @@ function dbClient() {
   return url && key ? createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } }) : null;
 }
 
-function extractOutputText(body) {
-  return body.output_text || body.output?.flatMap((item) => item.content || []).map((item) => item.text || "").join("") || "";
+function extractGeminiText(body) {
+  return (body.candidates?.[0]?.content?.parts || []).map((part) => part.text || "").join("");
 }
 
 async function callModel(apiKey, prompt, maxOutputTokens = 16000, enableWebSearch = false) {
-  const response = await fetch("https://api.openai.com/v1/responses", {
+  // Free-tier provider only: never fall back to a paid provider or a paid model.
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+    headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || "gpt-5.6",
-      input: prompt,
-      max_output_tokens: maxOutputTokens,
-      ...(enableWebSearch ? { tools: [{ type: "web_search" }] } : {})
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: "application/json", maxOutputTokens },
+      ...(enableWebSearch ? { tools: [{ google_search: {} }] } : {})
     }),
     signal: AbortSignal.timeout(50000)
   });
-  if (!response.ok) throw new Error(`OpenAI API returned HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`Gemini API returned HTTP ${response.status}; no paid-provider fallback was attempted.`);
   const body = await response.json();
-  const text = extractOutputText(body).replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
-  try { return JSON.parse(text); } catch { throw new Error("AI response was not valid JSON; no questions were published."); }
+  const text = extractGeminiText(body).replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+  try { return JSON.parse(text); } catch { throw new Error("Gemini response was not valid JSON; no questions were published."); }
 }
 
 async function generateCandidates(task, db) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { blocked: true, reason: "OPENAI_API_KEY is not configured. No AI-generated question was created." };
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return { blocked: true, reason: "GEMINI_API_KEY is not configured. No AI-generated question was created." };
   const { data: exams, error } = await db.from("exams").select("id,name,description").eq("is_active", true).order("name").limit(8);
   if (error) throw error;
   const prompt = `Create 5 high-quality Indian competitive-exam practice MCQs for ExamPrep. Return JSON only: {"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}. Do not label questions PYQ or official. Exams: ${JSON.stringify(exams)}. Task: ${JSON.stringify(task.payload)}.`;
@@ -109,8 +110,8 @@ Use web search to find current official syllabus/past-paper material for this ex
 }
 
 async function runWeeklyExamAnalysis(task, db) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { blocked: true, reason: "OPENAI_API_KEY is not configured; weekly analysis and question generation did not run." };
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return { blocked: true, reason: "GEMINI_API_KEY is not configured; weekly analysis and question generation did not run." };
   const examId = task.payload?.exam_id;
   if (!examId) throw new Error("Weekly task is missing exam_id.");
   const target = Math.max(50, Math.min(100, Number(task.payload?.target_new_questions) || 50));
