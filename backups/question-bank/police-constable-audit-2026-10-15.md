@@ -43,9 +43,16 @@ Reviewed `lib/question-categories.mjs`, `app/api/questions/route.js`, `app/api/e
 - The question API builds its subject/topic catalog from active verified rows and filters questions using normalized case and whitespace.
 - It does not merge semantic or bilingual aliases (for example, "Science" and "General Science") into one subject.
 - A database-wide subject rename/merge is not safe yet without reviewing every UI consumer and filter expectation. Keep the current stored labels unchanged for now.
-- Added `scripts/test-question-categories.mjs` and an npm script `test:question-categories` on this backup branch to cover catalog construction and filter behavior. The test script is committed but has not been executed in a local Node environment in this session.
+
+## Test/CI review
+- Added `scripts/test-question-categories.mjs` and the `test:question-categories` npm script.
+- Local Node.js 22 execution of the category catalog/filter test passed.
+- Preserved the existing `test:result-validation` npm script.
+- Updated `.github/workflows/ci.yml` to run category tests, result-validation tests, localization checks, lint, and build.
+- A GitHub Draft PR (#5) was opened for isolated review. At the time of this report, GitHub Actions CI had not started (no workflow run returned); Vercel's PR preview feedback check reported success, which is not the same as the CI/build result.
+- Do not merge the PR or make category/UI changes until CI status is confirmed.
 
 ## Notes and next steps
 - Curated items are practice questions and are not represented as official previous-year questions.
 - This is an audit/cleanup record, not a full question-bank data export.
-- Next safe step: run the new category tests plus existing localization/result tests and a build in CI before considering a UI/category normalization change.
+- Next: diagnose why GitHub Actions CI did not start for PR #5; once it runs, review each test/build result before any merge.
