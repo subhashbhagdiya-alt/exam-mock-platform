@@ -47,7 +47,7 @@ async function cleanResult(body, client, authUserId = null) {
   const localIds = Object.keys(body.question_ids);
   let correct = 0, wrong = 0, unanswered = 0;
   for (const localId of localIds) {
-    const question = byId.get(String(body.question_ids[localId]));
+    const question = byId.get(String(body.question_ids[localId]).toLowerCase());
     if (!question) throw new Error("Question set is no longer valid");
     const answer = body.answers[localId];
     if (answer === undefined || answer === null || answer === "") { unanswered += 1; continue; }
