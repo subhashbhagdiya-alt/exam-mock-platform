@@ -21,16 +21,15 @@ function extractGeminiText(body) {
   return (body.candidates?.[0]?.content?.parts || []).map((part) => part.text || "").join("");
 }
 
-async function callModel(apiKey, prompt, maxOutputTokens = 16000, enableWebSearch = false) {
+async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
   // Free-tier provider only: never fall back to a paid provider or a paid model.
-  const model = "gemini-2.5-flash";
+  const model = "gemini-3.6-flash";
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json", maxOutputTokens },
-      ...(enableWebSearch ? { tools: [{ google_search: {} }] } : {})
+      generationConfig: { responseMimeType: "application/json", maxOutputTokens }
     }),
     signal: AbortSignal.timeout(50000)
   });
@@ -104,8 +103,8 @@ Target exam: ${JSON.stringify(context.exam)}.
 Request ${requested} questions to ensure a full batch of ${target} unique questions remains after deduplication.
 Evidence from existing bank and stored official/PYQ questions: ${JSON.stringify(patternEvidence(context))}.
 Previously generated questions from this same task (do not duplicate): ${JSON.stringify(previousDraft.map((q) => ({ question_hi: q.question_hi, question_en: q.question_en, subject: q.subject, topic: q.topic })))}
-Use web search to find current official syllabus/past-paper material for this exam where available; prioritize the exam board's own domain. Include only sources actually opened/used in analysis.source_evidence and state what each supports. Rules: use stored PYQ/official questions as past-paper evidence only when actually present. If no authentic past-paper evidence can be found, explicitly state that frequency estimates are weak and use syllabus/description/topic coverage to recommend practice priorities. Never invent exact past-paper frequency, source citations, official status, or guarantee a question will appear. All generated questions are curated practice, not PYQs. Check each answer and explanation before returning it. Each question needs four distinct options, 0-based answer_index, Hindi/English versions, and concise explanations. Avoid all concepts/questions already in the bank; favor coverage gaps and varied easy/medium/hard difficulty.`;
-  const parsed = await callModel(apiKey, prompt, 16000, previousDraft.length === 0);
+Do not claim to browse or open websites in this free-tier workflow. Use stored PYQ/official questions, exam configuration, topic coverage, and the supplied official_source_references metadata only. Treat listed source URLs as references, not proof that their contents were inspected. Include source_evidence only for evidence actually present in the supplied records; do not invent citations, paper contents, exact frequencies, official status, or guarantees that a question will appear. When authentic past-paper question content is absent, explicitly state that frequency estimates are weak and recommend practice priorities from the available syllabus/description and topic coverage. All generated questions are curated practice, not PYQs. Check each answer and explanation before returning it. Each question needs four distinct options, 0-based answer_index, Hindi/English versions, and concise explanations. Avoid all concepts/questions already in the bank; favor coverage gaps and varied easy/medium/hard difficulty.`;
+  const parsed = await callModel(apiKey, prompt, 16000);
   if (!parsed.analysis || typeof parsed.analysis.trend_summary !== "string" || !Array.isArray(parsed.analysis.topic_breakdown)) {
     throw new Error("Weekly exam-pattern analysis failed schema validation.");
   }
