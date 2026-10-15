@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "check:localizations": "node scripts/check-question-localizations.mjs"
+    "check:localizations": "node scripts/check-question-localizations.mjs",
+    "test:question-categories": "node scripts/test-question-categories.mjs",
+    "test:result-validation": "node scripts/test-result-validation.mjs"
   },
   "dependencies": {
     "next": "16.3.8",
