@@ -1,5 +1,14 @@
 import assert from "node:assert/strict";
-import { dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../lib/weekly-exam-analysis.mjs";
+import { buildGeminiRequestOptions, dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../lib/weekly-exam-analysis.mjs";
+
+const groundedRequest = buildGeminiRequestOptions(16000, true);
+assert.equal(groundedRequest.generationConfig.maxOutputTokens, 16000);
+assert.equal("responseMimeType" in groundedRequest.generationConfig, false);
+assert.deepEqual(groundedRequest.tools, [{ google_search: {} }]);
+
+const structuredRequest = buildGeminiRequestOptions(5000, false);
+assert.equal(structuredRequest.generationConfig.responseMimeType, "application/json");
+assert.equal("tools" in structuredRequest, false);
 
 const valid = {
   subject: "Reasoning",
