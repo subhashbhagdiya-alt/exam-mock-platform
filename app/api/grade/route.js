@@ -33,7 +33,7 @@ export async function POST(request) {
       });
       data = result.data;
       error = result.error;
-      if (!error || !/invalid api key|invalid jwt|bad jwt|jwt expired/i.test(String(error.message || ""))) break;
+      if (!error || !/invalid api key|invalid jwt|bad jwt|jwt expired|permission denied|not authorized to execute/i.test(String(error.message || ""))) break;
     }
     if (error) {
       const message = String(error.message || "");
