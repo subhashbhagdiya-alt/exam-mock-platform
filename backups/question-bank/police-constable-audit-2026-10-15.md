@@ -12,7 +12,7 @@ Exam ID: 0f0d88ab-9cbb-4398-bc9d-123b519a40e3
 - Invalid option count (expected 4): 0
 - Invalid answer index (expected 0–3): 0
 - Exact normalized Hindi duplicate groups: 11 (22 active rows across those groups)
-- Subject taxonomy was fragmented across labels for the same broad sections (e.g. General Knowledge/MP General Knowledge, Science/General Science, and bilingual variants).
+- Subject taxonomy is fragmented across labels for the same broad sections (e.g. General Knowledge/MP General Knowledge, Science/General Science, and bilingual variants).
 
 ## Cleanup completed
 - Deactivated 11 later duplicate rows; no rows were deleted.
@@ -38,7 +38,14 @@ Exam ID: 0f0d88ab-9cbb-4398-bc9d-123b519a40e3
 | 3604a1e9-a579-4c34-8b7b-2806f3385771 | विटामिन C की कमी से कौन-सा रोग होता है? |
 | 0ac147c6-da23-4aaa-9f3b-37080c74a2ed | साधारण नमक का रासायनिक सूत्र क्या है? |
 
+## Application code review
+Reviewed `lib/question-categories.mjs`, `app/api/questions/route.js`, `app/api/exams/route.js`, and `package.json`.
+- The question API builds its subject/topic catalog from active verified rows and filters questions using normalized case and whitespace.
+- It does not merge semantic or bilingual aliases (for example, "Science" and "General Science") into one subject.
+- A database-wide subject rename/merge is not safe yet without reviewing every UI consumer and filter expectation. Keep the current stored labels unchanged for now.
+- Added `scripts/test-question-categories.mjs` and an npm script `test:question-categories` on this backup branch to cover catalog construction and filter behavior. The test script is committed but has not been executed in a local Node environment in this session.
+
 ## Notes and next steps
 - Curated items are practice questions and are not represented as official previous-year questions.
-- This file is an audit/cleanup record, not a full question-bank data export.
-- Before normalizing subject labels, inspect API/UI filters and reporting code so existing exam filters are not broken.
+- This is an audit/cleanup record, not a full question-bank data export.
+- Next safe step: run the new category tests plus existing localization/result tests and a build in CI before considering a UI/category normalization change.
