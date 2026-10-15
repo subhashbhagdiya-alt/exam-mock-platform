@@ -1,0 +1,52 @@
+name: ExamPrep Production Browser Smoke
+
+on:
+  workflow_run:
+    workflows: ["ExamPrep CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Public site URL to test"
+        required: false
+        default: "https://exam-prep-direct-box.vercel.app"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-smoke:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      E2E_BASE_URL: ${{ github.event.inputs.base_url || 'https://exam-prep-direct-box.vercel.app' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install project dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+      - name: Install temporary Playwright test runner
+        run: npm install --no-save --package-lock=false @playwright/test
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run mobile production smoke tests
+        run: npx playwright test tests/e2e/production-smoke.spec.mjs --reporter=list
+      - name: Upload mobile screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: examprep-mobile-smoke-screenshot
+          path: test-results/examprep-mobile-home.png
+          if-no-files-found: ignore
