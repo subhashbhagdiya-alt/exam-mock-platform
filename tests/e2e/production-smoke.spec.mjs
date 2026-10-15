@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { writeFile } from "node:fs/promises";
 
 const baseURL = (process.env.E2E_BASE_URL || "https://exam-prep-direct-box.vercel.app").replace(/\/+$/, "");
 
@@ -10,7 +11,20 @@ test.use({
 
 test("production homepage renders in a mobile viewport", async ({ page }) => {
   const pageErrors = [];
-  page.on("pageerror", error => pageErrors.push(error.message));
+  const consoleMessages = [];
+  page.on("pageerror", error => pageErrors.push({
+    message: error.message,
+    stack: error.stack || ""
+  }));
+  page.on("console", message => {
+    if (message.type() === "error" || message.type() === "warning") {
+      consoleMessages.push({
+        type: message.type(),
+        text: message.text(),
+        location: message.location()
+      });
+    }
+  });
 
   const response = await page.goto(baseURL, {
     waitUntil: "domcontentloaded",
@@ -34,11 +48,23 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
     "The page should not overflow horizontally on a mobile viewport"
   ).toBeLessThanOrEqual(dimensions.viewportWidth + 2);
 
-  // Keep a visual artifact even when the hydration/client-error assertion fails.
+  // Keep actionable browser diagnostics even when the production build hides React's full hydration message.
   await page.screenshot({ path: "test-results/examprep-mobile-home.png", fullPage: true });
+  const diagnostics = await page.evaluate(({ pageErrors, consoleMessages, bodyText }) => ({
+    url: location.href,
+    title: document.title,
+    documentLanguage: document.documentElement.lang,
+    viewport: { width: innerWidth, height: innerHeight },
+    bodyText: bodyText.slice(0, 5000),
+    mainText: (document.querySelector("main")?.innerText || "").slice(0, 5000),
+    rootMarkup: (document.querySelector("main")?.innerHTML || document.body.innerHTML).slice(0, 12000),
+    pageErrors,
+    consoleMessages
+  }), { pageErrors, consoleMessages, bodyText });
+  await writeFile("test-results/hydration-diagnostics.json", JSON.stringify(diagnostics, null, 2));
   expect(
     pageErrors,
-    `The page should not emit uncaught JavaScript errors: ${pageErrors.join(" | ")}`
+    `The page should not emit uncaught JavaScript errors: ${pageErrors.map(error => error.message).join(" | ")}`
   ).toEqual([]);
 });
 
