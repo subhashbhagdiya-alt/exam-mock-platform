@@ -1,12 +1,19 @@
 name: ExamPrep Production Browser Smoke
 
 on:
+  pull_request:
+    branches: [main]
   workflow_run:
     workflows: ["ExamPrep CI"]
     types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
+      ref:
+        description: "Git ref to test"
+        required: false
+        default: "main"
+        type: string
       base_url:
         description: "Public site URL to test"
         required: false
@@ -18,12 +25,12 @@ permissions:
 
 # Only keep one live production-browser run in flight.
 concurrency:
-  group: examprep-production-browser-smoke
+  group: examprep-production-browser-smoke-${{ github.event.pull_request.number || 'main' }}
   cancel-in-progress: true
 
 jobs:
   mobile-smoke:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -31,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || 'main' }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -52,6 +59,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: examprep-mobile-smoke-screenshot
-          path: test-results/examprep-mobile-home.png
+          name: examprep-mobile-smoke-diagnostics-${{ github.run_id }}
+          path: test-results/
+          retention-days: 7
           if-no-files-found: ignore
