@@ -22,5 +22,7 @@ jobs:
             npm install
           fi
       - run: npm run lint
+      - run: npm run test:question-categories
+      - run: npm run test:result-validation
       - run: npm run check:localizations
       - run: npm run build
