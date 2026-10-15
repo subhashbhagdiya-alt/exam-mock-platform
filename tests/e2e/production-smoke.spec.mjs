@@ -162,3 +162,22 @@ test("grading API rejects a session that does not exist", async ({ request }) =>
   const payload = JSON.parse(responseText);
   expect(payload.error).toMatch(/test session not found/i);
 });
+
+
+test("result history and cloud save require an authenticated user", async ({ request }) => {
+  // A syntactically valid session key is enough to exercise the auth guard; these calls do not write data.
+  const sessionKey = "00000000-0000-4000-8000-000000000011";
+  const historyResponse = await request.get(
+    `${baseURL}/api/results?session_key=${encodeURIComponent(sessionKey)}`,
+    { timeout: 30_000 }
+  );
+  expect(historyResponse.status()).toBe(401);
+  expect((await historyResponse.json()).error).toMatch(/login required/i);
+
+  const saveResponse = await request.post(`${baseURL}/api/results`, {
+    data: { session_key: sessionKey },
+    timeout: 30_000
+  });
+  expect(saveResponse.status()).toBe(401);
+  expect((await saveResponse.json()).error).toMatch(/login required/i);
+});
