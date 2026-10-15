@@ -40,7 +40,9 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   expect(bodyText.length, "The homepage should render visible content").toBeGreaterThan(40);
   await expect(page.locator("html")).toHaveAttribute("lang", /^(en|hi)$/);
 
-  // Confirm the no-SMS login fallback is visible and both login methods can be selected.
+  // Navigate through the real mobile menu into Account, then verify both login methods.
+  await page.getByTestId("menu-toggle").click();
+  await page.getByTestId("menu-login").click();
   await expect(page.getByTestId("login-email-input")).toBeVisible();
   await page.getByTestId("login-method-phone").click();
   await expect(page.getByPlaceholder("10 अंकों का मोबाइल नंबर")).toBeVisible();
