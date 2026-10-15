@@ -38,6 +38,7 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
 
   const bodyText = (await page.locator("body").innerText()).trim();
   expect(bodyText.length, "The homepage should render visible content").toBeGreaterThan(40);
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
   const dimensions = await page.evaluate(() => ({
     viewportWidth: window.innerWidth,
