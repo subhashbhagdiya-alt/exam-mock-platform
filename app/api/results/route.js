@@ -107,9 +107,9 @@ export async function GET(request) {
 
   const deviceKey = request.headers.get("x-device-key") || "";
   if (!validDeviceKey(deviceKey)) return NextResponse.json({ error: "Trusted device required" }, { status: 403 });
-  const { data: device, error: deviceError } = await client.from("user_devices").select("device_key").eq("user_id", authUserId).maybeSingle();
+  const { data: isTrusted, error: deviceError } = await client.rpc("verify_trusted_device", { p_device_key: deviceKey });
   if (deviceError) return NextResponse.json({ error: deviceError.message }, { status: 500 });
-  if (!device || device.device_key !== deviceKey) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
+  if (isTrusted !== true) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
 
   const query = client.from("test_results").select(fields).eq("user_id", authUserId).order("created_at", { ascending: false }).limit(50);
   const { data, error } = await query;
@@ -141,9 +141,9 @@ export async function POST(request) {
     if (authUserId) {
       const deviceKey = body.device_key;
       if (!validDeviceKey(deviceKey)) return NextResponse.json({ error: "Trusted device required" }, { status: 403 });
-      const { data: device, error: deviceError } = await client.from("user_devices").select("device_key").eq("user_id", authUserId).maybeSingle();
+      const { data: isTrusted, error: deviceError } = await client.rpc("verify_trusted_device", { p_device_key: deviceKey });
       if (deviceError) return NextResponse.json({ error: deviceError.message }, { status: 500 });
-      if (!device || device.device_key !== deviceKey) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
+      if (isTrusted !== true) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
     }
     const { data, error } = await client.from("test_results").insert(cleaned).select(fields).single();
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
