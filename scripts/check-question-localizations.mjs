@@ -172,7 +172,7 @@ assert.equal(
   1,
   "Topic-only filtering should work independently of subject selection"
 );
-assert.deepEqual(sampleCatalog.subjects, ["Indian Polity", "Mathematics"]);
+assert.deepEqual(sampleCatalog.subjects, ["General Knowledge", "Indian Polity", "Mathematics"]);
 assert.deepEqual(sampleCatalog.subject_topics, [
   { subject: "Indian Polity", topic: "Constitution" },
   { subject: "Indian Polity", topic: "Indian History" },
