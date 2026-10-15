@@ -23,4 +23,5 @@ jobs:
           fi
       - run: npm run lint
       - run: npm run check:localizations
+      - run: npm run test:result-validation
       - run: npm run build

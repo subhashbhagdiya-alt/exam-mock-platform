@@ -859,6 +859,10 @@ export default function HomePage() {
 
   const hi = language === "hi";
   const t = (h, e) => hi ? h : e;
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
   const formatQuestionCategory = (value) => {
     const labels = {
       "General Knowledge": ["सामान्य ज्ञान", "General Knowledge"],
@@ -1762,6 +1766,8 @@ export default function HomePage() {
                       <button className="primary-button" onClick={recoverTrustedDevice}>{t("Device बदलें", "Replace device")}<ArrowRight size={17} /></button>
                     </>
                   )}
+                  <div className="auth-divider"><span>{t("या", "OR")}</span></div>
+                  <button type="button" className="secondary-button" onClick={signInWithGoogle}><Globe2 size={17} />{t("Google से लॉगिन करें", "Continue with Google")}</button>
                   {authMessage && <small className="login-message">{authMessage}</small>}
                 </>
               )}

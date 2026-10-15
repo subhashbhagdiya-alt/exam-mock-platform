@@ -4,8 +4,12 @@ import { createClient } from "@supabase/supabase-js";
 import { buildQuestionCatalog, filterQuestionRows } from "../../../lib/question-categories.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-// This server-only route must use a privileged key because mock-test RPC execution is restricted to service_role.
-const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Read-only catalog access uses a publishable key and is constrained by public RLS policies.
+// Creating a test session remains restricted to server-only credentials below.
+const publicKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY]
+  .filter(value => typeof value === "string" && value.trim())
+  .map(value => value.trim()))];
 
 function shuffle(items) {
   const copy = [...items];
@@ -59,7 +63,7 @@ function selectBalancedQuestions(rows, limit) {
 }
 
 export async function GET(request) {
-  if (!url || !key) return NextResponse.json({ error: "Question bank is not configured" }, { status: 503 });
+  if (!url || !publicKey) return NextResponse.json({ error: "Question bank is not configured" }, { status: 503 });
   const { searchParams } = new URL(request.url);
   const exam = searchParams.get("exam") || "mpesb";
   const requestedLimit = searchParams.get("limit");
@@ -71,8 +75,7 @@ export async function GET(request) {
       .filter((id) => /^[0-9a-f-]{36}$/i.test(id))
       .slice(0, 250)
   );
-  const client = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-
+  const client = createClient(url, publicKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: examRow, error: examError } = await client
     .from("exams")
     .select("id,name,slug,total_questions,duration_minutes,marks_per_question,negative_marks,passing_percentage")
@@ -120,11 +123,20 @@ export async function GET(request) {
 
   if (!selected.length) return NextResponse.json({ error: "No verified questions available for this selection" }, { status: 404 });
   const sessionKey = randomUUID();
-  const { data: session, error: sessionError } = await client.rpc("create_mock_test_session", {
-    p_exam_id: examRow.id,
-    p_question_ids: selected.map((item) => item.id),
-    p_session_key: sessionKey
-  });
+  let session = null;
+  let sessionError = null;
+  for (const key of serverKeys) {
+    const candidate = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+    const result = await candidate.rpc("create_mock_test_session", {
+      p_exam_id: examRow.id,
+      p_question_ids: selected.map((item) => item.id),
+      p_session_key: sessionKey
+    });
+    session = result.data;
+    sessionError = result.error;
+    if (!sessionError && session) break;
+    if (!/invalid api key|invalid jwt|bad jwt|jwt expired|permission denied|not authorized to execute/i.test(String(sessionError?.message || ""))) break;
+  }
   if (sessionError || !session) return NextResponse.json({ error: "Could not create a secure test session" }, { status: 503 });
 
   const safeQuestions = selected.map(({ answer_index, explanation_hi, explanation_en, ...question }) => question);
