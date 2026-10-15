@@ -47,8 +47,9 @@ test("question catalog supports normalized subject and topic filters", async ({ 
     `${baseURL}/api/questions?exam=mpesb-police-constable-2026&limit=100&mode=availability`,
     { timeout: 30_000 }
   );
-  expect(catalogResponse.status()).toBe(200);
-  const catalog = await catalogResponse.json();
+  const catalogText = await catalogResponse.text();
+  expect(catalogResponse.status(), `Catalog API response: ${catalogText}`).toBe(200);
+  const catalog = JSON.parse(catalogText);
 
   expect(catalog.meta.available).toBeGreaterThan(0);
   expect(Array.isArray(catalog.meta.subjects)).toBe(true);
@@ -66,8 +67,9 @@ test("question catalog supports normalized subject and topic filters", async ({ 
     `${baseURL}/api/questions?exam=mpesb-police-constable-2026&limit=100&mode=availability&subject=mathematics&topic=PROFIT%20AND%20LOSS`,
     { timeout: 30_000 }
   );
-  expect(filteredResponse.status()).toBe(200);
-  const filtered = await filteredResponse.json();
+  const filteredText = await filteredResponse.text();
+  expect(filteredResponse.status(), `Filtered catalog API response: ${filteredText}`).toBe(200);
+  const filtered = JSON.parse(filteredText);
   expect(
     filtered.meta.available,
     "Mixed-case subject/topic selections should return verified questions"
@@ -86,7 +88,8 @@ test("grading API rejects a session that does not exist", async ({ request }) =>
     timeout: 30_000
   });
 
-  expect(response.status()).toBe(409);
-  const payload = await response.json();
+  const responseText = await response.text();
+  expect(response.status(), `Grading API response: ${responseText}`).toBe(409);
+  const payload = JSON.parse(responseText);
   expect(payload.error).toMatch(/test session not found/i);
 });
