@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
-import { buildQuestionCatalog, normalizeCategory } from "../lib/question-categories.mjs";
+import { buildQuestionCatalog, filterQuestionRows, normalizeCategory } from "../lib/question-categories.mjs";
 
 const pagePath = new URL("../app/page.jsx", import.meta.url);
 const source = fs.readFileSync(pagePath, "utf8");
@@ -148,13 +148,30 @@ assert.ok(
 // Subject/topic filter regressions: merge casing and whitespace variants without
 // collapsing categories that have different wording or language.
 assert.equal(normalizeCategory(" Indian   Polity "), normalizeCategory("indian polity"));
-const sampleCatalog = buildQuestionCatalog([
-  { subject: "Indian polity", topic: "Indian history" },
-  { subject: "Indian Polity", topic: "Indian History" },
-  { subject: "Indian Polity", topic: "Constitution" },
-  { subject: "Mathematics", topic: "Profit and loss" },
-  { subject: "Mathematics", topic: "Profit and Loss" }
-]);
+const sampleQuestions = [
+  { id: "p1", subject: "Indian polity", topic: "Indian history" },
+  { id: "p2", subject: "Indian Polity", topic: "Indian History" },
+  { id: "p3", subject: "Indian Polity", topic: "Constitution" },
+  { id: "m1", subject: "Mathematics", topic: "Profit and loss" },
+  { id: "m2", subject: "Mathematics", topic: "Profit and Loss" },
+  { id: "other", subject: "General Knowledge", topic: "Indian History" }
+];
+const sampleCatalog = buildQuestionCatalog(sampleQuestions);
+assert.deepEqual(
+  filterQuestionRows(sampleQuestions, "INDIAN POLITY", " Indian   HISTORY ").map(row => row.id),
+  ["p1", "p2"],
+  "Filtering should match case/space variants but not other subjects"
+);
+assert.deepEqual(
+  filterQuestionRows(sampleQuestions, "Mathematics", "PROFIT AND LOSS").map(row => row.id),
+  ["m1", "m2"],
+  "Filtering should include all records in a topic regardless of capitalization"
+);
+assert.equal(
+  filterQuestionRows(sampleQuestions, "", "constITUTiOn").length,
+  1,
+  "Topic-only filtering should work independently of subject selection"
+);
 assert.deepEqual(sampleCatalog.subjects, ["Indian Polity", "Mathematics"]);
 assert.deepEqual(sampleCatalog.subject_topics, [
   { subject: "Indian Polity", topic: "Constitution" },
@@ -162,7 +179,6 @@ assert.deepEqual(sampleCatalog.subject_topics, [
   { subject: "Mathematics", topic: "Profit and Loss" }
 ]);
 assert.ok(questionApiSource.includes("buildQuestionCatalog(allRows)"), "Question API must build its subject/topic catalog from all active verified questions");
-assert.ok(questionApiSource.includes("normalizeCategory(row.subject) === normalizeCategory(subject)"), "Subject filtering must ignore capitalization/whitespace variations");
-assert.ok(questionApiSource.includes("normalizeCategory(row.topic) === normalizeCategory(topic)"), "Topic filtering must ignore capitalization/whitespace variations");
+assert.ok(questionApiSource.includes("filterQuestionRows(allRows, subject, topic)"), "Question API must use the directly tested subject/topic filter helper");
 
 console.log(`Localization regression checks passed: ${Object.keys(hindiOptions).length} Hindi option sets, ${localizationEntries.size} localized questions, bilingual answer-order/security checks, and normalized subject/topic filters.`);
