@@ -8,9 +8,14 @@ on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: "Public site URL to test"
+        description: "Public site or Vercel preview URL to test"
         required: false
         default: "https://exam-prep-direct-box.vercel.app"
+        type: string
+      ref:
+        description: "Git ref to use for the test code"
+        required: false
+        default: "main"
         type: string
 
 permissions:
@@ -31,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event.inputs.ref || 'main' }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -52,6 +57,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: examprep-mobile-smoke-screenshot
-          path: test-results/examprep-mobile-home.png
+          name: examprep-mobile-smoke-diagnostics-${{ github.run_id }}
+          path: test-results/
+          retention-days: 7
           if-no-files-found: ignore
