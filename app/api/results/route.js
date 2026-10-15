@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { validateResultQuestionMapping } from "../../../lib/result-validation.mjs";
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -35,8 +36,7 @@ async function cleanResult(body, client, authUserId = null) {
   if (examError) throw new Error(examError.message);
   if (!exam) throw new Error("Exam not found");
 
-  const sourceIds = [...new Set(Object.values(body.question_ids).filter(v => /^[0-9a-f-]{36}$/i.test(String(v))).map(String))];
-  if (!sourceIds.length) throw new Error("No valid question ids");
+  const sourceIds = validateResultQuestionMapping(body.question_ids, body.total_questions);
 
   const { data: questions, error: qError } = await client.from("question_bank")
     .select("id,answer_index,exam_id,active,verified")
@@ -47,7 +47,7 @@ async function cleanResult(body, client, authUserId = null) {
   const localIds = Object.keys(body.question_ids);
   let correct = 0, wrong = 0, unanswered = 0;
   for (const localId of localIds) {
-    const question = byId.get(String(body.question_ids[localId]));
+    const question = byId.get(String(body.question_ids[localId]).toLowerCase());
     if (!question) throw new Error("Question set is no longer valid");
     const answer = body.answers[localId];
     if (answer === undefined || answer === null || answer === "") { unanswered += 1; continue; }
