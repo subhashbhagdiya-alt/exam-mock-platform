@@ -1,5 +1,6 @@
 import "./globals.css";
 import "./glass-overrides.css";
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata = {
   title: "ExamPrep — Mock Test Platform",
@@ -12,5 +13,5 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en"><body>{children}<Analytics /></body></html>;
 }
