@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { buildQuestionCatalog, normalizeCategory } from "../../../lib/question-categories.mjs";
+import { buildQuestionCatalog, filterQuestionRows } from "../../../lib/question-categories.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -93,10 +93,7 @@ export async function GET(request) {
 
   const allRows = data || [];
   // Treat capitalization and repeated whitespace as equivalent in user-selected categories.
-  const rows = allRows.filter((row) =>
-    (!subject || normalizeCategory(row.subject) === normalizeCategory(subject))
-    && (!topic || normalizeCategory(row.topic) === normalizeCategory(topic))
-  );
+  const rows = filterQuestionRows(allRows, subject, topic);
 
   if (searchParams.get("mode") === "availability") {
     const { subjects, subject_topics: subjectTopics } = buildQuestionCatalog(allRows);
