@@ -1639,7 +1639,7 @@ export default function HomePage() {
       </aside>
 
       <section className="main">
-        <header className="topbar"><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : view === "sources" ? t("Source PDFs","Source PDFs") : view === "about" ? t("ऐप के बारे में","About") : view === "settings" ? t("प्रोफाइल / सेटिंग्स","Profile / Settings") : view === "boards" ? t("परीक्षा बोर्ड","Exam boards") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="home-quick-button" onClick={() => navigateTo("home")} aria-label={t("होम पर जाएँ","Go to Home")} title={t("होम","Home")}><Home size={17}/><span>{t("होम","Home")}</span></button><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button><button className="theme-toggle" onClick={() => setThemeMode(effectiveTheme === "light" ? "dark" : "light")} title={themeMode === "light" ? "Night mode" : themeMode === "dark" ? "System mode" : "Day mode"}>{themeMode === "light" ? "☀️" : themeMode === "dark" ? "🌙" : "◐"}<span>{themeMode === "light" ? t("दिन","Day") : themeMode === "dark" ? t("रात","Night") : t("सिस्टम","System")}</span></button><button ref={menuButtonRef} className="menu-button" onClick={() => setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label="Menu"><SlidersHorizontal size={18}/></button>{menuOpen && <div ref={menuRef} className="menu-popover"><b>{t("दिखावट","Appearance")}</b><button onClick={() => {setThemeMode("light");setMenuOpen(false)}}>☀️ {t("Day Mode","Day Mode")}</button><button onClick={() => {setThemeMode("dark");setMenuOpen(false)}}>🌙 {t("Night Mode","Night Mode")}</button><button onClick={() => {setThemeMode("system");setMenuOpen(false)}}>◐ {t("System","System")}</button><hr/><button onClick={() => navigateTo("boards")}>{t("परीक्षाएँ","Exams")}</button><button onClick={() => navigateTo("history")}>{t("मेरे रिज़ल्ट","My results")}</button><button onClick={() => navigateTo("login")}>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button onClick={() => navigateTo("settings")}>{t("सेटिंग्स","Settings")}</button><button onClick={() => navigateTo("sources")}>Source PDFs</button><button onClick={() => navigateTo("about")}>{t("ऐप के बारे में","About ExamPrep")}</button></div>}</div></header>
+        <header className="topbar"><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : view === "sources" ? t("Source PDFs","Source PDFs") : view === "about" ? t("ऐप के बारे में","About") : view === "settings" ? t("प्रोफाइल / सेटिंग्स","Profile / Settings") : view === "boards" ? t("परीक्षा बोर्ड","Exam boards") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="home-quick-button" onClick={() => navigateTo("home")} aria-label={t("होम पर जाएँ","Go to Home")} title={t("होम","Home")}><Home size={17}/><span>{t("होम","Home")}</span></button><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button><button className="theme-toggle" onClick={() => setThemeMode(effectiveTheme === "light" ? "dark" : "light")} title={themeMode === "light" ? "Night mode" : themeMode === "dark" ? "System mode" : "Day mode"}>{themeMode === "light" ? "☀️" : themeMode === "dark" ? "🌙" : "◐"}<span>{themeMode === "light" ? t("दिन","Day") : themeMode === "dark" ? t("रात","Night") : t("सिस्टम","System")}</span></button><button ref={menuButtonRef} className="menu-button" onClick={() => setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label="Menu" data-testid="menu-toggle"><SlidersHorizontal size={18}/></button>{menuOpen && <div ref={menuRef} className="menu-popover"><b>{t("दिखावट","Appearance")}</b><button onClick={() => {setThemeMode("light");setMenuOpen(false)}}>☀️ {t("Day Mode","Day Mode")}</button><button onClick={() => {setThemeMode("dark");setMenuOpen(false)}}>🌙 {t("Night Mode","Night Mode")}</button><button onClick={() => {setThemeMode("system");setMenuOpen(false)}}>◐ {t("System","System")}</button><hr/><button onClick={() => navigateTo("boards")}>{t("परीक्षाएँ","Exams")}</button><button onClick={() => navigateTo("history")}>{t("मेरे रिज़ल्ट","My results")}</button><button data-testid="menu-login" onClick={() => navigateTo("login")}>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button onClick={() => navigateTo("settings")}>{t("सेटिंग्स","Settings")}</button><button onClick={() => navigateTo("sources")}>Source PDFs</button><button onClick={() => navigateTo("about")}>{t("ऐप के बारे में","About ExamPrep")}</button></div>}</div></header>
 
         {view === "home" && <div className="content dashboard-content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
           <div className="auth-panel" aria-label={t("वैकल्पिक लॉगिन","Optional login")}>
@@ -1790,19 +1790,30 @@ export default function HomePage() {
               ) : (
                 <>
                   <div className="login-note">{t("लॉगिन optional है — बिना login के भी test और result local device पर काम करेंगे।", "Login is optional — tests and results work locally without an account.")}</div>
-                  <div className="auth-divider"><span>{t("मोबाइल लॉगिन", "MOBILE LOGIN")}</span></div>
+                  <div className="auth-divider"><span>{t("Email या मोबाइल से login", "EMAIL OR MOBILE LOGIN")}</span></div>
                   {authStep === "phone" ? (
                     <>
-                      <div className="phone-input">
-                        <span>+91</span>
-                        <input value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर" />
+                      <div className="auth-method-switch">
+                        <button type="button" data-testid="login-method-email" aria-pressed={authMethod === "email"} onClick={() => { setAuthMethod("email"); setAuthMessage(""); }}>{authMethod === "email" ? "✓ " : ""}{t("Email login", "Email login")}</button>
+                        <button type="button" data-testid="login-method-phone" aria-pressed={authMethod === "phone"} onClick={() => { setAuthMethod("phone"); setAuthMessage(""); }}>{authMethod === "phone" ? "✓ " : ""}{t("Mobile SMS", "Mobile SMS")}</button>
                       </div>
-                      <button className="primary-button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? t("फिर भेजें", "Resend") + " (" + otpCooldown + "s)" : t("OTP भेजें", "Send OTP")}<ArrowRight size={17} /></button>
+                      {authMethod === "email"
+                        ? <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address", "Your email address")} data-testid="login-email-input" />
+                        : <div className="phone-input"><span>+91</span><input value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर" /></div>}
+                      <button className="primary-button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? t("फिर भेजें", "Resend") + " (" + otpCooldown + "s)" : authMethod === "email" ? t("Login link भेजें", "Send login link") : t("OTP भेजें", "Send SMS OTP")}<ArrowRight size={17} /></button>
                     </>
                   ) : authStep === "otp" ? (
                     <>
-                      <input value={otp} onChange={e => setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder="6-digit OTP" />
-                      <button className="primary-button" onClick={verifyOtp}>{t("Verify OTP", "Verify OTP")}<Check size={17} /></button>
+                      <input value={otp} onChange={e => setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP", "6-digit code")} />
+                      <button className="primary-button" onClick={verifyOtp}>{t("Code verify करें", "Verify code")}<Check size={17} /></button>
+                      <button type="button" className="secondary-button" onClick={() => { setAuthStep("phone"); setOtp(""); setAuthMessage(""); }}>{t("Login method बदलें", "Change login method")}</button>
+                    </>
+                  ) : authStep === "email-sent" ? (
+                    <>
+                      <div className="login-note">{t("अपने email के Inbox/Spam में आए login link को खोलें। यदि email में 6-digit code है, तो नीचे दर्ज करें।", "Open the sign-in link in your email inbox/spam. If the email contains a 6-digit code, enter it below.")}</div>
+                      <input value={otp} onChange={e => setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("Email code (यदि दिया हो)", "Email code (if provided)")} />
+                      <button className="primary-button" onClick={verifyOtp}>{t("Email code verify करें", "Verify email code")}<Check size={17} /></button>
+                      <button type="button" className="secondary-button" onClick={() => { setAuthStep("phone"); setOtp(""); setAuthMessage(""); }}>{t("Email बदलें / वापस जाएँ", "Change email / go back")}</button>
                     </>
                   ) : (
                     <>
@@ -1810,7 +1821,7 @@ export default function HomePage() {
                       <button className="primary-button" onClick={recoverTrustedDevice}>{t("Device बदलें", "Replace device")}<ArrowRight size={17} /></button>
                     </>
                   )}
-                  <div className="auth-divider"><span>{t("या", "OR")}</span></div>
+                                    <div className="auth-divider"><span>{t("या", "OR")}</span></div>
                   <button type="button" className="secondary-button" onClick={signInWithGoogle}><Globe2 size={17} />{t("Google से लॉगिन करें", "Continue with Google")}</button>
                   {authMessage && <small className="login-message">{authMessage}</small>}
                 </>
