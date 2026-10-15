@@ -989,13 +989,17 @@ export default function HomePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    // Initialize after hydration so server and client render the same first state.
-    setIsOnline(navigator.onLine);
+    // Defer the initial browser-only read until after hydration completes.
+    const initialSync = window.setTimeout(() => setIsOnline(navigator.onLine), 0);
     const onOnline = () => setIsOnline(true);
     const onOffline = () => setIsOnline(false);
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
-    return () => { window.removeEventListener("online", onOnline); window.removeEventListener("offline", onOffline); };
+    return () => {
+      window.clearTimeout(initialSync);
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
   }, []);
 
   useEffect(() => {
