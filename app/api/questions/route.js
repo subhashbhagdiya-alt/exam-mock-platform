@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { buildQuestionCatalog, normalizeCategory } from "../../../lib/question-categories.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -87,25 +88,18 @@ export async function GET(request) {
     .eq("active", true)
     .eq("verified", true)
     .eq("exam_id", examRow.id)
-    .match(subject ? { subject } : {})
-    .match(topic ? { topic } : {})
     .limit(1000);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const rows = data || [];
+  const allRows = data || [];
+  // Treat capitalization and repeated whitespace as equivalent in user-selected categories.
+  const rows = allRows.filter((row) =>
+    (!subject || normalizeCategory(row.subject) === normalizeCategory(subject))
+    && (!topic || normalizeCategory(row.topic) === normalizeCategory(topic))
+  );
+
   if (searchParams.get("mode") === "availability") {
-    const subjects = Array.from(new Set(
-      rows.map((row) => String(row.subject || "").trim()).filter(Boolean)
-    )).sort((a, b) => a.localeCompare(b));
-    const subjectTopics = Array.from(new Map(
-      rows
-        .map((row) => ({
-          subject: String(row.subject || "").trim(),
-          topic: String(row.topic || "").trim()
-        }))
-        .filter((item) => item.subject && item.topic)
-        .map((item) => [JSON.stringify([item.subject, item.topic]), item])
-    ).values()).sort((a, b) => a.subject.localeCompare(b.subject) || a.topic.localeCompare(b.topic));
+    const { subjects, subject_topics: subjectTopics } = buildQuestionCatalog(allRows);
 
     return NextResponse.json({
       exam: examRow,
