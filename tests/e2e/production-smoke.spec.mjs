@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { writeFile } from "node:fs/promises";
 
 const baseURL = (process.env.E2E_BASE_URL || "https://exam-prep-direct-box.vercel.app").replace(/\/+$/, "");
 
@@ -10,7 +11,20 @@ test.use({
 
 test("production homepage renders in a mobile viewport", async ({ page }) => {
   const pageErrors = [];
-  page.on("pageerror", error => pageErrors.push(error.message));
+  const consoleMessages = [];
+  page.on("pageerror", error => pageErrors.push({
+    message: error.message,
+    stack: error.stack || ""
+  }));
+  page.on("console", message => {
+    if (message.type() === "error" || message.type() === "warning") {
+      consoleMessages.push({
+        type: message.type(),
+        text: message.text(),
+        location: message.location()
+      });
+    }
+  });
 
   const response = await page.goto(baseURL, {
     waitUntil: "domcontentloaded",
@@ -24,6 +38,7 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
 
   const bodyText = (await page.locator("body").innerText()).trim();
   expect(bodyText.length, "The homepage should render visible content").toBeGreaterThan(40);
+  await expect(page.locator("html")).toHaveAttribute("lang", /^(en|hi)$/);
 
   const dimensions = await page.evaluate(() => ({
     viewportWidth: window.innerWidth,
@@ -34,12 +49,57 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
     "The page should not overflow horizontally on a mobile viewport"
   ).toBeLessThanOrEqual(dimensions.viewportWidth + 2);
 
-  // Keep a visual artifact even when the hydration/client-error assertion fails.
+  // Keep actionable diagnostics when the production build hides React's full hydration message.
   await page.screenshot({ path: "test-results/examprep-mobile-home.png", fullPage: true });
+  const diagnostics = await page.evaluate(({ pageErrors, consoleMessages, bodyText }) => ({
+    url: location.href,
+    title: document.title,
+    documentLanguage: document.documentElement.lang,
+    viewport: { width: innerWidth, height: innerHeight },
+    bodyText: bodyText.slice(0, 5000),
+    mainText: (document.querySelector("main")?.innerText || "").slice(0, 5000),
+    rootMarkup: (document.querySelector("main")?.innerHTML || document.body.innerHTML).slice(0, 12000),
+    pageErrors,
+    consoleMessages
+  }), { pageErrors, consoleMessages, bodyText });
+  await writeFile("test-results/hydration-diagnostics.json", JSON.stringify(diagnostics, null, 2));
   expect(
     pageErrors,
-    `The page should not emit uncaught JavaScript errors: ${pageErrors.join(" | ")}`
+    `The page should not emit uncaught JavaScript errors: ${pageErrors.map(error => error.message).join(" | ")}`
   ).toEqual([]);
+});
+
+test("mock test API grades an attempt and keeps repeated submission idempotent", async ({ request }) => {
+  const sessionResponse = await request.get(`${baseURL}/api/questions?exam=mpesb-police-constable-2026&limit=10`, { timeout: 30_000 });
+  const sessionText = await sessionResponse.text();
+  expect(sessionResponse.status(), `Question session API response: ${sessionText}`).toBe(200);
+  const session = JSON.parse(sessionText);
+
+  expect(session.data).toHaveLength(10);
+  expect(session.test_session_id).toMatch(/^[0-9a-f-]{36}$/i);
+  expect(session.test_session_key).toMatch(/^[0-9a-f-]{36}$/i);
+  for (const question of session.data) {
+    expect(question).not.toHaveProperty("answer_index");
+    expect(question).not.toHaveProperty("explanation_hi");
+    expect(question).not.toHaveProperty("explanation_en");
+  }
+
+  const payload = { test_session_id: session.test_session_id, test_session_key: session.test_session_key, answers: {} };
+  const firstResponse = await request.post(`${baseURL}/api/grade`, { data: payload, timeout: 30_000 });
+  const firstText = await firstResponse.text();
+  expect(firstResponse.status(), `First grading response: ${firstText}`).toBe(200);
+  const first = JSON.parse(firstText);
+  expect(first.data.total_questions).toBe(10);
+  expect(first.data.correct).toBe(0);
+  expect(first.data.wrong).toBe(0);
+  expect(first.data.unanswered).toBe(10);
+  expect(first.data.score).toBe(0);
+  expect(first.data.review).toHaveLength(10);
+
+  const retryResponse = await request.post(`${baseURL}/api/grade`, { data: payload, timeout: 30_000 });
+  const retryText = await retryResponse.text();
+  expect(retryResponse.status(), `Retry grading response: ${retryText}`).toBe(200);
+  expect(JSON.parse(retryText)).toEqual(first);
 });
 
 test("question catalog supports normalized subject and topic filters", async ({ request }) => {
