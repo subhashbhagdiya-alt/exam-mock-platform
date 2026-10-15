@@ -91,7 +91,7 @@ export async function GET(request) {
       break;
     }
     examError = result.error;
-    if (!/invalid api key|invalid jwt|bad jwt|jwt expired/i.test(String(result.error.message || ""))) break;
+    if (!/invalid api key|invalid jwt|bad jwt|jwt expired|permission denied|not authorized to execute/i.test(String(result.error.message || ""))) break;
   }
   if (examError) return NextResponse.json({ error: examError.message }, { status: 500 });
   if (!client) return NextResponse.json({ error: "Question bank credentials are not configured correctly" }, { status: 503 });
@@ -135,11 +135,20 @@ export async function GET(request) {
 
   if (!selected.length) return NextResponse.json({ error: "No verified questions available for this selection" }, { status: 404 });
   const sessionKey = randomUUID();
-  const { data: session, error: sessionError } = await client.rpc("create_mock_test_session", {
-    p_exam_id: examRow.id,
-    p_question_ids: selected.map((item) => item.id),
-    p_session_key: sessionKey
-  });
+  let session = null;
+  let sessionError = null;
+  for (const key of serverKeys) {
+    const candidate = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+    const result = await candidate.rpc("create_mock_test_session", {
+      p_exam_id: examRow.id,
+      p_question_ids: selected.map((item) => item.id),
+      p_session_key: sessionKey
+    });
+    session = result.data;
+    sessionError = result.error;
+    if (!sessionError && session) break;
+    if (!/invalid api key|invalid jwt|bad jwt|jwt expired|permission denied|not authorized to execute/i.test(String(sessionError?.message || ""))) break;
+  }
   if (sessionError || !session) return NextResponse.json({ error: "Could not create a secure test session" }, { status: 503 });
 
   const safeQuestions = selected.map(({ answer_index, explanation_hi, explanation_en, ...question }) => question);
