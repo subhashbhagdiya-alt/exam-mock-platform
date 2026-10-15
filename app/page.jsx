@@ -1241,9 +1241,7 @@ export default function HomePage() {
     }
     loadHistory();
     return () => { active = false; };
-  }, [user]);
-
-  async function signInWithGoogle() {
+  }, [user, trustedDeviceVerified]); {
     if (!supabaseBrowser) {
       setAuthMessage(t("Login सेवा अभी उपलब्ध नहीं है।","Login service is not available right now."));
       return;
@@ -1561,7 +1559,14 @@ export default function HomePage() {
       let retryablePayload = null;
       try {
         const sessionKey = await ensureSessionKey();
-        const deviceKey = typeof window !== "undefined" ? (localStorage.getItem("exam_prep_device_key") || "") : "";
+        let deviceKey = "";
+        if (typeof window !== "undefined") {
+          deviceKey = localStorage.getItem("exam_prep_device_key") || "";
+          if (user?.id && !deviceKey) {
+            deviceKey = crypto.randomUUID();
+            localStorage.setItem("exam_prep_device_key", deviceKey);
+          }
+        }
         const body = { session_key: sessionKey, practice_mode: true, requested_total_questions: practiceQuestionCount, requested_duration_minutes: practiceDuration, user_id: user?.id || null, device_key: deviceKey, ...summary };
         retryablePayload = body;
         if (!navigator.onLine) {
@@ -1578,6 +1583,14 @@ export default function HomePage() {
         if (!accessToken) {
           saveLocal(false);
           setStorageMessage(t("Guest result इस device पर सुरक्षित है। Cloud sync के लिए login करें।", "Guest result is saved on this device. Login to sync it to the cloud."));
+          return;
+        }
+        if (!trustedDeviceVerified) {
+          saveLocal(true, body);
+          setStorageMessage(t(
+            "Trusted device की जाँच पूरी हो रही है। रिज़ल्ट सुरक्षित queue में रखा है और जाँच पूरी होने पर cloud में sync होगा।",
+            "Trusted-device verification is still completing. The result is queued safely and will sync to the cloud after verification."
+          ));
           return;
         }
 
