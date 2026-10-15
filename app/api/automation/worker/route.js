@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../../../../lib/weekly-exam-analysis.mjs";
+import { buildGeminiRequestOptions, dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../../../../lib/weekly-exam-analysis.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -29,8 +29,7 @@ async function callModel(apiKey, prompt, maxOutputTokens = 16000, enableWebSearc
     headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json", maxOutputTokens },
-      ...(enableWebSearch ? { tools: [{ google_search: {} }] } : {})
+      ...buildGeminiRequestOptions(maxOutputTokens, enableWebSearch)
     }),
     signal: AbortSignal.timeout(50000)
   });
