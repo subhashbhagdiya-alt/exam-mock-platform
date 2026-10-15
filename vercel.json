@@ -9,6 +9,10 @@
       "schedule": "30 3 * * *"
     },
     {
+      "path": "/api/automation/weekly-analysis",
+      "schedule": "30 2 * * 0"
+    },
+    {
       "path": "/api/automation/worker",
       "schedule": "0 4 * * *"
     }
