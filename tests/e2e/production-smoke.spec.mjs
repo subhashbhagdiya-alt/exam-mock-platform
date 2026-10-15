@@ -73,3 +73,20 @@ test("question catalog supports normalized subject and topic filters", async ({ 
     "Mixed-case subject/topic selections should return verified questions"
   ).toBeGreaterThan(0);
 });
+
+
+test("grading API rejects a session that does not exist", async ({ request }) => {
+  // A valid-format but nonexistent session makes the RPC return before any database write.
+  const response = await request.post(`${baseURL}/api/grade`, {
+    data: {
+      test_session_id: "00000000-0000-4000-8000-000000000001",
+      test_session_key: "00000000-0000-4000-8000-000000000002",
+      answers: {}
+    },
+    timeout: 30_000
+  });
+
+  expect(response.status()).toBe(409);
+  const payload = await response.json();
+  expect(payload.error).toMatch(/test session not found/i);
+});
