@@ -21,11 +21,16 @@ function extractOutputText(body) {
   return body.output_text || body.output?.flatMap((item) => item.content || []).map((item) => item.text || "").join("") || "";
 }
 
-async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
+async function callModel(apiKey, prompt, maxOutputTokens = 16000, enableWebSearch = false) {
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: process.env.OPENAI_MODEL || "gpt-5.6", input: prompt, max_output_tokens: maxOutputTokens }),
+    body: JSON.stringify({
+      model: process.env.OPENAI_MODEL || "gpt-5.6",
+      input: prompt,
+      max_output_tokens: maxOutputTokens,
+      ...(enableWebSearch ? { tools: [{ type: "web_search" }] } : {})
+    }),
     signal: AbortSignal.timeout(50000)
   });
   if (!response.ok) throw new Error(`OpenAI API returned HTTP ${response.status}`);
@@ -89,13 +94,13 @@ async function generateWeeklyDraft(apiKey, task, context, previousDraft = []) {
   const need = target - previousDraft.length;
   const requested = Math.min(100, Math.max(need + 10, 10));
   const prompt = `You are ExamPrep's exam-pattern analyst and question writer. Analyze the exam evidence and create NEW bilingual practice MCQs.
-Return valid JSON only with shape {"analysis":{"trend_summary":"...","subjects":[{"name":"...","weight_estimate":"...","evidence":"..."}],"topic_breakdown":[{"subject":"...","topic":"...","priority":"high|medium|low","reason":"..."}],"difficulty_breakdown":{"easy":"...","medium":"...","hard":"..."},"confidence_notes":"..."},"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}.
+Return valid JSON only with shape {"analysis":{"trend_summary":"...","subjects":[{"name":"...","weight_estimate":"...","evidence":"..."}],"topic_breakdown":[{"subject":"...","topic":"...","priority":"high|medium|low","reason":"..."}],"difficulty_breakdown":{"easy":"...","medium":"...","hard":"..."},"confidence_notes":"...","source_evidence":[{"title":"...","url":"...","source_type":"official_syllabus|official_paper|other","what_it_supports":"..."}]},"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}.
 Target exam: ${JSON.stringify(context.exam)}.
 Request ${requested} questions to ensure a full batch of ${target} unique questions remains after deduplication.
 Evidence from existing bank and stored official/PYQ questions: ${JSON.stringify(patternEvidence(context))}.
 Previously generated questions from this same task (do not duplicate): ${JSON.stringify(previousDraft.map((q) => ({ question_hi: q.question_hi, question_en: q.question_en, subject: q.subject, topic: q.topic })))}
-Rules: use stored PYQ/official questions as past-paper evidence only when actually present. If none are available, explicitly state that previous-paper evidence is insufficient and use syllabus/description/topic coverage to recommend practice priorities. Never invent exact past-paper frequency, source citations, official status, or guarantee a question will appear. All generated questions are curated practice, not PYQs. Check each answer and explanation before returning it. Each question needs four distinct options, 0-based answer_index, Hindi/English versions, and concise explanations. Avoid all concepts/questions already in the bank; favor coverage gaps and varied easy/medium/hard difficulty.`;
-  const parsed = await callModel(apiKey, prompt, 16000);
+Use web search to find current official syllabus/past-paper material for this exam where available; prioritize the exam board's own domain. Include only sources actually opened/used in analysis.source_evidence and state what each supports. Rules: use stored PYQ/official questions as past-paper evidence only when actually present. If no authentic past-paper evidence can be found, explicitly state that frequency estimates are weak and use syllabus/description/topic coverage to recommend practice priorities. Never invent exact past-paper frequency, source citations, official status, or guarantee a question will appear. All generated questions are curated practice, not PYQs. Check each answer and explanation before returning it. Each question needs four distinct options, 0-based answer_index, Hindi/English versions, and concise explanations. Avoid all concepts/questions already in the bank; favor coverage gaps and varied easy/medium/hard difficulty.`;
+  const parsed = await callModel(apiKey, prompt, 16000, previousDraft.length === 0);
   if (!parsed.analysis || typeof parsed.analysis.trend_summary !== "string" || !Array.isArray(parsed.analysis.topic_breakdown)) {
     throw new Error("Weekly exam-pattern analysis failed schema validation.");
   }
