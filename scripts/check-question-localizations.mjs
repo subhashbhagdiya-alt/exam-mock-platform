@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
+import { buildQuestionCatalog, normalizeCategory } from "../lib/question-categories.mjs";
 
 const pagePath = new URL("../app/page.jsx", import.meta.url);
 const source = fs.readFileSync(pagePath, "utf8");
@@ -144,4 +145,24 @@ assert.ok(
   "Question API must not return raw selected rows"
 );
 
-console.log(`Localization regression checks passed: ${Object.keys(hindiOptions).length} Hindi option sets, ${localizationEntries.size} localized questions, and age, Green Revolution, National Sports Day, Parliament, Kanha, and Fundamental Rights option order.`);
+// Subject/topic filter regressions: merge casing and whitespace variants without
+// collapsing categories that have different wording or language.
+assert.equal(normalizeCategory(" Indian   Polity "), normalizeCategory("indian polity"));
+const sampleCatalog = buildQuestionCatalog([
+  { subject: "Indian polity", topic: "Indian history" },
+  { subject: "Indian Polity", topic: "Indian History" },
+  { subject: "Indian Polity", topic: "Constitution" },
+  { subject: "Mathematics", topic: "Profit and loss" },
+  { subject: "Mathematics", topic: "Profit and Loss" }
+]);
+assert.deepEqual(sampleCatalog.subjects, ["Indian Polity", "Mathematics"]);
+assert.deepEqual(sampleCatalog.subject_topics, [
+  { subject: "Indian Polity", topic: "Constitution" },
+  { subject: "Indian Polity", topic: "Indian History" },
+  { subject: "Mathematics", topic: "Profit and Loss" }
+]);
+assert.ok(questionApiSource.includes("buildQuestionCatalog(allRows)"), "Question API must build its subject/topic catalog from all active verified questions");
+assert.ok(questionApiSource.includes("normalizeCategory(row.subject) === normalizeCategory(subject)"), "Subject filtering must ignore capitalization/whitespace variations");
+assert.ok(questionApiSource.includes("normalizeCategory(row.topic) === normalizeCategory(topic)"), "Topic filtering must ignore capitalization/whitespace variations");
+
+console.log(`Localization regression checks passed: ${Object.keys(hindiOptions).length} Hindi option sets, ${localizationEntries.size} localized questions, bilingual answer-order/security checks, and normalized subject/topic filters.`);
