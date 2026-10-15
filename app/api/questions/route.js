@@ -5,7 +5,9 @@ import { buildQuestionCatalog, filterQuestionRows } from "../../../lib/question-
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 // This server-only route must use a privileged key because mock-test RPC execution is restricted to service_role.
-const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY]
+  .filter(value => typeof value === "string" && value.trim())
+  .map(value => value.trim()))];
 
 function shuffle(items) {
   const copy = [...items];
@@ -59,7 +61,7 @@ function selectBalancedQuestions(rows, limit) {
 }
 
 export async function GET(request) {
-  if (!url || !key) return NextResponse.json({ error: "Question bank is not configured" }, { status: 503 });
+  if (!url || !serverKeys.length) return NextResponse.json({ error: "Question bank is not configured" }, { status: 503 });
   const { searchParams } = new URL(request.url);
   const exam = searchParams.get("exam") || "mpesb";
   const requestedLimit = searchParams.get("limit");
@@ -71,15 +73,28 @@ export async function GET(request) {
       .filter((id) => /^[0-9a-f-]{36}$/i.test(id))
       .slice(0, 250)
   );
-  const client = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-
-  const { data: examRow, error: examError } = await client
-    .from("exams")
-    .select("id,name,slug,total_questions,duration_minutes,marks_per_question,negative_marks,passing_percentage")
-    .eq("slug", exam)
-    .eq("is_active", true)
-    .maybeSingle();
+  let client = null;
+  let examRow = null;
+  let examError = null;
+  for (const key of serverKeys) {
+    const candidate = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+    const result = await candidate
+      .from("exams")
+      .select("id,name,slug,total_questions,duration_minutes,marks_per_question,negative_marks,passing_percentage")
+      .eq("slug", exam)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (!result.error) {
+      client = candidate;
+      examRow = result.data;
+      examError = null;
+      break;
+    }
+    examError = result.error;
+    if (!/invalid api key|invalid jwt|bad jwt|jwt expired/i.test(String(result.error.message || ""))) break;
+  }
   if (examError) return NextResponse.json({ error: examError.message }, { status: 500 });
+  if (!client) return NextResponse.json({ error: "Question bank credentials are not configured correctly" }, { status: 503 });
   if (!examRow) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
 
   const limit = Math.min(Math.max(Number(requestedLimit || examRow.total_questions || 10), 1), 100);
