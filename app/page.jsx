@@ -1241,7 +1241,9 @@ export default function HomePage() {
     }
     loadHistory();
     return () => { active = false; };
-  }, [user, trustedDeviceVerified]); {
+  }, [user, trustedDeviceVerified]);
+
+  async function signInWithGoogle() {
     if (!supabaseBrowser) {
       setAuthMessage(t("Login सेवा अभी उपलब्ध नहीं है।","Login service is not available right now."));
       return;
