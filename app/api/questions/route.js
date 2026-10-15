@@ -122,6 +122,13 @@ export async function GET(request) {
   const selected = selectBalancedQuestions(preferredPool, Math.min(limit, preferredPool.length));
 
   if (!selected.length) return NextResponse.json({ error: "No verified questions available for this selection" }, { status: 404 });
+  if (!serverKeys.length) {
+    return NextResponse.json({
+      error: "Mock-test server credentials are not configured",
+      code: "MOCK_TEST_SERVER_CREDENTIALS_MISSING"
+    }, { status: 503 });
+  }
+
   const sessionKey = randomUUID();
   let session = null;
   let sessionError = null;
@@ -137,7 +144,18 @@ export async function GET(request) {
     if (!sessionError && session) break;
     if (!/invalid api key|invalid jwt|bad jwt|jwt expired|permission denied|not authorized to execute/i.test(String(sessionError?.message || ""))) break;
   }
-  if (sessionError || !session) return NextResponse.json({ error: "Could not create a secure test session" }, { status: 503 });
+  if (sessionError && /invalid api key|invalid jwt|bad jwt|jwt expired|permission denied|not authorized to execute/i.test(String(sessionError.message || ""))) {
+    return NextResponse.json({
+      error: "Mock-test server credentials are invalid or lack permission to create sessions",
+      code: "MOCK_TEST_SERVER_CREDENTIALS_INVALID"
+    }, { status: 503 });
+  }
+  if (sessionError || !session) {
+    return NextResponse.json({
+      error: "Could not create a secure test session",
+      code: "MOCK_TEST_SESSION_CREATE_FAILED"
+    }, { status: 503 });
+  }
 
   const safeQuestions = selected.map(({ answer_index, explanation_hi, explanation_en, ...question }) => question);
   return NextResponse.json({
