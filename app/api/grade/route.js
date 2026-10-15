@@ -37,6 +37,12 @@ export async function POST(request) {
     }
     if (error) {
       const message = String(error.message || "");
+      if (/invalid api key|invalid jwt|bad jwt|jwt expired|permission denied|not authorized to execute/i.test(message)) {
+        return NextResponse.json({
+          error: "Grading service credentials are invalid or not authorized for mock-test RPC",
+          code: "MOCK_TEST_SERVER_CREDENTIALS_INVALID"
+        }, { status: 503 });
+      }
       const status = /not found|expired|already been submitted|no longer valid/i.test(message) ? 409 : 400;
       return NextResponse.json({ error: /test session|question set|invalid answer/i.test(message) ? message : "Could not grade this test" }, { status });
     }
