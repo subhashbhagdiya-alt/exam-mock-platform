@@ -34,8 +34,12 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
     "The page should not overflow horizontally on a mobile viewport"
   ).toBeLessThanOrEqual(dimensions.viewportWidth + 2);
 
-  expect(pageErrors, "The page should not emit uncaught JavaScript errors").toEqual([]);
+  // Keep a visual artifact even when the hydration/client-error assertion fails.
   await page.screenshot({ path: "test-results/examprep-mobile-home.png", fullPage: true });
+  expect(
+    pageErrors,
+    `The page should not emit uncaught JavaScript errors: ${pageErrors.join(" | ")}`
+  ).toEqual([]);
 });
 
 test("question catalog supports normalized subject and topic filters", async ({ request }) => {
