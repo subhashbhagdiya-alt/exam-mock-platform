@@ -806,6 +806,8 @@ export default function HomePage() {
   const [profileName, setProfileName] = useState("");
   const [needsProfileName, setNeedsProfileName] = useState(false);
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [authMethod, setAuthMethod] = useState("email");
   const [otp, setOtp] = useState("");
   const [otpCooldown, setOtpCooldown] = useState(0);
   const [recoveryCode, setRecoveryCode] = useState("");
@@ -1268,7 +1270,33 @@ export default function HomePage() {
       setAuthMessage(t("Login सेवा अभी उपलब्ध नहीं है।","Login service is not available right now."));
       return;
     }
-    const digits = phone.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+
+    if (authMethod === "email") {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        setAuthMessage(t("एक सही email address दर्ज करें।","Enter a valid email address."));
+        return;
+      }
+      setAuthMessage(t("Email पर login link भेजा जा रहा है…","Sending a sign-in link to your email…"));
+      const { error } = await supabaseBrowser.auth.signInWithOtp({
+        email: normalizedEmail,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined
+        }
+      });
+      if (error) {
+        setAuthMessage(String(error.message || t("Email login अभी उपलब्ध नहीं है।","Email login is not available right now.")));
+        return;
+      }
+      setOtp("");
+      setAuthStep("email-sent");
+      setOtpCooldown(60);
+      setAuthMessage(t("Email भेज दिया गया है। Inbox/Spam देखें और login link खोलें। अगर 6-digit code आया है, तो यहाँ दर्ज कर सकते हैं।","Email sent. Check your inbox/spam and open the sign-in link. If you received a 6-digit code, you can enter it here."));
+      return;
+    }
+
+    const digits = phone.replace(/\D/g, "").replace(/^91(?=\d{10})/, "");
     const normalized = `+91${digits}`;
     if (!/^\+91\d{10}$/.test(normalized)) {
       setAuthMessage(t("10 अंकों का भारतीय मोबाइल नंबर दर्ज करें।","Enter a valid 10-digit Indian mobile number."));
@@ -1278,13 +1306,18 @@ export default function HomePage() {
     const { error } = await supabaseBrowser.auth.signInWithOtp({ phone: normalized, options: { channel: "sms" } });
     if (error) {
       const message = String(error.message || "");
-      if (/phone[_\\s-]*provider[_\\s-]*disabled|phone provider.*disabled|phone.*not enabled|unsupported phone provider/i.test(message) || /sms provider/i.test(message)) {
-        setAuthMessage(t("Supabase में Phone OTP disabled है या SMS provider सेट नहीं है। Supabase Dashboard → Authentication → Sign In / Providers में Phone enable करके SMS provider configure करें।","Phone OTP is disabled or the SMS provider is not configured in Supabase. In Supabase Dashboard → Authentication → Sign In / Providers, enable Phone and configure an SMS provider."));
+      if (/phone[_\s-]*provider[_\s-]*disabled|phone provider.*disabled|phone.*not enabled|unsupported phone provider/i.test(message) || /sms provider/i.test(message)) {
+        setAuthMethod("email");
+        setAuthMessage(t("SMS OTP चालू नहीं है। हमने Email login चुन दिया है—अपना email डालकर login link भेजें।","SMS OTP is disabled. Email login has been selected for you—enter your email and send a sign-in link."));
       } else {
         setAuthMessage(message);
       }
+      return;
     }
-    else { setAuthStep("otp"); setOtp(""); setOtpCooldown(60); setAuthMessage(t("OTP भेज दिया गया है। 60 सेकंड बाद फिर भेज सकते हैं।","OTP sent. You can request another OTP after 60 seconds.")); }
+    setAuthStep("otp");
+    setOtp("");
+    setOtpCooldown(60);
+    setAuthMessage(t("OTP भेज दिया गया है। 60 सेकंड बाद फिर भेज सकते हैं।","OTP sent. You can request another OTP after 60 seconds."));
   }
 
   async function verifyOtp() {
@@ -1292,17 +1325,22 @@ export default function HomePage() {
       setAuthMessage(t("Login सेवा अभी उपलब्ध नहीं है।","Login service is not available right now."));
       return;
     }
-    const digits = phone.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
-    const normalized = `+91${digits}`;
     const token = otp.replace(/\s+/g, "");
     if (!/^\d{6}$/.test(token)) {
-      setAuthMessage(t("6 अंकों का OTP दर्ज करें।","Enter the 6-digit OTP."));
+      setAuthMessage(t("6 अंकों का code दर्ज करें।","Enter the 6-digit code."));
       return;
     }
-    setAuthMessage(t("OTP जाँचा जा रहा है…","Verifying OTP…"));
-    const { error } = await supabaseBrowser.auth.verifyOtp({ phone: normalized, token, type: "sms" });
+
+    setAuthMessage(t("Code जाँचा जा रहा है…","Verifying code…"));
+    const { error } = authMethod === "email"
+      ? await supabaseBrowser.auth.verifyOtp({ email: email.trim().toLowerCase(), token, type: "email" })
+      : await supabaseBrowser.auth.verifyOtp({
+          phone: `+91${phone.replace(/\D/g, "").replace(/^91(?=\d{10})/, "")}`,
+          token,
+          type: "sms"
+        });
     if (error) setAuthMessage(error.message);
-    else setAuthMessage(t("OTP सही है। Trusted device की जाँच हो रही है…","OTP verified. Checking trusted device…"));
+    else setAuthMessage(t("Code सही है। Trusted device की जाँच हो रही है…","Code verified. Checking trusted device…"));
   }
 
   async function saveProfileName() {
@@ -1607,9 +1645,30 @@ export default function HomePage() {
           <div className="auth-panel" aria-label={t("वैकल्पिक लॉगिन","Optional login")}>
   <div><b>{user ? t("अकाउंट सक्रिय","Account active") : t("Guest Practice Mode","Guest Practice Mode")}</b><span>{user ? (user.email || user.phone || "") : t("लॉगिन जरूरी नहीं है। मॉक टेस्ट सीधे शुरू करें।","Login is optional. Start the mock test directly.")}</span></div>
   {user ? <>{needsProfileName ? <div className="auth-actions"><div className="guest-login-note">{t("लॉगिन हो गया है। अपना नाम दर्ज करें, यही नाम आपके डैशबोर्ड पर दिखेगा।","Login successful. Enter your name; this name will appear on your dashboard.")}</div><input value={profileName} onChange={e=>setProfileName(e.target.value.slice(0,60))} autoComplete="name" placeholder={t("आपका नाम","Your name")} /><button onClick={saveProfileName}>{t("नाम सेव करें","Save name")}</button></div> : <button onClick={logout}>{t("लॉगआउट","Sign out")}</button>}</> : <div className="auth-actions">
-    <div className="guest-login-note">{t("लॉगिन optional है — नीचे मोबाइल लॉगिन केवल रिज़ल्ट cloud में sync करने के लिए है।","Login is optional — mobile login is only for syncing results to the cloud.")}</div>
-    <div className="auth-divider"><span>{t("मोबाइल लॉगिन (वैकल्पिक)","OPTIONAL MOBILE LOGIN")}</span></div>
-    {authStep === "phone" ? <><div className="phone-input"><span>+91</span><input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,"").slice(0,10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर"/></div><button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : t("OTP भेजें","Send OTP")}</button></> : authStep === "otp" ? <><input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit OTP")}/><button onClick={verifyOtp}>{t("Verify","Verify")}</button></> : <><input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/><button onClick={recoverTrustedDevice}>{t("Device बदलें","Replace device")}</button></>}
+    <div className="guest-login-note">{t("Login वैकल्पिक है। SMS उपलब्ध न हो तो email से सुरक्षित login link इस्तेमाल करें।","Login is optional. Use a secure email sign-in link when SMS is unavailable.")}</div>
+    <div className="auth-divider"><span>{t("Cloud sync के लिए login (वैकल्पिक)","OPTIONAL LOGIN FOR CLOUD SYNC")}</span></div>
+    {authStep === "phone" ? <>
+      <div className="auth-method-switch">
+        <button type="button" data-testid="login-method-email" aria-pressed={authMethod === "email"} onClick={() => { setAuthMethod("email"); setAuthMessage(""); }}>{authMethod === "email" ? "✓ " : ""}{t("Email login","Email login")}</button>
+        <button type="button" data-testid="login-method-phone" aria-pressed={authMethod === "phone"} onClick={() => { setAuthMethod("phone"); setAuthMessage(""); }}>{authMethod === "phone" ? "✓ " : ""}{t("Mobile SMS","Mobile SMS")}</button>
+      </div>
+      {authMethod === "email"
+        ? <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address","Your email address")} data-testid="login-email-input"/>
+        : <div className="phone-input"><span>+91</span><input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,"").slice(0,10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर"/></div>}
+      <button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : authMethod === "email" ? t("Login link भेजें","Send login link") : t("OTP भेजें","Send SMS OTP")}</button>
+    </> : authStep === "otp" ? <>
+      <input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit code")}/>
+      <button onClick={verifyOtp}>{t("Code verify करें","Verify code")}</button>
+      <button type="button" onClick={() => { setAuthStep("phone"); setOtp(""); setAuthMessage(""); }}>{t("Login method बदलें","Change login method")}</button>
+    </> : authStep === "email-sent" ? <>
+      <div className="guest-login-note">{t("अपने email के inbox/Spam में आए login link को खोलें। यदि email में 6-digit code है, तो नीचे दर्ज करें।","Open the sign-in link in your email inbox/spam. If the email contains a 6-digit code, enter it below.")}</div>
+      <input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("Email code (यदि दिया हो)","Email code (if provided)")}/>
+      <button onClick={verifyOtp}>{t("Email code verify करें","Verify email code")}</button>
+      <button type="button" onClick={() => { setAuthStep("phone"); setOtp(""); setAuthMessage(""); }}>{t("Email बदलें / वापस जाएँ","Change email / go back")}</button>
+    </> : <>
+      <input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/>
+      <button onClick={recoverTrustedDevice}>{t("Device बदलें","Replace device")}</button>
+    </>}
   </div>}
   {authMessage && <small>{authMessage}</small>}
 </div>
