@@ -86,7 +86,7 @@ export async function GET() {
         .sort((a,b) => Number(b.prediction_score || 0) - Number(a.prediction_score || 0))
         .slice(0,5)
         .map(q => ({ subject:q.subject, topic:q.topic, prediction_score:Number(q.prediction_score || 0), source_type:q.source_type })) : [],
-      effective_status: questionBankReady ? "question_bank_ready" : track.status,
+      effective_status: questionBankReady ? "question_bank_ready" : track.status === "question_bank_ready" ? "practice" : track.status,
     };
   });
 
