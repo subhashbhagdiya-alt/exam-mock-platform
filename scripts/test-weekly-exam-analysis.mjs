@@ -19,7 +19,7 @@ assert.equal(validateGeneratedQuestion({ ...valid, options: ["same", "same", "sa
 assert.equal(validateGeneratedQuestion({ ...valid, options: ["A", " a ", "B", "C"] }), false);
 assert.equal(validateGeneratedQuestion({ ...valid, explanation_hi: "" }), false);
 assert.equal(validateGeneratedQuestion({ ...valid, question_en: "x".repeat(1201) }), false);
-assert.equal(validateGeneratedQuestion({ ...valid, subject: "Reasoning\\u0000" }), false);
+assert.equal(validateGeneratedQuestion({ ...valid, subject: "Reasoning" + String.fromCharCode(0) }), false);
 assert.equal(validateGeneratedQuestion({ ...valid, question_en: "<script>alert(1)</script>" }), false);
 assert.equal(validateGeneratedQuestion([]), false);
 assert.equal(normalizeQuestionText("  What IS 2+2? "), "what is 2 2");
