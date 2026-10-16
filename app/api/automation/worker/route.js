@@ -258,7 +258,7 @@ export async function GET(request) {
   if (!task) return NextResponse.json({ ok: true, processed: false, message: "No queued task." });
 
   const { data: claimedRows, error: markError } = await db.from("background_manager_tasks").update({
-    status: "running", started_at: new Date().toISOString(), error_message: null
+    status: "running", started_at: task.started_at ?? new Date().toISOString(), error_message: null
   }).eq("id", task.id).eq("status", "queued").select("id");
   if (markError) return NextResponse.json({ error: markError.message }, { status: 500 });
   if (!claimedRows?.length) return NextResponse.json({ ok: true, processed: false, message: "Task was claimed by another worker." });
