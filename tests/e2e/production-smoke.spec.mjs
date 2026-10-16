@@ -181,3 +181,15 @@ test("result history and cloud save require an authenticated user", async ({ req
   expect(saveResponse.status()).toBe(401);
   expect((await saveResponse.json()).error).toMatch(/login required/i);
 });
+
+
+test("background manager endpoints reject unauthenticated requests", async ({ request }) => {
+  for (const endpoint of [
+    "/api/automation/sync",
+    "/api/automation/manager",
+    "/api/automation/worker"
+  ]) {
+    const response = await request.get(`${baseURL}${endpoint}`, { timeout: 30_000 });
+    expect(response.status(), `${endpoint} must require the cron secret`).toBe(401);
+  }
+});
