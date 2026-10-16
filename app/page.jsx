@@ -823,6 +823,17 @@ export default function HomePage() {
   const [questionLoadError, setQuestionLoadError] = useState("");
   const [nativeSimStatus, setNativeSimStatus] = useState("web");
   const [trustedDeviceVerified, setTrustedDeviceVerified] = useState(false);
+  const [mfaStatus, setMfaStatus] = useState("guest");
+  const [mfaCheckAttempt, setMfaCheckAttempt] = useState(0);
+  const [mfaVerifiedUserId, setMfaVerifiedUserId] = useState("");
+  const [mfaFactors, setMfaFactors] = useState([]);
+  const [mfaFactorId, setMfaFactorId] = useState("");
+  const [mfaChallengeId, setMfaChallengeId] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaEnrollment, setMfaEnrollment] = useState(null);
+  const [mfaSetupCode, setMfaSetupCode] = useState("");
+  const [mfaMessage, setMfaMessage] = useState("");
+  const [mfaBusy, setMfaBusy] = useState(false);
   const [themeMode, setThemeMode] = useState("dark");
   const [splashVisible, setSplashVisible] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -955,7 +966,112 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!user || !supabaseBrowser || typeof window === "undefined") return;
+    let active = true;
+    if (!user || !supabaseBrowser) {
+      setMfaStatus("guest");
+      setMfaVerifiedUserId("");
+      setMfaFactors([]);
+      setMfaFactorId("");
+      setMfaChallengeId("");
+      setMfaCode("");
+      setMfaEnrollment(null);
+      setMfaSetupCode("");
+      setMfaMessage("");
+      return () => { active = false; };
+    }
+
+    setMfaStatus("checking");
+    setMfaVerifiedUserId("");
+    setMfaFactors([]);
+    setMfaMessage("");
+    (async () => {
+      try {
+        const { data, error } = await supabaseBrowser.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (!active) return;
+        if (error || !data) {
+          setMfaStatus("error");
+          setMfaMessage(t("अकाउंट की अतिरिक्त सुरक्षा जाँची नहीं जा सकी। Retry करें या सुरक्षित रूप से logout करें।", "We could not verify account security. Retry or sign out safely."));
+          return;
+        }
+
+        if (data.currentLevel === "aal1" && data.nextLevel === "aal2") {
+          const { data: listed, error: factorsError } = await supabaseBrowser.auth.mfa.listFactors();
+          if (!active) return;
+          if (factorsError) {
+            setMfaStatus("error");
+            setMfaMessage(t("Authenticator की जानकारी नहीं मिल सकी। फिर कोशिश करें।", "Could not load authenticator details. Please retry."));
+            return;
+          }
+          const factors = [
+            ...(listed?.totp || []),
+            ...(listed?.phone || [])
+          ].filter(factor => factor?.status === "verified" && factor?.id);
+          factors.sort((a, b) => Number(b.factor_type === "totp") - Number(a.factor_type === "totp"));
+          if (!factors.length) {
+            setMfaStatus("error");
+            setMfaMessage(t("इस अकाउंट पर MFA की जरूरत है, लेकिन verified factor नहीं मिला। Recovery के लिए support/settings जाँचें।", "This account requires MFA, but no verified factor was found. Check account recovery/settings."));
+            return;
+          }
+
+          const factor = factors[0];
+          setMfaFactors(factors);
+          setMfaFactorId(factor.id);
+          const { data: challenge, error: challengeError } = await supabaseBrowser.auth.mfa.challenge({ factorId: factor.id });
+          if (!active) return;
+          if (challengeError || !challenge?.id) {
+            setMfaStatus("error");
+            setMfaMessage(t("Authenticator challenge शुरू नहीं हो सका। Retry करें।", "Could not start the authenticator challenge. Please retry."));
+            return;
+          }
+          setMfaChallengeId(challenge.id);
+          setMfaStatus("challenge");
+          setMfaMessage(factor.factor_type === "phone"
+            ? t("आपके verified phone पर आया MFA code दर्ज करें।", "Enter the MFA code sent to your verified phone.")
+            : t("Authenticator app में दिख रहा 6-digit code दर्ज करें।", "Enter the 6-digit code shown in your authenticator app."));
+          return;
+        }
+
+        if ((data.currentLevel === "aal1" && data.nextLevel === "aal1") ||
+            (data.currentLevel === "aal2" && data.nextLevel === "aal2") ||
+            (data.currentLevel === "aal2" && data.nextLevel === "aal1")) {
+          setMfaStatus("ready");
+          setMfaVerifiedUserId(user.id);
+          return;
+        }
+
+        setMfaStatus("error");
+        setMfaMessage(t("Authenticator status अपेक्षित format में नहीं मिला। Retry करें।", "Authenticator status was unexpected. Please retry."));
+      } catch {
+        if (active) {
+          setMfaStatus("error");
+          setMfaMessage(t("अकाउंट सुरक्षा जाँच में समस्या आई। Retry करें या logout करें।", "The account security check failed. Retry or sign out."));
+        }
+      }
+    })();
+
+    return () => { active = false; };
+  }, [user, mfaCheckAttempt]);
+
+  useEffect(() => {
+    let active = true;
+    if (!user || !supabaseBrowser || mfaStatus !== "ready" || mfaVerifiedUserId !== user.id) {
+      return () => { active = false; };
+    }
+    (async () => {
+      const { data, error } = await supabaseBrowser.auth.mfa.listFactors();
+      if (!active) return;
+      if (error) {
+        setMfaMessage(t("Authenticator सूची लोड नहीं हो सकी।", "Could not load authenticator list."));
+        return;
+      }
+      setMfaFactors([...(data?.totp || []), ...(data?.phone || [])]);
+    })();
+    return () => { active = false; };
+  }, [user, mfaStatus, mfaVerifiedUserId]);
+
+  useEffect(() => {
+    if (!user || !supabaseBrowser || typeof window === "undefined" ||
+        mfaStatus !== "ready" || mfaVerifiedUserId !== user.id) return;
     const existing = localStorage.getItem("exam_prep_device_key") || crypto.randomUUID();
     localStorage.setItem("exam_prep_device_key", existing);
     (async () => {
@@ -964,19 +1080,19 @@ export default function HomePage() {
         p_phone: user.phone || null
       });
       if (error) {
-        setAuthMessage(t("Trusted device की जाँच नहीं हो सकी।","Trusted-device verification could not be completed."));
+        setAuthMessage(t("Trusted device की जाँच नहीं हो सकी।", "Trusted-device verification could not be completed."));
         await supabaseBrowser.auth.signOut();
         return;
       }
       if (isTrusted !== true) {
         setAuthStep("recovery");
-        setAuthMessage(t("यह अकाउंट दूसरे trusted device से जुड़ा है। पुराने device से recovery code लेकर यहाँ दर्ज करें।","This account is bound to another trusted device. Enter a recovery code generated on the old trusted device."));
+        setAuthMessage(t("यह अकाउंट दूसरे trusted device से जुड़ा है। पुराने device से recovery code लेकर यहाँ दर्ज करें।", "This account is bound to another trusted device. Enter a recovery code generated on the old trusted device."));
         return;
       }
       setTrustedDeviceVerified(true);
-      setAuthMessage(t("लॉगिन सफल। यह डिवाइस trusted है।","Login successful. This device is trusted."));
+      setAuthMessage(t("लॉगिन सफल। यह डिवाइस trusted है।", "Login successful. This device is trusted."));
     })();
-  }, [user]);
+  }, [user, mfaStatus, mfaVerifiedUserId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1343,6 +1459,197 @@ export default function HomePage() {
     else setAuthMessage(t("Code सही है। Trusted device की जाँच हो रही है…","Code verified. Checking trusted device…"));
   }
 
+  async function verifyMfaChallenge() {
+    if (!supabaseBrowser || !user || mfaBusy || !mfaFactorId || !mfaChallengeId) return;
+    const code = mfaCode.replace(/\s+/g, "");
+    if (!/^\d{6}$/.test(code)) {
+      setMfaMessage(t("6 अंकों का authenticator code दर्ज करें।", "Enter the 6-digit authenticator code."));
+      return;
+    }
+
+    setMfaBusy(true);
+    setMfaMessage(t("Authenticator code verify हो रहा है…", "Verifying authenticator code…"));
+    try {
+      const { error } = await supabaseBrowser.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: mfaChallengeId,
+        code
+      });
+      if (error) {
+        setMfaMessage(error.message || t("Code verify नहीं हुआ। फिर कोशिश करें।", "Code verification failed. Please retry."));
+        return;
+      }
+
+      const { data: refreshed, error: refreshError } = await supabaseBrowser.auth.refreshSession();
+      if (refreshError || !refreshed?.session?.access_token) {
+        setMfaStatus("error");
+        setMfaVerifiedUserId("");
+        setMfaMessage(t("Code verify हो गया, लेकिन secure session refresh नहीं हुआ। Retry करें।", "The code was verified, but the secure session could not refresh. Please retry."));
+        return;
+      }
+      const { data: assurance, error: assuranceError } =
+        await supabaseBrowser.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assuranceError || assurance?.currentLevel !== "aal2" || assurance?.nextLevel !== "aal2") {
+        setMfaStatus("error");
+        setMfaVerifiedUserId("");
+        setMfaMessage(t("MFA verify के बाद session assurance confirm नहीं हुई। Retry करें।", "Could not confirm session assurance after MFA. Please retry."));
+        return;
+      }
+      setMfaStatus("ready");
+      setMfaVerifiedUserId(user.id);
+      setMfaChallengeId("");
+      setMfaCode("");
+      setMfaMessage(t("Authenticator verified. Trusted device की जाँच हो रही है…", "Authenticator verified. Checking the trusted device…"));
+    } catch {
+      setMfaMessage(t("Authenticator verify नहीं हो सका। फिर कोशिश करें।", "Authenticator verification failed. Please retry."));
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function beginMfaEnrollment() {
+    if (!supabaseBrowser || !user || mfaBusy || mfaStatus !== "ready" || mfaVerifiedUserId !== user.id) return;
+    setMfaBusy(true);
+    setMfaMessage("");
+    try {
+      const { data, error } = await supabaseBrowser.auth.mfa.enroll({
+        factorType: "totp",
+        friendlyName: "ExamPrep Authenticator",
+        issuer: "ExamPrep"
+      });
+      if (error || !data?.id || !data?.totp?.secret) {
+        setMfaMessage(error?.message || t("Authenticator setup key नहीं मिला।", "Could not create an authenticator setup key."));
+        return;
+      }
+      setMfaEnrollment({
+        id: data.id,
+        secret: data.totp.secret,
+        qrCode: data.totp.qr_code || "",
+        uri: data.totp.uri || ""
+      });
+      setMfaSetupCode("");
+      setMfaMessage(t("Authenticator app में यह QR scan करें या setup key manually डालें। Secret किसी से share न करें।", "Scan this QR in your authenticator app or enter the setup key manually. Never share the secret."));
+    } catch {
+      setMfaMessage(t("Authenticator setup शुरू नहीं हो सका। Retry करें।", "Could not start authenticator setup. Please retry."));
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function verifyMfaEnrollment() {
+    if (!supabaseBrowser || !user || !mfaEnrollment || mfaBusy) return;
+    const code = mfaSetupCode.replace(/\s+/g, "");
+    if (!/^\d{6}$/.test(code)) {
+      setMfaMessage(t("Authenticator app का 6-digit code दर्ज करें।", "Enter the 6-digit code from your authenticator app."));
+      return;
+    }
+
+    setMfaBusy(true);
+    setMfaMessage(t("Authenticator setup verify हो रहा है…", "Verifying authenticator setup…"));
+    try {
+      const { data: challenge, error: challengeError } =
+        await supabaseBrowser.auth.mfa.challenge({ factorId: mfaEnrollment.id });
+      if (challengeError || !challenge?.id) {
+        setMfaMessage(challengeError?.message || t("Setup challenge नहीं बना।", "Could not create the setup challenge."));
+        return;
+      }
+      const { error: verifyError } = await supabaseBrowser.auth.mfa.verify({
+        factorId: mfaEnrollment.id,
+        challengeId: challenge.id,
+        code
+      });
+      if (verifyError) {
+        setMfaMessage(verifyError.message || t("Code गलत है। Authenticator app से नया code डालें।", "Incorrect code. Enter a fresh code from your authenticator app."));
+        return;
+      }
+
+      const { data: refreshed, error: refreshError } = await supabaseBrowser.auth.refreshSession();
+      if (refreshError || !refreshed?.session?.access_token) {
+        setMfaStatus("error");
+        setMfaVerifiedUserId("");
+        setMfaMessage(t("Authenticator verify हुआ, लेकिन secure session refresh नहीं हुआ। Retry करें।", "Authenticator was verified, but the secure session could not refresh. Please retry."));
+        return;
+      }
+      const { data: assurance, error: assuranceError } =
+        await supabaseBrowser.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assuranceError || assurance?.currentLevel !== "aal2" || assurance?.nextLevel !== "aal2") {
+        setMfaStatus("error");
+        setMfaVerifiedUserId("");
+        setMfaMessage(t("Authenticator setup के बाद AAL2 session confirm नहीं हुई। Retry करें।", "Could not confirm an AAL2 session after setup. Please retry."));
+        return;
+      }
+
+      const { data: listed } = await supabaseBrowser.auth.mfa.listFactors();
+      setMfaFactors([...(listed?.totp || []), ...(listed?.phone || [])]);
+      setMfaEnrollment(null);
+      setMfaSetupCode("");
+      setMfaStatus("ready");
+      setMfaVerifiedUserId(user.id);
+      setMfaMessage(t("Authenticator app सफलतापूर्वक enable हो गया। अगली login पर code माँगा जाएगा।", "Authenticator app enabled. You will be asked for a code on the next login."));
+    } catch {
+      setMfaMessage(t("Authenticator setup verify नहीं हो सका। फिर कोशिश करें।", "Could not verify authenticator setup. Please retry."));
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function cancelMfaEnrollment() {
+    if (!supabaseBrowser || !mfaEnrollment || mfaBusy) return;
+    setMfaBusy(true);
+    try {
+      const { error } = await supabaseBrowser.auth.mfa.unenroll({ factorId: mfaEnrollment.id });
+      if (error) {
+        setMfaMessage(error.message || t("Pending setup हटाया नहीं जा सका।", "Could not remove the pending setup."));
+        return;
+      }
+      const { data: listed } = await supabaseBrowser.auth.mfa.listFactors();
+      setMfaFactors([...(listed?.totp || []), ...(listed?.phone || [])]);
+      setMfaEnrollment(null);
+      setMfaSetupCode("");
+      setMfaMessage(t("Authenticator setup cancel हो गया।", "Authenticator setup cancelled."));
+    } catch {
+      setMfaMessage(t("Setup cancel नहीं हो सका।", "Could not cancel setup."));
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function copyMfaSecret() {
+    if (!mfaEnrollment?.secret || typeof navigator === "undefined") return;
+    try {
+      await navigator.clipboard.writeText(mfaEnrollment.secret);
+      setMfaMessage(t("Setup key copy हो गई। इसे private रखें।", "Setup key copied. Keep it private."));
+    } catch {
+      setMfaMessage(t("Key copy नहीं हो सकी; ऊपर दिखाई key manually दर्ज करें।", "Could not copy the key; enter the visible setup key manually."));
+    }
+  }
+
+  async function removeMfaFactor(factorId) {
+    if (!supabaseBrowser || !user || !factorId || mfaBusy || typeof window === "undefined") return;
+    const confirmed = window.confirm(t(
+      "इस MFA factor को हटाएँ? अगली login पर यह factor code नहीं माँगा जाएगा।",
+      "Remove this MFA factor? This factor will no longer be required at the next login."
+    ));
+    if (!confirmed) return;
+    setMfaBusy(true);
+    setMfaMessage("");
+    try {
+      const { error } = await supabaseBrowser.auth.mfa.unenroll({ factorId });
+      if (error) {
+        setMfaMessage(error.message || t("MFA factor हटाया नहीं जा सका।", "Could not remove the MFA factor."));
+        return;
+      }
+      setMfaStatus("checking");
+      setMfaVerifiedUserId("");
+      setMfaCheckAttempt(attempt => attempt + 1);
+      setMfaMessage(t("MFA factor हट गया। Updated security status जाँची जा रही है…", "MFA factor removed. Checking updated security status…"));
+    } catch {
+      setMfaMessage(t("MFA factor हटाने में समस्या आई।", "Could not remove the MFA factor."));
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
   async function saveProfileName() {
     const name = profileName.trim();
     if (!supabaseBrowser || !user || !name) {
@@ -1415,6 +1722,13 @@ export default function HomePage() {
     setOtp("");
     setRecoveryCode("");
     setTrustedDeviceVerified(false);
+    setMfaStatus("guest");
+    setMfaVerifiedUserId("");
+    setMfaFactors([]);
+    setMfaEnrollment(null);
+    setMfaCode("");
+    setMfaSetupCode("");
+    setMfaMessage("");
     setAuthMessage("");
   }
 
@@ -1432,6 +1746,13 @@ export default function HomePage() {
     }
     setUser(null);
     setTrustedDeviceVerified(false);
+    setMfaStatus("guest");
+    setMfaVerifiedUserId("");
+    setMfaFactors([]);
+    setMfaEnrollment(null);
+    setMfaCode("");
+    setMfaSetupCode("");
+    setMfaMessage("");
     setAuthStep("phone");
     setOtp("");
     setRecoveryCode("");
@@ -1678,6 +1999,26 @@ export default function HomePage() {
 
       <section className="main">
         <header className="topbar"><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : view === "sources" ? t("Source PDFs","Source PDFs") : view === "about" ? t("ऐप के बारे में","About") : view === "settings" ? t("प्रोफाइल / सेटिंग्स","Profile / Settings") : view === "boards" ? t("परीक्षा बोर्ड","Exam boards") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="home-quick-button" onClick={() => navigateTo("home")} aria-label={t("होम पर जाएँ","Go to Home")} title={t("होम","Home")}><Home size={17}/><span>{t("होम","Home")}</span></button><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button><button className="theme-toggle" onClick={() => setThemeMode(effectiveTheme === "light" ? "dark" : "light")} title={themeMode === "light" ? "Night mode" : themeMode === "dark" ? "System mode" : "Day mode"}>{themeMode === "light" ? "☀️" : themeMode === "dark" ? "🌙" : "◐"}<span>{themeMode === "light" ? t("दिन","Day") : themeMode === "dark" ? t("रात","Night") : t("सिस्टम","System")}</span></button><button ref={menuButtonRef} className="menu-button" onClick={() => setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label="Menu" data-testid="menu-toggle"><SlidersHorizontal size={18}/></button>{menuOpen && <div ref={menuRef} className="menu-popover"><b>{t("दिखावट","Appearance")}</b><button onClick={() => {setThemeMode("light");setMenuOpen(false)}}>☀️ {t("Day Mode","Day Mode")}</button><button onClick={() => {setThemeMode("dark");setMenuOpen(false)}}>🌙 {t("Night Mode","Night Mode")}</button><button onClick={() => {setThemeMode("system");setMenuOpen(false)}}>◐ {t("System","System")}</button><hr/><button onClick={() => navigateTo("boards")}>{t("परीक्षाएँ","Exams")}</button><button onClick={() => navigateTo("history")}>{t("मेरे रिज़ल्ट","My results")}</button><button data-testid="menu-login" onClick={() => navigateTo("login")}>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button onClick={() => navigateTo("settings")}>{t("सेटिंग्स","Settings")}</button><button onClick={() => navigateTo("sources")}>Source PDFs</button><button onClick={() => navigateTo("about")}>{t("ऐप के बारे में","About ExamPrep")}</button></div>}</div></header>
+        {user && mfaStatus !== "ready" && <div className="mfa-gate-backdrop" role="dialog" aria-modal="true" aria-labelledby="mfa-gate-title" data-testid="mfa-gate">
+          <div className="mfa-gate-card">
+            <div className="mfa-gate-icon"><ShieldCheck size={26}/></div>
+            <div className="eyebrow"><span className="eyebrow-line"/> EXAMPREP ACCOUNT SECURITY</div>
+            <h2 id="mfa-gate-title">{t("अतिरिक्त सुरक्षा जाँच","Additional security check")}</h2>
+            {(mfaStatus === "guest" || mfaStatus === "checking") && <p>{t("आपकी login security verify हो रही है…","Verifying your login security…")}</p>}
+            {mfaStatus === "challenge" && <>
+              <p>{mfaMessage || t("Authenticator app का 6-digit code दर्ज करें।","Enter the 6-digit code from your authenticator app.")}</p>
+              <input aria-label={t("Authenticator code","Authenticator code")} data-testid="mfa-challenge-code" value={mfaCode} onChange={event=>setMfaCode(event.target.value.replace(/\D/g,"").slice(0,6))} inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="••••••"/>
+              <button className="primary-button" onClick={verifyMfaChallenge} disabled={mfaBusy}>{mfaBusy ? t("Verify हो रहा है…","Verifying…") : t("Verify और जारी रखें","Verify and continue")}<ShieldCheck size={16}/></button>
+              <button type="button" className="secondary-button" onClick={logout} disabled={mfaBusy}>{t("Logout","Sign out")}</button>
+            </>}
+            {mfaStatus === "error" && <>
+              <p>{mfaMessage || t("सुरक्षा जाँच पूरी नहीं हुई।","The security check did not complete.")}</p>
+              <button className="primary-button" onClick={()=>setMfaCheckAttempt(attempt=>attempt+1)} disabled={mfaBusy}>{t("फिर कोशिश करें","Retry security check")}<RotateCcw size={16}/></button>
+              <button type="button" className="secondary-button" onClick={logout} disabled={mfaBusy}>{t("Logout","Sign out")}</button>
+            </>}
+          </div>
+        </div>}
+
 
         {view === "home" && <div className="content dashboard-content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
           <div className="auth-panel" aria-label={t("वैकल्पिक लॉगिन","Optional login")}>
@@ -1969,6 +2310,38 @@ export default function HomePage() {
             <div className="settings-card"><div className="settings-card-head"><div><span className="settings-kicker">PROFILE</span><h3>{t("नाम और अकाउंट","Name & account")}</h3></div><div className="settings-card-icon"><Award size={18}/></div></div>{user ? <div className="settings-form-row"><input value={profileName} onChange={e=>setProfileName(e.target.value.slice(0,60))} placeholder={t("आपका नाम","Your name")} autoComplete="name"/><button className="primary-button" onClick={saveProfileName}>{t("सेव करें","Save changes")}<Check size={16}/></button></div> : <div className="settings-note"><Info size={17}/><span>{t("Guest mode में प्रोफाइल local है। Cloud history के लिए Dashboard से optional mobile login करें।","In Guest mode your profile is local. Use optional mobile login from Dashboard for cloud history.")}</span></div>}</div>
             <div className="settings-card"><div className="settings-card-head"><div><span className="settings-kicker">APPEARANCE</span><h3>{t("दिखावट और भाषा","Appearance & language")}</h3></div><div className="settings-card-icon"><Languages size={18}/></div></div><div className="settings-option-grid"><button className={themeMode==="light" ? "setting-choice active" : "setting-choice"} onClick={()=>setThemeMode("light")}><span>☀️</span><b>Day</b><small>Light glass UI</small></button><button className={themeMode==="dark" ? "setting-choice active" : "setting-choice"} onClick={()=>setThemeMode("dark")}><span>🌙</span><b>Night</b><small>Dark glass UI</small></button><button className={themeMode==="system" ? "setting-choice active" : "setting-choice"} onClick={()=>setThemeMode("system")}><span>◐</span><b>System</b><small>Follow device</small></button></div><div className="settings-divider"/><div className="settings-inline-row"><div><b>{t("भाषा","Language")}</b><span>{t("सवाल और labels की भाषा बदलें","Switch question and label language")}</span></div><button className="secondary-button" onClick={()=>setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "English" : "हिंदी"}</button></div></div>
             <div className="settings-card security-card"><div className="settings-card-head"><div><span className="settings-kicker">SECURITY</span><h3>{t("Trusted device","Trusted device")}</h3></div><div className="settings-card-icon"><ShieldCheck size={18}/></div></div><div className="settings-security-row"><div className={"security-indicator " + (trustedDeviceVerified ? "verified" : "")}><ShieldCheck size={18}/></div><div><b>{trustedDeviceVerified ? t("यह device trusted है","This device is trusted") : t("Guest / current device","Guest / current device")}</b><span>{t("Recovery code केवल trusted device से बनाया जा सकता है।","A recovery code can only be created from a trusted device.")}</span></div><button className="secondary-button" onClick={()=>navigateTo("boards")}>{t("परीक्षा खोलें","Open exams")}<ArrowRight size={15}/></button></div></div>
+            <div className="settings-card security-card" data-testid="mfa-settings-card">
+              <div className="settings-card-head"><div><span className="settings-kicker">TWO-FACTOR AUTH</span><h3>{t("Authenticator app","Authenticator app")}</h3></div><div className="settings-card-icon"><ShieldCheck size={18}/></div></div>
+              {!user && <div className="settings-note"><Info size={17}/><span>{t("Authenticator enable करने के लिए पहले login करें।","Sign in first to configure an authenticator.")}</span></div>}
+              {user && mfaStatus !== "ready" && <div className="settings-note"><Info size={17}/><span>{t("पहले ऊपर दिखाई गई account security verification पूरी करें।","Complete the account security check shown above first.")}</span></div>}
+              {user && mfaStatus === "ready" && <>
+                {mfaFactors.filter(factor=>factor.status === "verified").length > 0
+                  ? <div className="mfa-factor-list">
+                      {mfaFactors.filter(factor=>factor.status === "verified").map(factor=><div className="mfa-factor-row" key={factor.id}>
+                        <div className="security-indicator verified"><ShieldCheck size={18}/></div>
+                        <div><b>{factor.friendly_name || (factor.factor_type === "totp" ? t("Authenticator app","Authenticator app") : t("Verified phone factor","Verified phone factor"))}</b><span>{factor.factor_type === "totp" ? t("App-based one-time code","App-based one-time code") : t("Phone verification factor","Phone verification factor")}</span></div>
+                        <button type="button" className="secondary-button danger-button" onClick={()=>removeMfaFactor(factor.id)} disabled={mfaBusy}>{t("हटाएँ","Remove")}</button>
+                      </div>)}
+                    </div>
+                  : <div className="settings-security-row"><div className="security-indicator"><ShieldCheck size={18}/></div><div><b>{t("Authenticator अभी off है","Authenticator is off")}</b><span>{t("Login के बाद TOTP code जोड़ें। Setup optional है।","Add a TOTP code after login. Setup is optional.")}</span></div><button className="primary-button" onClick={beginMfaEnrollment} disabled={mfaBusy || Boolean(mfaEnrollment)}>{t("Enable authenticator","Enable authenticator")}<ShieldCheck size={15}/></button></div>}
+                {mfaFactors.filter(factor=>factor.status === "unverified").map(factor=><div className="mfa-factor-row" key={factor.id}>
+                  <div className="security-indicator"><Info size={18}/></div><div><b>{t("Pending setup","Pending setup")}</b><span>{t("यह setup verify नहीं हुआ। इसे हटाकर नया setup शुरू करें।","This setup is not verified. Remove it before starting another setup.")}</span></div>
+                  <button type="button" className="secondary-button danger-button" onClick={()=>removeMfaFactor(factor.id)} disabled={mfaBusy}>{t("हटाएँ","Remove")}</button>
+                </div>)}
+                {mfaEnrollment && <div className="mfa-enroll-panel">
+                  <p>{t("Authenticator app में QR scan करें या setup key manually दर्ज करें। Key निजी रखें।","Scan the QR in your authenticator app or enter the setup key manually. Keep the key private.")}</p>
+                  {mfaEnrollment.qrCode && <img className="mfa-qr" src={mfaEnrollment.qrCode} alt={t("Authenticator setup QR code","Authenticator setup QR code")}/>}
+                  <div className="mfa-secret-label">{t("Manual setup key","Manual setup key")}</div>
+                  <code className="mfa-secret-key">{mfaEnrollment.secret}</code>
+                  <button type="button" className="secondary-button" onClick={copyMfaSecret} disabled={mfaBusy}>{t("Key copy करें","Copy setup key")}</button>
+                  {mfaEnrollment.uri && <a className="mfa-setup-link" href={mfaEnrollment.uri}>{t("Authenticator app में खोलें","Open in authenticator app")}</a>}
+                  <input data-testid="mfa-enrollment-code" aria-label={t("Setup verification code","Setup verification code")} value={mfaSetupCode} onChange={event=>setMfaSetupCode(event.target.value.replace(/\D/g,"").slice(0,6))} inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder={t("6-digit code","6-digit code")}/>
+                  <button type="button" className="primary-button" onClick={verifyMfaEnrollment} disabled={mfaBusy}>{mfaBusy ? t("Verify हो रहा है…","Verifying…") : t("Verify और enable करें","Verify and enable")}<Check size={16}/></button>
+                  <button type="button" className="secondary-button" onClick={cancelMfaEnrollment} disabled={mfaBusy}>{t("Setup cancel करें","Cancel setup")}</button>
+                </div>}
+              </>}
+              {mfaMessage && mfaStatus === "ready" && <small className="login-message">{mfaMessage}</small>}
+            </div>
             <div className="settings-card danger-card"><div className="settings-card-head"><div><span className="settings-kicker">SESSION</span><h3>{t("सेशन","Session")}</h3></div><div className="settings-card-icon"><RotateCcw size={18}/></div></div><div className="settings-inline-row"><div><b>{user ? t("अकाउंट से लॉगआउट","Sign out of account") : t("Guest practice mode","Guest practice mode")}</b><span>{user ? t("Cloud sync बंद हो जाएगा, local results इस device पर रहेंगे।","Cloud sync will stop; local results stay on this device.") : t("आप बिना login के mock tests दे सकते हैं।","You can take mock tests without logging in.")}</span></div>{user && <button className="secondary-button danger-button" onClick={logout}>{t("लॉगआउट","Sign out")}<X size={16}/></button>}</div></div>
           </div>
         </div>}
