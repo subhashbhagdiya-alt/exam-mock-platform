@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateResultQuestionMapping } from "../../../lib/result-validation.mjs";
+import { checkMfaAssurance } from "../../../lib/mfa-assurance.mjs";
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -19,6 +20,10 @@ function getClient(sessionKey, accessToken = "") {
     auth: { autoRefreshToken: false, persistSession: false },
     global: { headers: { "x-session-key": sessionKey, ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) } }
   });
+}
+
+function mfaBlockedResponse(check) {
+  return NextResponse.json({ error: check.error, code: check.code }, { status: check.status });
 }
 
 const fields = "id, exam_id, test_name, score, gross_score, negative_score, marks_per_question, negative_marks_per_question, passing_percentage, total_questions, correct, wrong, unanswered, accuracy, answers, review_ids, language, created_at";
@@ -113,6 +118,9 @@ export async function GET(request) {
   }
   if (!authUserId) return NextResponse.json({ error: "Login required" }, { status: 401 });
 
+  const mfaCheck = await checkMfaAssurance(client, accessToken);
+  if (!mfaCheck.allowed) return mfaBlockedResponse(mfaCheck);
+
   const deviceKey = request.headers.get("x-device-key") || "";
   if (!validDeviceKey(deviceKey)) return NextResponse.json({ error: "Trusted device required" }, { status: 403 });
   const { data: isTrusted, error: deviceError } = await client.rpc("verify_trusted_device", { p_device_key: deviceKey });
@@ -144,6 +152,9 @@ export async function POST(request) {
     }
 
     if (!authUserId) return NextResponse.json({ error: "Login required to save results" }, { status: 401 });
+
+    const mfaCheck = await checkMfaAssurance(client, accessToken);
+    if (!mfaCheck.allowed) return mfaBlockedResponse(mfaCheck);
 
     // Check the signed-in user's trusted device before looking up any answer-key data.
     const deviceKey = body.device_key;
