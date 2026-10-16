@@ -133,7 +133,7 @@ async function runWeeklyExamAnalysis(task, db) {
       analysis: draft.analysis,
       draft_questions: unique,
       actual_past_paper_evidence_count: context.historicalEvidence.length,
-      note: "Analysis and candidate batch saved. The next scheduled worker run will independently review, deduplicate, and publish only a complete batch."
+      note: "Analysis and candidate batch saved. The next scheduled worker run will independently review, deduplicate, and stage only a complete batch."
     };
   }
 
@@ -181,7 +181,11 @@ async function runWeeklyExamAnalysis(task, db) {
       source_url: null,
       fingerprint: createHash("sha256").update(normalizeQuestionText(q.question_en)).digest("hex")
     }));
-    const { data: inserted, error: insertError } = await db.from("question_bank").insert(records).select("id,subject,topic,difficulty");
+    // The database has a unique (exam_id, fingerprint) index. Ignore duplicates so
+    // a retry after a partial success cannot fail the entire batch on duplicate rows.
+    const { data: inserted, error: insertError } = await db.from("question_bank")
+      .upsert(records, { onConflict: "exam_id,fingerprint", ignoreDuplicates: true })
+      .select("id,subject,topic,difficulty");
     if (insertError) throw insertError;
 
     const subjects = [...new Set((inserted || []).map((q) => q.subject))].map((name) => ({ name }));
@@ -238,7 +242,7 @@ async function runWeeklyExamAnalysis(task, db) {
     analysis: task.result.analysis || gapDraft.analysis,
     draft_questions: merged,
     actual_past_paper_evidence_count: context.historicalEvidence.length,
-    note: "Gap-filling candidates saved. The next scheduled worker run will review and publish once at least 50 unique questions pass checks."
+    note: "Gap-filling candidates saved. The next scheduled worker run will review and stage once at least 50 unique questions pass checks."
   };
 }
 
@@ -247,9 +251,9 @@ export async function GET(request) {
   const db = dbClient();
   if (!db) return NextResponse.json({ error: "Server database credentials are not configured" }, { status: 503 });
 
-  // Resume-first scheduling: finish multi-phase tasks before starting another one.
-  // Deferred analysis tasks preserve their original started_at, so their draft/review
-  // steps run on the next scheduled invocation instead of waiting behind the entire queue.
+  // Keep the original first-claim timestamp so deferred multi-phase work resumes
+  // ahead of newly queued tasks. A claim is conditional on status=queued to avoid
+  // two workers both acquiring the same task.
   const { data: task, error: claimError } = await db.from("background_manager_tasks").select("*").eq("status", "queued")
     .order("started_at", { ascending: true, nullsFirst: false })
     .order("priority", { ascending: false })
@@ -258,7 +262,7 @@ export async function GET(request) {
   if (!task) return NextResponse.json({ ok: true, processed: false, message: "No queued task." });
 
   const { data: claimedRows, error: markError } = await db.from("background_manager_tasks").update({
-    status: "running", started_at: new Date().toISOString(), error_message: null
+    status: "running", started_at: task.started_at || new Date().toISOString(), error_message: null
   }).eq("id", task.id).eq("status", "queued").select("id");
   if (markError) return NextResponse.json({ error: markError.message }, { status: 500 });
   if (!claimedRows?.length) return NextResponse.json({ ok: true, processed: false, message: "Task was claimed by another worker." });
