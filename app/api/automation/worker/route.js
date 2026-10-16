@@ -174,9 +174,10 @@ async function runWeeklyExamAnalysis(task, db) {
       recency_score: 0.5,
       topic_score: 0.7,
       prediction_score: 0.5,
-      verified: true,
-      active: true,
-      source_name: "ExamPrep weekly AI pattern batch (independently reviewed)",
+      // AI-created content is staged for a human review; it must never self-publish.
+      verified: false,
+      active: false,
+      source_name: "ExamPrep weekly AI pattern batch (awaiting human approval)",
       source_url: null,
       fingerprint: createHash("sha256").update(normalizeQuestionText(q.question_en)).digest("hex")
     }));
@@ -218,7 +219,7 @@ async function runWeeklyExamAnalysis(task, db) {
       confidence_notes: analysis.confidence_notes || "Not supplied",
       actual_past_paper_evidence_count: context.historicalEvidence.length,
       inserted_questions: (inserted || []).length,
-      note: "Inserted after bilingual schema checks, deduplication, and a separate AI review pass. These are curated practice questions; exam appearance is not guaranteed."
+      note: "Staged as inactive and unverified after bilingual schema checks, deduplication, and a separate AI review pass. A human must approve the questions before they enter the live question bank; no AI-generated question was auto-published."
     };
   }
 
@@ -263,6 +264,40 @@ export async function GET(request) {
     else if (task.task_type === "weekly_exam_analysis") result = await runWeeklyExamAnalysis(task, db);
     else if (task.task_type === "source_review") result = { note: "Source review task staged. Official source changes require verification before publication.", payload: task.payload };
     else if (task.task_type === "source_health") result = { note: "Source health alert recorded for follow-up.", payload: task.payload };
+    else if (task.task_type === "security_review") {
+      const snapshot = task.payload || {};
+      const deterministic = {
+        review_type: "operational_task_health",
+        checked_at: snapshot.checked_at || new Date().toISOString(),
+        failed_task_count: Number(snapshot.failed_task_count || 0),
+        stale_running_task_count: Number(snapshot.stale_running_task_count || 0),
+        failed_tasks: Array.isArray(snapshot.failed_tasks) ? snapshot.failed_tasks.slice(0, 10) : [],
+        stale_tasks: Array.isArray(snapshot.stale_tasks) ? snapshot.stale_tasks.slice(0, 10) : [],
+        automated_changes_made: false,
+        note: "This review monitors background task health only. It does not inspect Supabase Auth sign-in logs, prove that an account was hacked, rotate secrets, disable accounts, or change production data."
+      };
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (apiKey) {
+        try {
+          const assessment = await callModel(apiKey,
+            `Summarize this operational task-health snapshot as JSON only: {"severity":"low|medium|high","summary":"...","recommended_checks":["..."]}. Do not claim an account compromise; do not recommend automatic destructive actions. No changes are authorized. Snapshot: ${JSON.stringify(deterministic)}`,
+            1200
+          );
+          deterministic.ai_assessment = {
+            severity: ["low", "medium", "high"].includes(assessment.severity) ? assessment.severity : "medium",
+            summary: typeof assessment.summary === "string" ? assessment.summary.slice(0, 800) : "AI assessment was not in the expected format.",
+            recommended_checks: Array.isArray(assessment.recommended_checks) ? assessment.recommended_checks.filter(x => typeof x === "string").slice(0, 5).map(x => x.slice(0, 240)) : []
+          };
+        } catch {
+          deterministic.ai_assessment = null;
+          deterministic.ai_note = "AI triage unavailable; deterministic task-health findings were retained.";
+        }
+      } else {
+        deterministic.ai_assessment = null;
+        deterministic.ai_note = "GEMINI_API_KEY is not configured; deterministic task-health findings were retained.";
+      }
+      result = deterministic;
+    }
     else result = { note: "Unknown task type; no mutation performed." };
 
     const deferred = Boolean(result?.deferred);
