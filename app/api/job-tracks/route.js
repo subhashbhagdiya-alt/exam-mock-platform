@@ -3,11 +3,16 @@ import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+// Question-bank rows are not publicly readable; keep this privileged key server-side.
+const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY]
+  .filter(value => typeof value === "string" && value.trim())
+  .map(value => value.trim()))];
 
 export async function GET() {
-  if (!url || !key) return NextResponse.json({ error: "Job tracks are not configured" }, { status: 503 });
+  if (!url || !key || !serverKeys.length) return NextResponse.json({ error: "Job tracks server credentials are not configured" }, { status: 503 });
 
   const client = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+  const questionClient = createClient(url, serverKeys[0], { auth: { autoRefreshToken: false, persistSession: false } });
   const { data, error } = await client
     .from("job_tracks")
     .select("id,exam_board,slug,name_hi,name_en,description_hi,description_en,status,exam_slug,exam_category,official_url,exam_date_text,form_status_text,last_verified_at")
@@ -39,7 +44,7 @@ export async function GET() {
   const predictionCandidates = new Map();
 
   if (examIds.length) {
-    const { data: questions, error: questionError } = await client
+    const { data: questions, error: questionError } = await questionClient
       .from("question_bank")
       .select("exam_id,source_type,subject,topic,prediction_score,question_hi,question_en")
       .in("exam_id", examIds)
