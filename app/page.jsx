@@ -1418,6 +1418,29 @@ export default function HomePage() {
     setAuthMessage("");
   }
 
+  async function logoutAllDevices() {
+    if (!supabaseBrowser || typeof window === "undefined") return;
+    const confirmed = window.confirm(t(
+      "सभी devices से logout करना है? इससे दूसरे devices के refresh sessions revoke हो जाएँगे।",
+      "Sign out from every device? This revokes refresh sessions on other devices too."
+    ));
+    if (!confirmed) return;
+    const { error } = await supabaseBrowser.auth.signOut({ scope: "global" });
+    if (error) {
+      setAuthMessage(error.message || t("सभी devices से logout नहीं हो सका।", "Could not sign out all devices."));
+      return;
+    }
+    setUser(null);
+    setTrustedDeviceVerified(false);
+    setAuthStep("phone");
+    setOtp("");
+    setRecoveryCode("");
+    setAuthMessage(t(
+      "सभी sessions revoke करने का अनुरोध सफल हुआ। अगर account compromise हुआ है, तो email account भी सुरक्षित करें और keys बदलें।",
+      "All sessions were revoked. If the account was compromised, also secure your email account and rotate exposed project keys."
+    ));
+  }
+
   async function runTest() {
     autoSubmitAttempted.current = false;
     setAuthMessage("");
@@ -1800,7 +1823,9 @@ export default function HomePage() {
                     <CheckCircle2 size={24} />
                     <div><b>{getUserDisplayName(user)}</b><span>{user.email || user.phone || "Cloud account"}</span></div>
                   </div>
-                  <button className="secondary-button danger-button" onClick={logout}>{t("लॉगआउट", "Sign out")}<X size={16} /></button>
+                  <button className="secondary-button" onClick={logout}>{t("इस device से लॉगआउट", "Sign out on this device")}<X size={16} /></button>
+                  <button className="secondary-button danger-button" data-testid="logout-all-devices" onClick={logoutAllDevices}>{t("सभी devices से लॉगआउट", "Sign out all devices")}<ShieldCheck size={16} /></button>
+                  {authMessage && <small className="login-message">{authMessage}</small>}
                 </>
               ) : (
                 <>
