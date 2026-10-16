@@ -1,0 +1,137 @@
+{
+  "batch_id": "exam-prep-1000-questions-2026-10-16",
+  "created_at": "2026-10-16",
+  "target_new_questions": 1000,
+  "batches": [
+    {
+      "index": 1,
+      "slug": "mpesb-general",
+      "name": "MPESB General Practice",
+      "target": 50
+    },
+    {
+      "index": 2,
+      "slug": "mpesb-group-2-2026",
+      "name": "MPESB Group-2 Combined 2026",
+      "target": 50
+    },
+    {
+      "index": 3,
+      "slug": "rrb-ntpc-graduate-2025",
+      "name": "RRB NTPC Graduate 2025",
+      "target": 50
+    },
+    {
+      "index": 4,
+      "slug": "rrb-ntpc-undergraduate-2025",
+      "name": "RRB NTPC Undergraduate 2025",
+      "target": 50
+    },
+    {
+      "index": 5,
+      "slug": "ssc-gd-constable-2026",
+      "name": "SSC GD Constable 2026",
+      "target": 50
+    },
+    {
+      "index": 6,
+      "slug": "rpf-constable-2026",
+      "name": "RPF Constable 2026",
+      "target": 50
+    },
+    {
+      "index": 7,
+      "slug": "mpesb-asi-hc-computer-2026",
+      "name": "MPESB ASI / Head Constable Computer 2026",
+      "target": 50
+    },
+    {
+      "index": 8,
+      "slug": "mpesb-forest-jail-2026",
+      "name": "MPESB Forest / Jail 2026",
+      "target": 50
+    },
+    {
+      "index": 9,
+      "slug": "mpesb-subedar-stenographer-asi-2026",
+      "name": "MPESB Subedar Stenographer & ASI 2026",
+      "target": 50
+    },
+    {
+      "index": 10,
+      "slug": "mpesb-nursing-officer-sister-tutor-2026",
+      "name": "MPESB Nursing Officer / Sister Tutor 2026",
+      "target": 50
+    },
+    {
+      "index": 11,
+      "slug": "mpesb-pat-2026",
+      "name": "MPESB PAT 2026",
+      "target": 50
+    },
+    {
+      "index": 12,
+      "slug": "rrb-section-controller-2025",
+      "name": "RRB Section Controller 2025",
+      "target": 50
+    },
+    {
+      "index": 13,
+      "slug": "mpesb-group-5-2026",
+      "name": "MPESB Group-5 Staff Nurse / Paramedical 2026",
+      "target": 50
+    },
+    {
+      "index": 14,
+      "slug": "rrb-paramedical-2025",
+      "name": "RRB Paramedical 2025",
+      "target": 50
+    },
+    {
+      "index": 15,
+      "slug": "mpesb-pnst-2026",
+      "name": "MPESB PNST 2026",
+      "target": 50
+    },
+    {
+      "index": 16,
+      "slug": "mpesb-subedar-si-2026",
+      "name": "MPESB Subedar / Sub-Inspector 2026",
+      "target": 50
+    },
+    {
+      "index": 17,
+      "slug": "rpf-si-2026",
+      "name": "RPF Sub-Inspector 2026",
+      "target": 50
+    },
+    {
+      "index": 18,
+      "slug": "rrb-alp-2026",
+      "name": "RRB ALP 2026",
+      "target": 50
+    },
+    {
+      "index": 19,
+      "slug": "mpesb-group-3-sub-engineer-2026",
+      "name": "MPESB Group-3 Sub Engineer 2026",
+      "target": 50
+    },
+    {
+      "index": 20,
+      "slug": "rrb-je-2025",
+      "name": "RRB Junior Engineer 2025",
+      "target": 50
+    }
+  ],
+  "target_per_exam": 50,
+  "status_note": "Queued for automatic generation, independent review, deduplication and insertion. This manifest is a backup of the task plan; it does not claim the 1,000 questions have already been generated or published.",
+  "constraints": [
+    "Curated practice only unless an actual stored PYQ/official source exists.",
+    "Hindi and English question text, four options, correct zero-based answer index, and explanations in both languages.",
+    "Deduplicate against the existing bank and within generated batches.",
+    "Only publish after validation and independent review.",
+    "Free-tier provider only; no paid API fallback.",
+    "Do not activate a Coming Soon track until its configured bank threshold and UI mapping are verified."
+  ]
+}
