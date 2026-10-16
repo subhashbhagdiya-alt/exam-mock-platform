@@ -12,18 +12,19 @@
     "test:weekly-exam-analysis": "node scripts/test-weekly-exam-analysis.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
+    "@vercel/analytics": "^2.0.1",
+    "lucide-react": "^0.468.0",
     "next": "16.3.8",
     "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "lucide-react": "^0.468.0",
-    "@supabase/supabase-js": "^2.117.2"
+    "react-dom": "19.2.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.3",
     "@types/node": "^22.15.30",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
     "eslint": "^9.28.0",
-    "eslint-config-next": "16.3.8"
+    "eslint-config-next": "16.3.8",
+    "typescript": "^5.8.3"
   }
 }
