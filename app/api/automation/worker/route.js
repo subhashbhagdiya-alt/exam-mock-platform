@@ -195,7 +195,7 @@ async function runWeeklyExamAnalysis(task, db) {
     const trendSummary = [
       analysis.trend_summary,
       `Confidence/evidence note: ${analysis.confidence_notes || "No confidence note supplied."}`,
-      `Source evidence from web search: ${JSON.stringify(analysis.source_evidence || [])}`,
+      `Registered source references (metadata only; not live-verified): ${JSON.stringify(analysis.source_evidence || [])}`,
       `Actual stored PYQ/official evidence count: ${context.historicalEvidence.length}. New questions are curated practice, not official past questions.`
     ].join("\n\n");
     const { error: analysisError } = await db.from("exam_analysis").insert({
