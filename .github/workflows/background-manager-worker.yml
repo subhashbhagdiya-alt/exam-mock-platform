@@ -1,0 +1,43 @@
+name: Background Manager Worker
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exam-prep-background-worker
+  cancel-in-progress: false
+
+jobs:
+  process-one-task:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check worker secret
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Repository secret CRON_SECRET is missing. Add the same value as the Vercel ExamPrep CRON_SECRET; do not paste it into code or logs."
+            exit 1
+          fi
+      - name: Process one queued task
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -eu
+          code="$(curl --silent --show-error --max-time 70 \
+            --output worker-response.json --write-out '%{http_code}' \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            --header 'Accept: application/json' \
+            'https://exam-prep-direct-box.vercel.app/api/automation/worker')"
+          cat worker-response.json
+          echo
+          case "$code" in
+            200|202) echo "Worker accepted the invocation (HTTP $code)." ;;
+            *) echo "::error::Worker returned HTTP $code."; exit 1 ;;
+          esac
