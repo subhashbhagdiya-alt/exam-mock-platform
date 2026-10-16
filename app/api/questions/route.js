@@ -4,9 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { buildQuestionCatalog, filterQuestionRows } from "../../../lib/question-categories.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-// Read-only catalog access uses a publishable key and is constrained by public RLS policies.
-// Creating a test session remains restricted to server-only credentials below.
-const publicKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+// Question rows contain answer keys and explanations; all database reads stay on the server.
 const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY]
   .filter(value => typeof value === "string" && value.trim())
   .map(value => value.trim()))];
@@ -63,7 +61,7 @@ function selectBalancedQuestions(rows, limit) {
 }
 
 export async function GET(request) {
-  if (!url || !publicKey) return NextResponse.json({ error: "Question bank is not configured" }, { status: 503 });
+  if (!url || !serverKeys.length) return NextResponse.json({ error: "Question bank server credentials are not configured" }, { status: 503 });
   const { searchParams } = new URL(request.url);
   const exam = searchParams.get("exam") || "mpesb";
   const requestedLimit = searchParams.get("limit");
@@ -75,7 +73,7 @@ export async function GET(request) {
       .filter((id) => /^[0-9a-f-]{36}$/i.test(id))
       .slice(0, 250)
   );
-  const client = createClient(url, publicKey, { auth: { autoRefreshToken: false, persistSession: false } });
+  const client = createClient(url, serverKeys[0], { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: examRow, error: examError } = await client
     .from("exams")
     .select("id,name,slug,total_questions,duration_minutes,marks_per_question,negative_marks,passing_percentage")

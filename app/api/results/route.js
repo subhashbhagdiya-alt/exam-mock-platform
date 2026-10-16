@@ -4,6 +4,14 @@ import { validateResultQuestionMapping } from "../../../lib/result-validation.mj
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY]
+  .filter(value => typeof value === "string" && value.trim())
+  .map(value => value.trim()))];
+
+function getPrivilegedReadClient() {
+  if (!supabaseUrl || !serverKeys.length) return null;
+  return createClient(supabaseUrl, serverKeys[0], { auth: { autoRefreshToken: false, persistSession: false } });
+}
 
 function getClient(sessionKey, accessToken = "") {
   if (!supabaseUrl || !publishableKey) return null;
@@ -23,14 +31,14 @@ function validDeviceKey(value) {
   return typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value);
 }
 
-async function cleanResult(body, client, authUserId = null) {
+async function cleanResult(body, dataClient, authUserId = null) {
   const required = ["test_name","total_questions","answers","review_ids","language","exam_id","question_ids"];
   if (!body || required.some(k => body[k] === undefined)) throw new Error("Invalid result payload");
   if (!/^[0-9a-f-]{36}$/i.test(String(body.exam_id))) throw new Error("Invalid exam id");
   if (!body.question_ids || typeof body.question_ids !== "object" || Array.isArray(body.question_ids)) throw new Error("Invalid question mapping");
   if (!body.answers || typeof body.answers !== "object" || Array.isArray(body.answers)) throw new Error("Invalid answers");
 
-  const { data: exam, error: examError } = await client.from("exams")
+  const { data: exam, error: examError } = await dataClient.from("exams")
     .select("id,name,total_questions,marks_per_question,negative_marks,passing_percentage")
     .eq("id", body.exam_id).eq("is_active", true).maybeSingle();
   if (examError) throw new Error(examError.message);
@@ -38,7 +46,7 @@ async function cleanResult(body, client, authUserId = null) {
 
   const sourceIds = validateResultQuestionMapping(body.question_ids, body.total_questions);
 
-  const { data: questions, error: qError } = await client.from("question_bank")
+  const { data: questions, error: qError } = await dataClient.from("question_bank")
     .select("id,answer_index,exam_id,active,verified")
     .in("id", sourceIds).eq("exam_id", body.exam_id).eq("active", true).eq("verified", true);
   if (qError) throw new Error(qError.message);
@@ -137,14 +145,16 @@ export async function POST(request) {
 
     if (!authUserId) return NextResponse.json({ error: "Login required to save results" }, { status: 401 });
 
-    const cleaned = await cleanResult(body, client, authUserId);
-    if (authUserId) {
-      const deviceKey = body.device_key;
-      if (!validDeviceKey(deviceKey)) return NextResponse.json({ error: "Trusted device required" }, { status: 403 });
-      const { data: isTrusted, error: deviceError } = await client.rpc("verify_trusted_device", { p_device_key: deviceKey });
-      if (deviceError) return NextResponse.json({ error: deviceError.message }, { status: 500 });
-      if (isTrusted !== true) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
-    }
+    // Check the signed-in user's trusted device before looking up any answer-key data.
+    const deviceKey = body.device_key;
+    if (!validDeviceKey(deviceKey)) return NextResponse.json({ error: "Trusted device required" }, { status: 403 });
+    const { data: isTrusted, error: deviceError } = await client.rpc("verify_trusted_device", { p_device_key: deviceKey });
+    if (deviceError) return NextResponse.json({ error: deviceError.message }, { status: 500 });
+    if (isTrusted !== true) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
+
+    const dataClient = getPrivilegedReadClient();
+    if (!dataClient) return NextResponse.json({ error: "Result validation service is not configured" }, { status: 503 });
+    const cleaned = await cleanResult(body, dataClient, authUserId);
     const { data, error } = await client.from("test_results").insert(cleaned).select(fields).single();
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ data }, { status: 201 });
