@@ -967,24 +967,24 @@ export default function HomePage() {
 
   useEffect(() => {
     let active = true;
-    if (!user || !supabaseBrowser) {
-      setMfaStatus("guest");
+    const checkMfa = async () => {
+      if (!user || !supabaseBrowser) {
+        setMfaStatus("guest");
+        setMfaVerifiedUserId("");
+        setMfaFactors([]);
+        setMfaFactorId("");
+        setMfaChallengeId("");
+        setMfaCode("");
+        setMfaEnrollment(null);
+        setMfaSetupCode("");
+        setMfaMessage("");
+        return;
+      }
+
+      setMfaStatus("checking");
       setMfaVerifiedUserId("");
       setMfaFactors([]);
-      setMfaFactorId("");
-      setMfaChallengeId("");
-      setMfaCode("");
-      setMfaEnrollment(null);
-      setMfaSetupCode("");
       setMfaMessage("");
-      return () => { active = false; };
-    }
-
-    setMfaStatus("checking");
-    setMfaVerifiedUserId("");
-    setMfaFactors([]);
-    setMfaMessage("");
-    (async () => {
       try {
         const { data, error } = await supabaseBrowser.auth.mfa.getAuthenticatorAssuranceLevel();
         if (!active) return;
@@ -1047,8 +1047,12 @@ export default function HomePage() {
           setMfaMessage(t("अकाउंट सुरक्षा जाँच में समस्या आई। Retry करें या logout करें।", "The account security check failed. Retry or sign out."));
         }
       }
-    })();
+    };
 
+    // Defer the state transition out of the synchronous effect body.
+    Promise.resolve().then(() => {
+      if (active) void checkMfa();
+    });
     return () => { active = false; };
   }, [user, mfaCheckAttempt]);
 
