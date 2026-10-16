@@ -23,6 +23,7 @@ jobs:
           fi
       - run: npm run lint
       - run: npm run test:result-validation
+      - run: npm run test:mfa-assurance
       - run: npm run test:weekly-exam-analysis
       - run: npm run check:localizations
       - run: npm run build

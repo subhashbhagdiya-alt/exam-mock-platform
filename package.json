@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "check:localizations": "node scripts/check-question-localizations.mjs",
     "test:result-validation": "node scripts/test-result-validation.mjs",
+    "test:mfa-assurance": "node scripts/test-mfa-assurance.mjs",
     "test:weekly-exam-analysis": "node scripts/test-weekly-exam-analysis.mjs"
   },
   "dependencies": {
