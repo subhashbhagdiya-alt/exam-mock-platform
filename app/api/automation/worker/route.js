@@ -247,11 +247,11 @@ export async function GET(request) {
   const db = dbClient();
   if (!db) return NextResponse.json({ error: "Server database credentials are not configured" }, { status: 503 });
 
-  // Fair scheduling: never-attempted queued tasks go first; deferred tasks rotate
-  // by their latest attempt so one multi-phase high-priority batch cannot monopolize
-  // every scheduled worker invocation.
+  // Resume-first scheduling: finish multi-phase tasks before starting another one.
+  // Deferred analysis tasks preserve their original started_at, so their draft/review
+  // steps run on the next scheduled invocation instead of waiting behind the entire queue.
   const { data: task, error: claimError } = await db.from("background_manager_tasks").select("*").eq("status", "queued")
-    .order("started_at", { ascending: true, nullsFirst: true })
+    .order("started_at", { ascending: true, nullsFirst: false })
     .order("priority", { ascending: false })
     .order("created_at", { ascending: true }).limit(1).maybeSingle();
   if (claimError) return NextResponse.json({ error: claimError.message }, { status: 500 });
