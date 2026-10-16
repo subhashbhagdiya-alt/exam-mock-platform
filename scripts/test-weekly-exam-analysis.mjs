@@ -16,7 +16,12 @@ const valid = {
 assert.equal(validateGeneratedQuestion(valid), true);
 assert.equal(validateGeneratedQuestion({ ...valid, answer_index: 4 }), false);
 assert.equal(validateGeneratedQuestion({ ...valid, options: ["same", "same", "same", "same"] }), false);
+assert.equal(validateGeneratedQuestion({ ...valid, options: ["A", " a ", "B", "C"] }), false);
 assert.equal(validateGeneratedQuestion({ ...valid, explanation_hi: "" }), false);
+assert.equal(validateGeneratedQuestion({ ...valid, question_en: "x".repeat(1201) }), false);
+assert.equal(validateGeneratedQuestion({ ...valid, subject: "Reasoning" + String.fromCharCode(0) }), false);
+assert.equal(validateGeneratedQuestion({ ...valid, question_en: "<script>alert(1)</script>" }), false);
+assert.equal(validateGeneratedQuestion([]), false);
 assert.equal(normalizeQuestionText("  What IS 2+2? "), "what is 2 2");
 
 const candidates = [
@@ -24,6 +29,7 @@ const candidates = [
   { ...valid, question_en: "WHAT IS THE NEXT NUMBER IN THE SERIES: 2, 4, 8, 16, ?" },
   { ...valid, question_hi: "एक बिल्कुल नया हिंदी प्रश्न", question_en: "A completely different question" },
   { ...valid, question_en: "A bad question", answer_index: 8 },
+  { ...valid, question_en: "An oversized question " + "x".repeat(1300) },
 ];
 const unique = dedupeGeneratedQuestions(candidates, ["What is the next number in the series: 2, 4, 8, 16, ?"], []);
 assert.equal(unique.length, 1);
