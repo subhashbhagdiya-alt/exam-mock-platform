@@ -247,8 +247,13 @@ export async function GET(request) {
   const db = dbClient();
   if (!db) return NextResponse.json({ error: "Server database credentials are not configured" }, { status: 503 });
 
+  // Fair scheduling: never-attempted queued tasks go first; deferred tasks rotate
+  // by their latest attempt so one multi-phase high-priority batch cannot monopolize
+  // every scheduled worker invocation.
   const { data: task, error: claimError } = await db.from("background_manager_tasks").select("*").eq("status", "queued")
-    .order("priority", { ascending: false }).order("created_at", { ascending: true }).limit(1).maybeSingle();
+    .order("started_at", { ascending: true, nullsFirst: true })
+    .order("priority", { ascending: false })
+    .order("created_at", { ascending: true }).limit(1).maybeSingle();
   if (claimError) return NextResponse.json({ error: claimError.message }, { status: 500 });
   if (!task) return NextResponse.json({ ok: true, processed: false, message: "No queued task." });
 
