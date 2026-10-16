@@ -202,7 +202,7 @@ async function runWeeklyExamAnalysis(task, db) {
     const { error: analysisError } = await db.from("exam_analysis").insert({
       exam_id: context.exam.id,
       source_year: new Date().getUTCFullYear(),
-      question_count: context.active.length + (inserted || []).length,
+      question_count: context.active.length,
       subjects,
       topic_breakdown: analysis.topic_breakdown,
       difficulty_breakdown: { ...analysis.difficulty_breakdown, generated_batch: generatedDifficulties, generated_topic_counts: generatedTopics },
