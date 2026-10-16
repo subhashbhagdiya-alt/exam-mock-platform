@@ -26,15 +26,43 @@ export async function GET(request) {
     .gte("created_at", recentCutoff)
     .in("status", ["queued", "running"]);
 
-  const [{ count: questions }, { count: exams }, { count: tracks }, { count: sources }] = await Promise.all([
+  const staleCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const [
+    { count: questions },
+    { count: stagedAiQuestions },
+    { count: exams },
+    { count: tracks },
+    { count: sources },
+    { data: failedTasks },
+    { data: staleTasks }
+  ] = await Promise.all([
     db.from("question_bank").select("*", { count: "exact", head: true }).eq("active", true).eq("verified", true),
+    db.from("question_bank").select("*", { count: "exact", head: true }).eq("active", false).eq("verified", false).like("source_name", "ExamPrep weekly AI pattern batch%"),
     db.from("exams").select("*", { count: "exact", head: true }).eq("is_active", true),
     db.from("job_tracks").select("*", { count: "exact", head: true }).eq("active", true),
-    db.from("exam_sources").select("*", { count: "exact", head: true }).eq("active", true)
+    db.from("exam_sources").select("*", { count: "exact", head: true }).eq("active", true),
+    db.from("background_manager_tasks").select("id,task_type,status,created_at").eq("status", "failed").gte("created_at", recentCutoff).order("created_at", { ascending: false }).limit(10),
+    db.from("background_manager_tasks").select("id,task_type,status,started_at").eq("status", "running").lt("started_at", staleCutoff).limit(10)
   ]);
 
-  if ((questions || 0) < 500) {
-    tasks.push({ task_type: "question_bank_expansion", priority: 90, payload: { current: questions || 0, target: 500 } });
+  const pendingQuestions = (questions || 0) + (stagedAiQuestions || 0);
+  if (pendingQuestions < 500) {
+    tasks.push({ task_type: "question_bank_expansion", priority: 90, payload: { verified_active: questions || 0, awaiting_review: stagedAiQuestions || 0, target: 500 } });
+  }
+
+  if ((failedTasks || []).length || (staleTasks || []).length) {
+    tasks.push({
+      task_type: "security_review",
+      priority: 100,
+      payload: {
+        checked_at: now,
+        failed_task_count: (failedTasks || []).length,
+        stale_running_task_count: (staleTasks || []).length,
+        failed_tasks: (failedTasks || []).map(({ id, task_type, created_at }) => ({ id, task_type, created_at })),
+        stale_tasks: (staleTasks || []).map(({ id, task_type, started_at }) => ({ id, task_type, started_at })),
+        note: "Operational task-health signals only; this is not a Supabase Auth sign-in audit."
+      }
+    });
   }
 
   const { data: changedSources } = await db
@@ -60,7 +88,15 @@ export async function GET(request) {
     ok: !error,
     manager: "ExamPrep Background Manager",
     checked_at: now,
-    metrics: { verified_active_questions: questions || 0, active_exams: exams || 0, active_tracks: tracks || 0, active_sources: sources || 0 },
+    metrics: {
+      verified_active_questions: questions || 0,
+      ai_questions_awaiting_review: stagedAiQuestions || 0,
+      active_exams: exams || 0,
+      active_tracks: tracks || 0,
+      active_sources: sources || 0,
+      failed_tasks_last_24h: (failedTasks || []).length,
+      stale_running_tasks_over_30m: (staleTasks || []).length
+    },
     tasks_created: inserted?.length || 0,
     tasks_considered: tasks.length,
     deduped_recent: tasks.length - dedupedTasks.length,
