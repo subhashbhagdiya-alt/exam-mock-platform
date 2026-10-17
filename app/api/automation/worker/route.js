@@ -24,23 +24,50 @@ function extractGeminiText(body) {
 async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
   // Free-tier provider only: never fall back to a paid provider or a paid model.
   const model = "gemini-3.6-flash";
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json", maxOutputTokens }
-    }),
-    signal: AbortSignal.timeout(50000)
-  });
-  if (!response.ok) {
-    const failure = new Error(`Gemini API returned HTTP ${response.status}; no paid-provider fallback was attempted.`);
-    if (response.status === 429) failure.code = "FREE_QUOTA_EXHAUSTED";
-    throw failure;
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: "application/json", maxOutputTokens }
+        }),
+        // Keep all attempts inside Vercel's 60-second function budget.
+        signal: AbortSignal.timeout(15000)
+      });
+      if (!response.ok) {
+        const failure = new Error(`Gemini API returned HTTP ${response.status}; no paid-provider fallback was attempted.`);
+        failure.status = response.status;
+        if (response.status === 429) failure.code = "FREE_QUOTA_EXHAUSTED";
+        // Retry transient service errors only. Rate/quota limits are deferred to the
+        // next scheduled worker run instead of consuming the entire function budget.
+        if ([500, 502, 503, 504].includes(response.status) && attempt < maxAttempts) {
+          const delay = (500 * (2 ** (attempt - 1))) + Math.floor(Math.random() * 300);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+        throw failure;
+      }
+      const body = await response.json();
+      const text = extractGeminiText(body).replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+      try { return JSON.parse(text); } catch { throw new Error("Gemini response was not valid JSON; no questions were published."); }
+    } catch (error) {
+      const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
+      const retryableStatus = [500, 502, 503, 504].includes(error?.status);
+      if (attempt < maxAttempts && (timedOut || retryableStatus)) {
+        const delay = (500 * (2 ** (attempt - 1))) + Math.floor(Math.random() * 300);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+      if (timedOut) {
+        throw new Error(`Gemini request timed out after ${maxAttempts} bounded attempts; no paid-provider fallback was attempted.`);
+      }
+      throw error;
+    }
   }
-  const body = await response.json();
-  const text = extractGeminiText(body).replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
-  try { return JSON.parse(text); } catch { throw new Error("Gemini response was not valid JSON; no questions were published."); }
+  throw new Error("Gemini request failed after bounded retries; no paid-provider fallback was attempted.");
 }
 
 async function generateCandidates(task, db) {
