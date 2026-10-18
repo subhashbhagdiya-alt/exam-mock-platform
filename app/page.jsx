@@ -1277,7 +1277,7 @@ export default function HomePage() {
         setAuthMessage(t("एक सही email address दर्ज करें।","Enter a valid email address."));
         return;
       }
-      setAuthMessage(t("Email पर login link भेजा जा रहा है…","Sending a sign-in link to your email…"));
+      setAuthMessage(t("Email पर 6 अंकों का OTP भेजा जा रहा है…","Sending a 6-digit email OTP…"));
       const { error } = await supabaseBrowser.auth.signInWithOtp({
         email: normalizedEmail,
         options: {
@@ -1292,7 +1292,7 @@ export default function HomePage() {
       setOtp("");
       setAuthStep("email-sent");
       setOtpCooldown(60);
-      setAuthMessage(t("Email भेज दिया गया है। Inbox/Spam देखें और login link खोलें। अगर 6-digit code आया है, तो यहाँ दर्ज कर सकते हैं।","Email sent. Check your inbox/spam and open the sign-in link. If you received a 6-digit code, you can enter it here."));
+      setAuthMessage(t("Email OTP भेज दिया गया है। Inbox/Spam देखें और नीचे 6 अंकों का code दर्ज करें।","Email OTP sent. Check your inbox/spam and enter the 6-digit code below."));
       return;
     }
 
@@ -1308,7 +1308,7 @@ export default function HomePage() {
       const message = String(error.message || "");
       if (/phone[_\s-]*provider[_\s-]*disabled|phone provider.*disabled|phone.*not enabled|unsupported phone provider/i.test(message) || /sms provider/i.test(message)) {
         setAuthMethod("email");
-        setAuthMessage(t("SMS OTP चालू नहीं है। हमने Email login चुन दिया है—अपना email डालकर login link भेजें।","SMS OTP is disabled. Email login has been selected for you—enter your email and send a sign-in link."));
+        setAuthMessage(t("SMS OTP चालू नहीं है। Email login चुन लिया है—अपना email डालकर 6-digit OTP मँगाएँ।","SMS OTP is disabled. Email login has been selected—enter your email to request a 6-digit OTP."));
       } else {
         setAuthMessage(message);
       }
@@ -1683,7 +1683,7 @@ export default function HomePage() {
           <div className="auth-panel" aria-label={t("वैकल्पिक लॉगिन","Optional login")}>
   <div><b>{user ? t("अकाउंट सक्रिय","Account active") : t("Guest Practice Mode","Guest Practice Mode")}</b><span>{user ? (user.email || user.phone || "") : t("लॉगिन जरूरी नहीं है। मॉक टेस्ट सीधे शुरू करें।","Login is optional. Start the mock test directly.")}</span></div>
   {user ? <>{needsProfileName ? <div className="auth-actions"><div className="guest-login-note">{t("लॉगिन हो गया है। अपना नाम दर्ज करें, यही नाम आपके डैशबोर्ड पर दिखेगा।","Login successful. Enter your name; this name will appear on your dashboard.")}</div><input value={profileName} onChange={e=>setProfileName(e.target.value.slice(0,60))} autoComplete="name" placeholder={t("आपका नाम","Your name")} /><button onClick={saveProfileName}>{t("नाम सेव करें","Save name")}</button></div> : <button onClick={logout}>{t("लॉगआउट","Sign out")}</button>}</> : <div className="auth-actions">
-    <div className="guest-login-note">{t("Login वैकल्पिक है। SMS उपलब्ध न हो तो email से सुरक्षित login link इस्तेमाल करें।","Login is optional. Use a secure email sign-in link when SMS is unavailable.")}</div>
+    <div className="guest-login-note">{t("Login वैकल्पिक है। SMS उपलब्ध न हो तो email से सुरक्षित 6-digit OTP इस्तेमाल करें।","Login is optional. Use a secure 6-digit email OTP when SMS is unavailable.")}</div>
     <div className="auth-divider"><span>{t("Cloud sync के लिए login (वैकल्पिक)","OPTIONAL LOGIN FOR CLOUD SYNC")}</span></div>
     {authStep === "phone" ? <>
       <div className="auth-method-switch">
@@ -1693,15 +1693,15 @@ export default function HomePage() {
       {authMethod === "email"
         ? <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address","Your email address")} data-testid="login-email-input"/>
         : <div className="phone-input"><span>+91</span><input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,"").slice(0,10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर"/></div>}
-      <button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : authMethod === "email" ? t("Login link भेजें","Send login link") : t("OTP भेजें","Send SMS OTP")}</button>
+      <button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : authMethod === "email" ? t("Email OTP भेजें","Send email OTP") : t("OTP भेजें","Send SMS OTP")}</button>
     </> : authStep === "otp" ? <>
       <input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit code")}/>
       <button onClick={verifyOtp}>{t("Code verify करें","Verify code")}</button>
       <button type="button" onClick={() => { setAuthStep("phone"); setOtp(""); setAuthMessage(""); }}>{t("Login method बदलें","Change login method")}</button>
     </> : authStep === "email-sent" ? <>
-      <div className="guest-login-note">{t("अपने email के inbox/Spam में आए login link को खोलें। यदि email में 6-digit code है, तो नीचे दर्ज करें।","Open the sign-in link in your email inbox/spam. If the email contains a 6-digit code, enter it below.")}</div>
-      <input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("Email code (यदि दिया हो)","Email code (if provided)")}/>
-      <button onClick={verifyOtp}>{t("Email code verify करें","Verify email code")}</button>
+      <div className="guest-login-note">{t("अपने email के Inbox/Spam में आए 6-digit OTP को नीचे दर्ज करें।","Enter the 6-digit OTP from your email inbox/spam below.")}</div>
+      <input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("Email OTP (6 अंक)","Email OTP (6 digits)")}/>
+      <button onClick={verifyOtp}>{t("Email OTP verify करें","Verify email code")}</button>
       <button type="button" onClick={() => { setAuthStep("phone"); setOtp(""); setAuthMessage(""); }}>{t("Email बदलें / वापस जाएँ","Change email / go back")}</button>
     </> : <>
       <input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/>
@@ -1840,7 +1840,7 @@ export default function HomePage() {
                       {authMethod === "email"
                         ? <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address", "Your email address")} data-testid="login-email-input" />
                         : <div className="phone-input"><span>+91</span><input value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर" /></div>}
-                      <button className="primary-button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? t("फिर भेजें", "Resend") + " (" + otpCooldown + "s)" : authMethod === "email" ? t("Login link भेजें", "Send login link") : t("OTP भेजें", "Send SMS OTP")}<ArrowRight size={17} /></button>
+                      <button className="primary-button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? t("फिर भेजें", "Resend") + " (" + otpCooldown + "s)" : authMethod === "email" ? t("Email OTP भेजें", "Send email OTP") : t("OTP भेजें", "Send SMS OTP")}<ArrowRight size={17} /></button>
                     </>
                   ) : authStep === "otp" ? (
                     <>
@@ -1850,9 +1850,9 @@ export default function HomePage() {
                     </>
                   ) : authStep === "email-sent" ? (
                     <>
-                      <div className="login-note">{t("अपने email के Inbox/Spam में आए login link को खोलें। यदि email में 6-digit code है, तो नीचे दर्ज करें।", "Open the sign-in link in your email inbox/spam. If the email contains a 6-digit code, enter it below.")}</div>
-                      <input value={otp} onChange={e => setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("Email code (यदि दिया हो)", "Email code (if provided)")} />
-                      <button className="primary-button" onClick={verifyOtp}>{t("Email code verify करें", "Verify email code")}<Check size={17} /></button>
+                      <div className="login-note">{t("अपने email के Inbox/Spam में आए 6-digit OTP को नीचे दर्ज करें।", "Enter the 6-digit OTP from your email inbox/spam below.")}</div>
+                      <input value={otp} onChange={e => setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("Email OTP (6 अंक)", "Email OTP (6 digits)")} />
+                      <button className="primary-button" onClick={verifyOtp}>{t("Email OTP verify करें", "Verify email code")}<Check size={17} /></button>
                       <button type="button" className="secondary-button" onClick={() => { setAuthStep("phone"); setOtp(""); setAuthMessage(""); }}>{t("Email बदलें / वापस जाएँ", "Change email / go back")}</button>
                     </>
                   ) : (
