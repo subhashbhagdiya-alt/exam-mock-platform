@@ -4662,3 +4662,71 @@ undefined
 @media (prefers-reduced-motion: reduce) {
   .shell .paper-analyzer-content * { animation: none !important; transition: none !important; }
 }
+
+
+/* Interactive answer selection and scoring for uploaded-paper practice MCQs. */
+.shell .paper-analyzer-content .paper-quiz-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 13px 15px;
+  border: 1px solid rgba(152,140,220,.2);
+  border-radius: 15px;
+  background: rgba(11,14,25,.72);
+}
+.shell .paper-analyzer-content .paper-quiz-progress { display: grid; gap: 4px; }
+.shell .paper-analyzer-content .paper-quiz-progress b { color: #f4f2ff; font-size: 13px; }
+.shell .paper-analyzer-content .paper-quiz-progress span { color: #aeb7ca; font-size: 11px; }
+.shell .paper-analyzer-content .paper-quiz-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.shell .paper-analyzer-content .paper-quiz-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 9px 13px; font-size: 12px; }
+.shell .paper-analyzer-content .paper-quiz-actions button:disabled { opacity: .58; cursor: not-allowed; }
+.shell .paper-analyzer-content .paper-quiz-score {
+  display: grid;
+  gap: 8px;
+  padding: 17px;
+  border: 1px solid rgba(121,223,176,.25);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(12,46,34,.5), rgba(9,17,24,.92));
+}
+.shell .paper-analyzer-content .paper-quiz-score > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.shell .paper-analyzer-content .paper-quiz-score > div span { color: #c6d7cf; font-size: 13px; }
+.shell .paper-analyzer-content .paper-quiz-score > div b { color: #9cf0c4; font-size: 26px; font-variant-numeric: tabular-nums; }
+.shell .paper-analyzer-content .paper-quiz-score p { margin: 0; color: #d3ded9; font-size: 12px; line-height: 1.5; }
+.shell .paper-analyzer-content .paper-quiz-score > span { color: #9eafa8; font-size: 11px; line-height: 1.5; }
+.shell .paper-analyzer-content .paper-question-card ol li { display: block; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.shell .paper-analyzer-content .paper-option-button {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid rgba(145,147,180,.2);
+  border-radius: 12px;
+  color: #c0c7d8;
+  background: rgba(5,7,14,.42);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, color .16s ease;
+}
+.shell .paper-analyzer-content .paper-option-button .paper-option-letter { flex: 0 0 22px; color: #a89af4; font-weight: 800; }
+.shell .paper-analyzer-content .paper-option-button .paper-option-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.shell .paper-analyzer-content .paper-option-button > svg { flex: 0 0 auto; margin-left: auto; }
+.shell .paper-analyzer-content .paper-option-button:hover:not(:disabled) { border-color: rgba(177,160,255,.58); background: rgba(94,72,176,.13); }
+.shell .paper-analyzer-content .paper-option-button.is-selected { border-color: rgba(176,158,255,.62); color: #e3ddff; background: rgba(99,75,190,.2); box-shadow: inset 0 0 0 1px rgba(176,158,255,.08); }
+.shell .paper-analyzer-content .paper-option-button.is-correct { border-color: rgba(121,223,176,.47); color: #b0f0cc; background: rgba(11,49,34,.4); }
+.shell .paper-analyzer-content .paper-option-button.is-wrong { border-color: rgba(242,135,161,.43); color: #ffc2d0; background: rgba(80,20,43,.25); }
+.shell .paper-analyzer-content .paper-option-button:focus-visible { outline: 2px solid #b3a5ff; outline-offset: 2px; }
+.shell .paper-analyzer-content .paper-option-button:disabled { cursor: default; }
+@media (max-width: 600px) {
+  .shell .paper-analyzer-content .paper-quiz-toolbar { align-items: stretch; padding: 12px; }
+  .shell .paper-analyzer-content .paper-quiz-actions { display: grid; grid-template-columns: minmax(0,.8fr) minmax(0,1.2fr); }
+  .shell .paper-analyzer-content .paper-quiz-actions button { min-width: 0; padding: 9px 8px; font-size: 11px; }
+  .shell .paper-analyzer-content .paper-option-button { padding: 10px; font-size: 12px; }
+  .shell .paper-analyzer-content .paper-quiz-score { padding: 14px 12px; }
+}
