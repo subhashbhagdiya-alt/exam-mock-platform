@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, FileText, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Sparkles, Target, Trophy, Upload, X } from "lucide-react";
 import { scorePaperQuiz } from "../lib/paper-analysis-quiz.mjs";
+import { MAX_PAPER_FILE_BYTES, isSupportedPaperFile } from "../lib/paper-analysis-upload.mjs";
 
 const supabaseBrowser = (
   typeof window !== "undefined" &&
@@ -820,6 +821,7 @@ export default function HomePage() {
   const [paperAnalysisBusy, setPaperAnalysisBusy] = useState(false);
   const [paperQuizAnswers, setPaperQuizAnswers] = useState({});
   const [paperQuizSubmitted, setPaperQuizSubmitted] = useState(false);
+  const [paperDragActive, setPaperDragActive] = useState(false);
   const paperFileInputRef = useRef(null);
   const paperQuizScore = scorePaperQuiz(paperAnalysis?.mcqs, paperQuizAnswers);
   const [practiceQuestionCount, setPracticeQuestionCount] = useState(10);
@@ -1252,6 +1254,28 @@ export default function HomePage() {
     return () => { active = false; };
   }, [user, trustedDeviceVerified]);
 
+  function selectPaperFile(file) {
+    setPaperAnalysis(null);
+    setPaperQuizAnswers({});
+    setPaperQuizSubmitted(false);
+    setPaperAnalysisError("");
+    if (!file) {
+      setPaperFile(null);
+      return;
+    }
+    if (file.size > MAX_PAPER_FILE_BYTES) {
+      setPaperFile(null);
+      setPaperAnalysisError(t("फ़ाइल 3 MB या उससे छोटी होनी चाहिए।", "The file must be 3 MB or smaller."));
+      return;
+    }
+    if (!isSupportedPaperFile(file.name, file.type)) {
+      setPaperFile(null);
+      setPaperAnalysisError(t("PDF, JPG, PNG या WEBP फ़ाइल चुनें।", "Choose a PDF, JPG, PNG, or WEBP file."));
+      return;
+    }
+    setPaperFile(file);
+  }
+
   async function analyzeUploadedPaper(event) {
     event.preventDefault();
     setPaperAnalysisError("");
@@ -1267,12 +1291,11 @@ export default function HomePage() {
       setPaperAnalysisError(t("पहले PDF या साफ़ पेपर फोटो चुनें।", "Choose a PDF or a clear paper photo first."));
       return;
     }
-    if (paperFile.size > 2 * 1024 * 1024) {
-      setPaperAnalysisError(t("फ़ाइल 2 MB या उससे छोटी होनी चाहिए।", "The file must be 2 MB or smaller."));
+    if (paperFile.size > MAX_PAPER_FILE_BYTES) {
+      setPaperAnalysisError(t("फ़ाइल 3 MB या उससे छोटी होनी चाहिए।", "The file must be 3 MB or smaller."));
       return;
     }
-    const supportedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
-    if (!supportedTypes.includes(paperFile.type)) {
+    if (!isSupportedPaperFile(paperFile.name, paperFile.type)) {
       setPaperAnalysisError(t("PDF, JPG, PNG या WEBP फ़ाइल चुनें।", "Choose a PDF, JPG, PNG, or WEBP file."));
       return;
     }
@@ -2031,12 +2054,18 @@ export default function HomePage() {
               type="file"
               accept=".pdf,application/pdf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
               aria-label={t("प्रश्न-पत्र फ़ाइल चुनें","Choose question paper file")}
-              onChange={(event) => { setPaperFile(event.target.files?.[0] || null); setPaperAnalysis(null); setPaperAnalysisError(""); setPaperQuizAnswers({}); setPaperQuizSubmitted(false); }}
+              onChange={(event) => { selectPaperFile(event.target.files?.[0] || null); event.target.value = ""; }}
             />
-            <div className="paper-upload-dropzone">
+            <div
+              className={"paper-upload-dropzone" + (paperDragActive ? " is-dragging" : "")}
+              onDragEnter={(event) => { event.preventDefault(); setPaperDragActive(true); }}
+              onDragOver={(event) => { event.preventDefault(); setPaperDragActive(true); }}
+              onDragLeave={(event) => { event.preventDefault(); setPaperDragActive(false); }}
+              onDrop={(event) => { event.preventDefault(); setPaperDragActive(false); selectPaperFile(event.dataTransfer.files?.[0] || null); }}
+            >
               <div className="paper-upload-icon"><Upload size={27}/></div>
               <h2>{t("अपना पेपर चुनें","Choose your paper")}</h2>
-              <p>{t("PDF, JPG, PNG या WEBP · अधिकतम 2 MB","PDF, JPG, PNG, or WEBP · 2 MB maximum")}</p>
+              <p>{t("PDF, JPG, PNG या WEBP · अधिकतम 3 MB","PDF, JPG, PNG, or WEBP · 3 MB maximum")}</p>
               <button type="button" className="secondary-button" onClick={() => paperFileInputRef.current?.click()}><FileText size={17}/>{paperFile ? t("फ़ाइल बदलें","Change file") : t("फ़ाइल चुनें","Browse files")}</button>
               {paperFile && <div className="paper-file-selected"><CheckCircle2 size={17}/><span>{paperFile.name}</span><small>{(paperFile.size / 1024 / 1024).toFixed(2)} MB</small></div>}
             </div>
