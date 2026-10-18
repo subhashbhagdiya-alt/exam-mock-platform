@@ -49,6 +49,13 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.getByTestId("login-method-email").click();
   await expect(page.getByTestId("login-email-input")).toBeVisible();
 
+  // The paper analyzer should be discoverable on mobile and gated behind account login.
+  await page.getByTestId("menu-toggle").click();
+  await page.getByTestId("menu-paper-analyzer").click();
+  await expect(page.getByTestId("paper-analyzer-title")).toBeVisible();
+  await expect(page.locator('input[type="file"][accept*=".pdf"]')).toBeAttached();
+  await expect(page.getByRole("button", { name: /Analyze & Generate MCQs/i })).toBeDisabled();
+
   const dimensions = await page.evaluate(() => ({
     viewportWidth: window.innerWidth,
     documentWidth: document.documentElement.scrollWidth
@@ -161,6 +168,16 @@ test("grading API rejects a session that does not exist", async ({ request }) =>
   expect(response.status(), `Grading API response: ${responseText}`).toBe(409);
   const payload = JSON.parse(responseText);
   expect(payload.error).toMatch(/test session not found/i);
+});
+
+
+test("paper analysis endpoint requires an authenticated session", async ({ request }) => {
+  const response = await request.post(`${baseURL}/api/paper-analysis`, {
+    data: { fileName: "sample.pdf", mimeType: "application/pdf", fileBase64: "JVBERi0xLjQ=" },
+    timeout: 30_000
+  });
+  expect(response.status(), "Paper analysis must not run for an anonymous request").toBe(401);
+  expect((await response.json()).error).toMatch(/sign in/i);
 });
 
 
