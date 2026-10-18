@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, FileText, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Sparkles, Target, Trophy, Upload, X } from "lucide-react";
+import { scorePaperQuiz } from "../lib/paper-analysis-quiz.mjs";
+import { MAX_PAPER_FILE_BYTES, isSupportedPaperFile } from "../lib/paper-analysis-upload.mjs";
 
 const supabaseBrowser = (
   typeof window !== "undefined" &&
@@ -817,8 +819,12 @@ export default function HomePage() {
   const [paperAnalysis, setPaperAnalysis] = useState(null);
   const [paperAnalysisError, setPaperAnalysisError] = useState("");
   const [paperAnalysisBusy, setPaperAnalysisBusy] = useState(false);
+  const [paperQuizAnswers, setPaperQuizAnswers] = useState({});
+  const [paperQuizSubmitted, setPaperQuizSubmitted] = useState(false);
+  const [paperDragActive, setPaperDragActive] = useState(false);
   const paperFileInputRef = useRef(null);
-  const [practiceQuestionCount, setPracticeQuestionCount] = useState(10);
+  const paperQuizScore = scorePaperQuiz(paperAnalysis?.mcqs, paperQuizAnswers);
+  const [practiceQuestionCount, setPracticeQuestionCount] = useState(30);
   const [practiceDuration, setPracticeDuration] = useState(10);
   const [selectedSubject, setSelectedSubject] = useState("all");
   const [selectedTopic, setSelectedTopic] = useState("all");
@@ -1129,7 +1135,9 @@ export default function HomePage() {
             [10, 20, 30, 40, 50, Math.min(100, actual)].filter(n => n > 0 && n <= actual)
           )).sort((a, b) => a - b);
           if (!validChoices.length) return 0;
-          return validChoices.includes(current) ? current : validChoices[0];
+          if (validChoices.includes(current)) return current;
+          const preferredDefault = Math.min(30, actual);
+          return validChoices.includes(preferredDefault) ? preferredDefault : validChoices[validChoices.length - 1];
         });
       } catch (error) {
         if (active) {
@@ -1248,6 +1256,28 @@ export default function HomePage() {
     return () => { active = false; };
   }, [user, trustedDeviceVerified]);
 
+  function selectPaperFile(file) {
+    setPaperAnalysis(null);
+    setPaperQuizAnswers({});
+    setPaperQuizSubmitted(false);
+    setPaperAnalysisError("");
+    if (!file) {
+      setPaperFile(null);
+      return;
+    }
+    if (file.size > MAX_PAPER_FILE_BYTES) {
+      setPaperFile(null);
+      setPaperAnalysisError(t("फ़ाइल 3 MB या उससे छोटी होनी चाहिए।", "The file must be 3 MB or smaller."));
+      return;
+    }
+    if (!isSupportedPaperFile(file.name, file.type)) {
+      setPaperFile(null);
+      setPaperAnalysisError(t("PDF, JPG, PNG या WEBP फ़ाइल चुनें।", "Choose a PDF, JPG, PNG, or WEBP file."));
+      return;
+    }
+    setPaperFile(file);
+  }
+
   async function analyzeUploadedPaper(event) {
     event.preventDefault();
     setPaperAnalysisError("");
@@ -1263,17 +1293,18 @@ export default function HomePage() {
       setPaperAnalysisError(t("पहले PDF या साफ़ पेपर फोटो चुनें।", "Choose a PDF or a clear paper photo first."));
       return;
     }
-    if (paperFile.size > 2 * 1024 * 1024) {
-      setPaperAnalysisError(t("फ़ाइल 2 MB या उससे छोटी होनी चाहिए।", "The file must be 2 MB or smaller."));
+    if (paperFile.size > MAX_PAPER_FILE_BYTES) {
+      setPaperAnalysisError(t("फ़ाइल 3 MB या उससे छोटी होनी चाहिए।", "The file must be 3 MB or smaller."));
       return;
     }
-    const supportedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
-    if (!supportedTypes.includes(paperFile.type)) {
+    if (!isSupportedPaperFile(paperFile.name, paperFile.type)) {
       setPaperAnalysisError(t("PDF, JPG, PNG या WEBP फ़ाइल चुनें।", "Choose a PDF, JPG, PNG, or WEBP file."));
       return;
     }
     setPaperAnalysisBusy(true);
     setPaperAnalysis(null);
+    setPaperQuizAnswers({});
+    setPaperQuizSubmitted(false);
     try {
       const { data: sessionData, error: sessionError } = await supabaseBrowser.auth.getSession();
       const accessToken = sessionData?.session?.access_token || "";
@@ -1295,6 +1326,8 @@ export default function HomePage() {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.error || t("पेपर का विश्लेषण नहीं हो सका।", "Could not analyze this paper."));
       setPaperAnalysis(payload.analysis || null);
+      setPaperQuizAnswers({});
+      setPaperQuizSubmitted(false);
     } catch (error) {
       setPaperAnalysisError(String(error?.message || t("कुछ गड़बड़ हुई। फिर कोशिश करें।", "Something went wrong. Please try again.")));
     } finally {
@@ -1805,13 +1838,14 @@ export default function HomePage() {
                 <div className="active-board-head"><div><span className="active-board-kicker">{group.icon} {t("चयनित बोर्ड","SELECTED BOARD")}</span><h3>{hi ? group.labelHi : group.labelEn}</h3></div><span>{groupTracks.length} {t("पोस्ट","posts")}</span></div>
                 {groupTracks.length ? <div className="job-grid">{groupTracks.map((track,index) => <article key={track.slug + (expandedJobTrack === track.slug ? "-expanded" : "-collapsed")} onClick={() => setExpandedJobTrack(current => current === track.slug ? null : track.slug)} className={"job-card " + (selectedJobTrack === track.slug ? "selected" : "") + (expandedJobTrack === track.slug ? " revealed" : "") + (!track.question_bank_ready ? "coming" : "")}>
                   <span className="job-number">{String(index + 1).padStart(2,"0")}</span><div className="job-3d-icon"><GraduationCap size={17}/></div>
-                  <div className="job-copy"><b>{hi ? track.name_hi : track.name_en}</b><span>{hi ? track.description_hi : track.description_en}</span><small>{track.exam_date_text ? "📅 " + track.exam_date_text : "📅 2026"}{track.form_status_text ? " · " + track.form_status_text : ""}</small></div>
+                  <div className="job-copy"><b>{hi ? track.name_hi : track.name_en}</b><span>{hi ? track.description_hi : track.description_en}</span><small>{track.exam_date_text ? "📅 " + track.exam_date_text : ""}{track.form_status_text ? (track.exam_date_text ? " · " : "") + track.form_status_text : ""}</small></div>
                   <em>{track.question_bank_ready ? t("अभी उपलब्ध","READY") : t("जल्द आएगा","SOON")}</em>
-                  {expandedJobTrack === track.slug && <button type="button" className="job-open-button" disabled={!track.question_bank_ready || !track.exam_slug} onClick={(event) => { event.stopPropagation(); if (!track.question_bank_ready || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedSubject("all"); setSelectedTopic("all"); setSelectedExam(track.exam_slug); setAvailableQuestionCount(Number(track.verified_question_count || 0)); setQuestionLoadError(""); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Number(exam.duration_minutes || 10), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); setPracticeDuration(Number(exam.duration_minutes || 10)); } setView("setup"); if (typeof window !== "undefined") window.history.replaceState({view:"setup"}, "", "#exam-setup"); }}>{t("Open","Open")}<ArrowRight size={14}/></button>}
+                  {expandedJobTrack === track.slug && <button type="button" className="job-open-button" disabled={!track.question_bank_ready || !track.exam_slug} onClick={(event) => { event.stopPropagation(); if (!track.question_bank_ready || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedSubject("all"); setSelectedTopic("all"); setSelectedExam(track.exam_slug); setAvailableQuestionCount(Number(track.verified_question_count || 0)); setQuestionLoadError(""); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Math.max(30, Number(exam.duration_minutes || 10)), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); setPracticeQuestionCount(Math.min(30, Number(track.verified_question_count || 10))); setPracticeDuration(Math.max(30, Number(exam.duration_minutes || 10))); } setView("setup"); if (typeof window !== "undefined") window.history.replaceState({view:"setup"}, "", "#exam-setup"); }}>{t("Open","Open")}<ArrowRight size={14}/></button>}
                   {selectedJobTrack === track.slug && <Check className="job-selected-check" size={15}/>}
                 </article>)}</div> : <div className="exam-empty"><b>{t("इस बोर्ड में अभी कोई मैचिंग परीक्षा नहीं मिली।","No matching exams found for this board.")}</b><span>{t("सर्च हटाकर या दूसरा बोर्ड चुनकर देखें।","Clear the search or choose another board.")}</span></div>}
                 {selectedTrackData && getExamGroup(selectedTrackData) === group.key && <div className="exam-detail-panel">
                   <div className="exam-detail-head"><div><span className="active-board-kicker">{group.icon} {t("परीक्षा विवरण","EXAM DETAILS")}</span><h3>{hi ? selectedTrackData.name_hi : selectedTrackData.name_en}</h3><p>{hi ? selectedTrackData.description_hi : selectedTrackData.description_en}</p></div><span className={"detail-status " + (selectedTrackData.question_bank_ready ? "ready" : "soon")}>{selectedTrackData.question_bank_ready ? "✓ READY" : "SOON"}</span></div>
+                  {selectedTrackData.official_url && <a className="job-official-link" href={selectedTrackData.official_url} target="_blank" rel="noopener noreferrer"><Globe2 size={15}/>{t("आधिकारिक वेबसाइट खोलें","Open official website")}<ArrowRight size={14}/></a>}
                   <div className="exam-detail-stats"><div><span>{t("सवाल","QUESTIONS")}</span><b>{Number(selectedTrackData.verified_question_count || 0)}</b></div><div><span>{t("टेस्ट समय","TEST TIME")}</span><b>{examConfig.duration_minutes} min</b></div><div><span>{t("मार्किंग","MARKING")}</span><b>{examConfig.marks_per_question} / -{examConfig.negative_marks}</b></div><div><span>{t("सोर्स","SOURCE")}</span><b>{Number(selectedTrackData.pyq_question_count || 0) + Number(selectedTrackData.official_question_count || 0) > 0 ? (Number(selectedTrackData.practice_question_count || 0) > 0 ? "MIXED BANK" : "OFFICIAL / PYQ") : "PRACTICE BANK"}</b></div></div>
                   <div className="exam-detail-actions"><span>{selectedTrackData.question_bank_ready ? t("Question bank उपलब्ध है।","Question bank is available.") : t("Question bank तैयार होते ही unlock होगा।","Unlocks when the question bank is ready.")}</span>{selectedTrackData.question_bank_ready && Number(selectedTrackData.verified_question_count || 0) > 0 && <button className="primary-button" onClick={startTest}>{t("मॉक टेस्ट शुरू करें","Start mock test")}<ArrowRight size={17}/></button>}</div>
                 </div>}
@@ -2023,12 +2057,18 @@ export default function HomePage() {
               type="file"
               accept=".pdf,application/pdf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
               aria-label={t("प्रश्न-पत्र फ़ाइल चुनें","Choose question paper file")}
-              onChange={(event) => { setPaperFile(event.target.files?.[0] || null); setPaperAnalysis(null); setPaperAnalysisError(""); }}
+              onChange={(event) => { selectPaperFile(event.target.files?.[0] || null); event.target.value = ""; }}
             />
-            <div className="paper-upload-dropzone">
+            <div
+              className={"paper-upload-dropzone" + (paperDragActive ? " is-dragging" : "")}
+              onDragEnter={(event) => { event.preventDefault(); setPaperDragActive(true); }}
+              onDragOver={(event) => { event.preventDefault(); setPaperDragActive(true); }}
+              onDragLeave={(event) => { event.preventDefault(); setPaperDragActive(false); }}
+              onDrop={(event) => { event.preventDefault(); setPaperDragActive(false); selectPaperFile(event.dataTransfer.files?.[0] || null); }}
+            >
               <div className="paper-upload-icon"><Upload size={27}/></div>
               <h2>{t("अपना पेपर चुनें","Choose your paper")}</h2>
-              <p>{t("PDF, JPG, PNG या WEBP · अधिकतम 2 MB","PDF, JPG, PNG, or WEBP · 2 MB maximum")}</p>
+              <p>{t("PDF, JPG, PNG या WEBP · अधिकतम 3 MB","PDF, JPG, PNG, or WEBP · 3 MB maximum")}</p>
               <button type="button" className="secondary-button" onClick={() => paperFileInputRef.current?.click()}><FileText size={17}/>{paperFile ? t("फ़ाइल बदलें","Change file") : t("फ़ाइल चुनें","Browse files")}</button>
               {paperFile && <div className="paper-file-selected"><CheckCircle2 size={17}/><span>{paperFile.name}</span><small>{(paperFile.size / 1024 / 1024).toFixed(2)} MB</small></div>}
             </div>
@@ -2052,13 +2092,38 @@ export default function HomePage() {
             {Array.isArray(paperAnalysis.strengths) && paperAnalysis.strengths.length > 0 && <div className="paper-report-card"><h3>{t("मुख्य निष्कर्ष","Key observations")}</h3><ul>{paperAnalysis.strengths.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
             {Array.isArray(paperAnalysis.limitations) && paperAnalysis.limitations.length > 0 && <div className="paper-report-card paper-report-caveat"><h3>{t("सावधानियाँ","Caveats")}</h3><ul>{paperAnalysis.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
             <div className="paper-generated-questions">
-              <div className="paper-generated-title"><Sparkles size={19}/><div><h2>{t("नए अभ्यास MCQ","New practice MCQs")}</h2><p>{t("हर सवाल के साथ सही उत्तर और व्याख्या दी गई है।","Each question includes the answer and an explanation.")}</p></div></div>
-              {(paperAnalysis.mcqs || []).map((question, index) => <article className="paper-question-card" key={index}>
-                <div className="paper-question-meta"><span>Q{index + 1}</span><span>{question.topic}</span><span>{question.difficulty}</span></div>
-                <h3>{hi ? question.question_hi : question.question_en}</h3>
-                <ol>{(hi ? question.options_hi : question.options_en).map((option, optionIndex) => <li key={optionIndex} className={optionIndex === question.answer_index ? "paper-option-correct" : ""}><span>{String.fromCharCode(65 + optionIndex)}.</span>{option}{optionIndex === question.answer_index && <CheckCircle2 size={16}/>}</li>)}</ol>
-                <div className="paper-answer-explanation"><b>{t("सही उत्तर","Correct answer")}: {(hi ? question.options_hi : question.options_en)[question.answer_index]}</b><p>{hi ? question.explanation_hi : question.explanation_en}</p></div>
-              </article>)}
+              <div className="paper-generated-title"><Sparkles size={19}/><div><h2>{t("नए अभ्यास MCQ","New practice MCQs")}</h2><p>{t("पहले अपने उत्तर चुनें, फिर सबमिट करके स्कोर और व्याख्या देखें।","Choose your answers first, then submit to see your score and explanations.")}</p></div></div>
+              <div className="paper-quiz-toolbar">
+                <div className="paper-quiz-progress"><b>{t("आपका अभ्यास","Your practice")}</b><span>{paperQuizScore.answered} / {paperQuizScore.total} {t("उत्तर चुने","answered")}</span></div>
+                <div className="paper-quiz-actions">
+                  <button type="button" className="secondary-button" onClick={() => { setPaperQuizAnswers({}); setPaperQuizSubmitted(false); }} disabled={Object.keys(paperQuizAnswers).length === 0 && !paperQuizSubmitted}><RotateCcw size={15}/>{t("रीसेट","Reset")}</button>
+                  <button type="button" className="primary-button" onClick={() => setPaperQuizSubmitted(true)} disabled={paperQuizSubmitted || Object.keys(paperQuizAnswers).length === 0}><CheckCircle2 size={16}/>{t("उत्तर जमा करें","Submit answers")}</button>
+                </div>
+              </div>
+              {paperQuizSubmitted && <div className="paper-quiz-score" aria-live="polite">
+                <div><span>{t("आपका स्कोर","Your score")}</span><b>{paperQuizScore.correct} / {paperQuizScore.total} · {paperQuizScore.percentage}%</b></div>
+                <p>{t("सही उत्तर","Correct")}: {paperQuizScore.correct} · {t("गलत","Incorrect")}: {paperQuizScore.incorrect} · {t("छूटे","Unanswered")}: {paperQuizScore.unanswered}</p>
+                <span>{t("इन सवालों को अभ्यास सामग्री के रूप में बनाया गया है; इन्हें आधिकारिक PYQ नहीं माना गया है।","These questions are practice material and are not verified official PYQs.")}</span>
+              </div>}
+              {(paperAnalysis.mcqs || []).map((question, index) => {
+                const options = hi ? question.options_hi : question.options_en;
+                const selectedAnswer = paperQuizAnswers[index];
+                return <article className="paper-question-card" key={index}>
+                  <div className="paper-question-meta"><span>Q{index + 1}</span><span>{question.topic}</span><span>{question.difficulty}</span></div>
+                  <h3>{hi ? question.question_hi : question.question_en}</h3>
+                  <ol>{options.map((option, optionIndex) => {
+                    const selected = selectedAnswer === optionIndex;
+                    const correct = optionIndex === question.answer_index;
+                    const optionClass = "paper-option-button" +
+                      (selected ? " is-selected" : "") +
+                      (paperQuizSubmitted && correct ? " is-correct" : "") +
+                      (paperQuizSubmitted && selected && !correct ? " is-wrong" : "");
+                    return <li key={optionIndex}><button type="button" className={optionClass} aria-pressed={selected} disabled={paperQuizSubmitted} onClick={() => setPaperQuizAnswers((previous) => ({ ...previous, [index]: optionIndex }))}><span className="paper-option-letter">{String.fromCharCode(65 + optionIndex)}.</span><span className="paper-option-text">{option}</span>{paperQuizSubmitted && correct && <CheckCircle2 size={16}/>}{paperQuizSubmitted && selected && !correct && <X size={16}/>}</button></li>;
+                  })}</ol>
+                  {paperQuizSubmitted && <div className="paper-answer-explanation"><b>{t("सही उत्तर","Correct answer")}: {options[question.answer_index]}</b><p>{hi ? question.explanation_hi : question.explanation_en}</p></div>}
+                </article>;
+              })}
+              {paperQuizSubmitted && <button type="button" className="secondary-button" onClick={() => { setPaperQuizAnswers({}); setPaperQuizSubmitted(false); }}><RotateCcw size={16}/>{t("फिर से अभ्यास करें","Practice again")}</button>}
             </div>
             <p className="paper-privacy-note"><Info size={18}/><span>{t("यह रिपोर्ट इस पेज की मेमोरी में है; refresh करने पर हट जाएगी। सवालों को प्रश्न-बैंक में अपने-आप प्रकाशित नहीं किया गया है।","This report only lives in this page's memory and clears on refresh. Questions have not been automatically published to the question bank.")}</span></p>
             <button type="button" className="secondary-button" onClick={() => { setPaperAnalysis(null); setPaperAnalysisError(""); setPaperFile(null); if (paperFileInputRef.current) paperFileInputRef.current.value = ""; }}>{t("नया पेपर विश्लेषित करें","Analyze another paper")}<RotateCcw size={16}/></button>
