@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../../../../lib/weekly-exam-analysis.mjs";
+import { classifyWorkerFailure, resetWorkerRetryCount, MAX_TRANSIENT_PROVIDER_RETRIES } from "../../../../lib/background-task-retry.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -62,7 +63,10 @@ async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
         continue;
       }
       if (timedOut) {
-        throw new Error(`Gemini request timed out after ${maxAttempts} bounded attempts; no paid-provider fallback was attempted.`);
+        const timeoutError = new Error(`Gemini request timed out after ${maxAttempts} bounded attempts; no paid-provider fallback was attempted.`);
+        timeoutError.status = 504;
+        timeoutError.code = "GEMINI_TRANSIENT_FAILURE";
+        throw timeoutError;
       }
       throw error;
     }
@@ -339,25 +343,32 @@ export async function GET(request) {
     const blocked = Boolean(result?.blocked);
     await db.from("background_manager_tasks").update({
       status: deferred ? "queued" : blocked ? "blocked" : "done",
+      ...(deferred ? { payload: resetWorkerRetryCount(task.payload) } : {}),
       result,
       error_message: blocked ? result.reason : null,
       completed_at: deferred ? null : new Date().toISOString()
     }).eq("id", task.id);
     return NextResponse.json({ ok: true, processed: true, task_id: task.id, task_type: task.task_type, status: deferred ? "queued" : blocked ? "blocked" : "done", result });
   } catch (err) {
-    const quotaDeferred = err?.code === "FREE_QUOTA_EXHAUSTED";
+    const retryDecision = classifyWorkerFailure(err, task.payload);
     await db.from("background_manager_tasks").update({
-      status: quotaDeferred ? "queued" : "failed",
+      status: retryDecision.deferred ? "queued" : "failed",
+      ...(retryDecision.payload !== task.payload ? { payload: retryDecision.payload } : {}),
       error_message: err?.message || "Task failed",
-      completed_at: quotaDeferred ? null : new Date().toISOString()
+      completed_at: retryDecision.deferred ? null : new Date().toISOString()
     }).eq("id", task.id);
+    const retryMessage = retryDecision.reason === "free_quota"
+      ? "Free-tier quota is exhausted; the next scheduled worker run will retry. No paid-provider fallback is used."
+      : retryDecision.deferred
+        ? `Transient provider error; the next scheduled worker run will retry (${retryDecision.retryCount}/${MAX_TRANSIENT_PROVIDER_RETRIES}). No paid-provider fallback is used.`
+        : undefined;
     return NextResponse.json({
-      ok: quotaDeferred,
+      ok: retryDecision.deferred,
       processed: true,
       task_id: task.id,
-      status: quotaDeferred ? "queued" : "failed",
+      status: retryDecision.deferred ? "queued" : "failed",
       error: err?.message || "Task failed",
-      retry: quotaDeferred ? "The next scheduled worker run will retry; no paid-provider fallback is used." : undefined
-    }, { status: quotaDeferred ? 202 : 500 });
+      retry: retryMessage
+    }, { status: retryDecision.deferred ? 202 : 500 });
   }
 }
