@@ -4662,3 +4662,32 @@ undefined
 @media (prefers-reduced-motion: reduce) {
   .shell .paper-analyzer-content * { animation: none !important; transition: none !important; }
 }
+
+
+/* Compact mobile breadcrumb: keep the active page label readable. */
+@media (max-width: 600px) {
+  .shell .breadcrumb {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .shell .breadcrumb .breadcrumb-prefix,
+  .shell .breadcrumb .breadcrumb-separator {
+    display: none;
+  }
+  .shell .breadcrumb b {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .shell .top-actions {
+    flex: 0 0 auto;
+  }
+}
