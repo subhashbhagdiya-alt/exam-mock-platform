@@ -4110,3 +4110,49 @@ undefined
   .shell .daily-icon svg, .shell .history-icon svg, .shell .empty-icon svg,
   .shell .modal-icon svg, .shell .job-3d-icon svg { transition: none !important; }
 }
+
+
+/* ExamPrep answer feedback v2 — clear, premium success/error cues with low glare. */
+.shell .option.is-correct,
+.shell .option.is-correct:focus-visible {
+  box-shadow: 0 0 0 1px rgba(121,223,176,.12), 0 7px 22px rgba(54,178,121,.10), inset 0 1px 0 rgba(255,255,255,.045);
+  animation: epAnswerCorrectGlow .52s cubic-bezier(.2,.8,.2,1) both;
+}
+.shell .option.is-wrong,
+.shell .option.is-wrong:focus-visible {
+  box-shadow: 0 0 0 1px rgba(255,127,145,.12), 0 6px 18px rgba(208,66,90,.09), inset 0 1px 0 rgba(255,255,255,.035);
+  animation: epAnswerWrongNudge .34s ease-out both;
+}
+.shell .option.is-correct .option-letter {
+  background: linear-gradient(145deg,#286b4e,#173b2b);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 0 13px rgba(121,223,176,.12);
+}
+.shell .option.is-wrong .option-letter {
+  background: linear-gradient(145deg,#733044,#3a1b27);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 0 11px rgba(255,127,145,.10);
+}
+@keyframes epAnswerCorrectGlow {
+  0% { box-shadow: 0 0 0 0 rgba(121,223,176,0); }
+  58% { box-shadow: 0 0 0 2px rgba(121,223,176,.16), 0 9px 24px rgba(54,178,121,.14); }
+  100% { box-shadow: 0 0 0 1px rgba(121,223,176,.12), 0 7px 22px rgba(54,178,121,.10); }
+}
+@keyframes epAnswerWrongNudge {
+  0%, 100% { translate: 0 0; }
+  32% { translate: -2px 0; }
+  68% { translate: 2px 0; }
+}
+/* Warm, soft icon materials for the day theme; retain legible icon contrast. */
+.shell.theme-light .feature-icon { background: linear-gradient(145deg,#e9e1ff 0%,#d8d0f6 58%,#c8c1ed 100%); border-color: rgba(117,97,178,.30); color: #55418d; }
+.shell.theme-light .feature-icon.green-icon { background: linear-gradient(145deg,#d9f5e7 0%,#c1ead8 58%,#a9dbc6 100%); border-color: rgba(54,135,103,.27); color: #24694f; }
+.shell.theme-light .feature-icon.blue-icon { background: linear-gradient(145deg,#e0edff 0%,#cbdfff 58%,#b7d0f4 100%); border-color: rgba(72,119,180,.28); color: #315c94; }
+.shell.theme-light .stat-icon.purple { background: linear-gradient(145deg,#e8e0ff,#d4caf7); border-color: rgba(117,97,178,.28); color: #5b4795; }
+.shell.theme-light .stat-icon.gold { background: linear-gradient(145deg,#fff0cf,#f1d9a6); border-color: rgba(157,117,45,.27); color: #815a18; }
+.shell.theme-light .stat-icon.green { background: linear-gradient(145deg,#d9f5e7,#bce7d1); border-color: rgba(54,135,103,.27); color: #24694f; }
+.shell.theme-light .job-3d-icon { background: linear-gradient(145deg,#e6ddff 0%,#d1c6f5 58%,#bdb2e8 100%); border-color: rgba(117,97,178,.36); color: #55418d; box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 7px 14px rgba(71,73,111,.14); }
+.shell.theme-light .option.is-correct { background: linear-gradient(110deg,#e4f8ed,#d5f1e2); border-color: #6cbd94; color: #204e3b; }
+.shell.theme-light .option.is-correct .option-letter { background: linear-gradient(145deg,#c3eed5,#a5dfbf); border-color: #6cbd94; color: #205c41; }
+.shell.theme-light .option.is-wrong { background: linear-gradient(110deg,#fff0f1,#fbe1e5); border-color: #d98998; color: #702d3a; }
+.shell.theme-light .option.is-wrong .option-letter { background: linear-gradient(145deg,#f5cbd3,#e9aeb9); border-color: #d98998; color: #702d3a; }
+@media (prefers-reduced-motion: reduce) {
+  .shell .option.is-correct, .shell .option.is-wrong { animation: none !important; }
+}
