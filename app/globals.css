@@ -4742,3 +4742,29 @@ undefined
   outline: 2px solid rgba(176,158,255,.76);
   outline-offset: 3px;
 }
+
+
+/* Explicit official source links for exam cards with a verified website URL. */
+.shell .job-official-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  margin: -3px 0 16px;
+  padding: 10px 13px;
+  border: 1px solid rgba(130, 166, 255, .26);
+  border-radius: 12px;
+  color: #c5d6ff;
+  background: rgba(45, 67, 121, .18);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 750;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+.shell .job-official-link svg:last-child { margin-left: 3px; }
+.shell .job-official-link:hover { border-color: rgba(160, 185, 255, .58); background: rgba(54, 84, 152, .25); transform: translateY(-1px); }
+.shell .job-official-link:focus-visible { outline: 2px solid #b3a5ff; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .shell .job-official-link { margin-bottom: 12px; min-height: 42px; }
+}
