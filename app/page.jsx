@@ -2069,7 +2069,7 @@ export default function HomePage() {
                 </div>
               </div>
               {paperQuizSubmitted && <div className="paper-quiz-score" aria-live="polite">
-                <div><span>{t("आपका स्कोर","Your score")}</span><b>{paperQuizScore.correct} / {paperQuizScore.total}</b></div>
+                <div><span>{t("आपका स्कोर","Your score")}</span><b>{paperQuizScore.correct} / {paperQuizScore.total} · {paperQuizScore.percentage}%</b></div>
                 <p>{t("सही उत्तर","Correct")}: {paperQuizScore.correct} · {t("गलत","Incorrect")}: {paperQuizScore.incorrect} · {t("छूटे","Unanswered")}: {paperQuizScore.unanswered}</p>
                 <span>{t("इन सवालों को अभ्यास सामग्री के रूप में बनाया गया है; इन्हें आधिकारिक PYQ नहीं माना गया है।","These questions are practice material and are not verified official PYQs.")}</span>
               </div>}
