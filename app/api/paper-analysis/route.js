@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { MAX_PAPER_FILE_BYTES, detectPaperMimeType, SUPPORTED_PAPER_MIME_TYPES } from "../../../../lib/paper-analysis-upload.mjs";
+import { MAX_PAPER_FILE_BYTES, detectPaperMimeType, SUPPORTED_PAPER_MIME_TYPES } from "../../../lib/paper-analysis-upload.mjs";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
