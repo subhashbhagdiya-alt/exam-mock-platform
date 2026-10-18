@@ -68,9 +68,6 @@ function validateAnalysis(data) {
 
 export async function POST(request) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return jsonError("Paper analysis is not configured yet. The server-side GEMINI_API_KEY is missing; no paid fallback is enabled.", 503);
-
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
     if (!supabaseUrl || !supabaseKey) return jsonError("Login service is not configured.", 503);
@@ -86,6 +83,12 @@ export async function POST(request) {
     });
     const { data: authData, error: authError } = await authClient.auth.getUser(accessToken);
     if (authError || !authData?.user?.id) return jsonError("Your login session expired. Please sign in again.", 401);
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return jsonError("Paper analysis is not configured yet. The server-side GEMINI_API_KEY is missing; no paid fallback is enabled.", 503);
+
+    const contentLength = Number(request.headers.get("content-length") || 0);
+    if (contentLength > Math.ceil(MAX_FILE_BYTES * 4 / 3) + 64 * 1024) return jsonError("Request is larger than the 2 MB file limit.", 413);
 
     const userId = authData.user.id;
     const now = Date.now();
@@ -145,9 +148,9 @@ Requirements:
 Filename supplied by student: ${fileName}.
 Do not include personal details found in the document in the response.`;
 
-    const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+    const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
         contents: [{ role: "user", parts: [
           { text: prompt },
