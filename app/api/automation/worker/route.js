@@ -123,11 +123,14 @@ function patternEvidence(context) {
 async function generateWeeklyDraft(apiKey, task, context, previousDraft = []) {
   const target = Math.max(50, Math.min(100, Number(task.payload?.target_new_questions) || 50));
   const need = target - previousDraft.length;
-  const requested = Math.min(100, Math.max(need + 10, 10));
+  // Keep each provider request small. The task result is persisted between worker
+  // invocations, so the next scheduled run resumes from the saved draft.
+  const batchSize = 5;
+  const requested = Math.min(batchSize, Math.max(need, 1));
   const prompt = `You are ExamPrep's exam-pattern analyst and question writer. Analyze the exam evidence and create NEW bilingual practice MCQs.
 Return valid JSON only with shape {"analysis":{"trend_summary":"...","subjects":[{"name":"...","weight_estimate":"...","evidence":"..."}],"topic_breakdown":[{"subject":"...","topic":"...","priority":"high|medium|low","reason":"..."}],"difficulty_breakdown":{"easy":"...","medium":"...","hard":"..."},"confidence_notes":"...","source_evidence":[{"title":"...","url":"...","source_type":"official_syllabus|official_paper|other","what_it_supports":"..."}]},"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}.
 Target exam: ${JSON.stringify(context.exam)}.
-Request ${requested} questions to ensure a full batch of ${target} unique questions remains after deduplication.
+Request only ${requested} questions in this small resumable batch. Do not try to generate the full ${target}-question target in one request; progress is saved between scheduled worker runs.
 Evidence from existing bank and stored official/PYQ questions: ${JSON.stringify(patternEvidence(context))}.
 Previously generated questions from this same task (do not duplicate): ${JSON.stringify(previousDraft.map((q) => ({ question_hi: q.question_hi, question_en: q.question_en, subject: q.subject, topic: q.topic })))}
 Do not claim to browse or open websites in this free-tier workflow. Use stored PYQ/official questions, exam configuration, topic coverage, and the supplied official_source_references metadata only. Treat listed source URLs as references, not proof that their contents were inspected. Include source_evidence only for evidence actually present in the supplied records; do not invent citations, paper contents, exact frequencies, official status, or guarantees that a question will appear. When authentic past-paper question content is absent, explicitly state that frequency estimates are weak and recommend practice priorities from the available syllabus/description and topic coverage. All generated questions are curated practice, not PYQs. Check each answer and explanation before returning it. Each question needs four distinct options, 0-based answer_index, Hindi/English versions, and concise explanations. Avoid all concepts/questions already in the bank; favor coverage gaps and varied easy/medium/hard difficulty.`;
@@ -160,7 +163,7 @@ async function runWeeklyExamAnalysis(task, db) {
       analysis: draft.analysis,
       draft_questions: unique,
       actual_past_paper_evidence_count: context.historicalEvidence.length,
-      note: "Analysis and candidate batch saved. The next scheduled worker run will independently review, deduplicate, and publish only a complete batch."
+      note: "Analysis and small candidate batch saved. The next scheduled worker run will independently review, deduplicate, and continue from saved progress. Nothing is published automatically."
     };
   }
 
@@ -265,7 +268,7 @@ async function runWeeklyExamAnalysis(task, db) {
     analysis: task.result.analysis || gapDraft.analysis,
     draft_questions: merged,
     actual_past_paper_evidence_count: context.historicalEvidence.length,
-    note: "Gap-filling candidates saved. The next scheduled worker run will review and publish once at least 50 unique questions pass checks."
+    note: "Gap-filling batch saved. The next scheduled worker run will review and continue from saved progress; questions remain inactive and unverified pending human approval."
   };
 }
 
