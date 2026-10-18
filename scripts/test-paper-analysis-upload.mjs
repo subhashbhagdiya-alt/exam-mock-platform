@@ -25,10 +25,10 @@ assert.equal(isSupportedPaperFile("notes.txt", "application/octet-stream"), fals
 assert.equal(isSupportedPaperFile("notes.pdf", "text/plain"), false);
 assert.equal(isSupportedPaperFile("image.gif", "image/gif"), false);
 
-assert.equal(detectPaperMimeType(new TextEncoder().encode("%PDF-1.7\\n")), "application/pdf");
+assert.equal(detectPaperMimeType(new TextEncoder().encode("%PDF-1.7")), "application/pdf");
 assert.equal(detectPaperMimeType(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0])), "image/png");
 assert.equal(detectPaperMimeType(new Uint8Array([255, 216, 255, 224, 0])), "image/jpeg");
-assert.equal(detectPaperMimeType(new TextEncoder().encode("RIFF\\x00\\x00\\x00\\x00WEBPVP8 ")), "image/webp");
+assert.equal(detectPaperMimeType(new Uint8Array([82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80, 86, 80, 56, 32])), "image/webp");
 assert.equal(detectPaperMimeType(new TextEncoder().encode("not a paper")), "");
 assert.equal(detectPaperMimeType(null), "");
 
