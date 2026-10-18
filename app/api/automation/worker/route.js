@@ -215,7 +215,10 @@ async function runWeeklyExamAnalysis(task, db) {
       source_url: null,
       fingerprint: createHash("sha256").update(normalizeQuestionText(q.question_en)).digest("hex")
     }));
-    const { data: inserted, error: insertError } = await db.from("question_bank").insert(records).select("id,subject,topic,difficulty");
+    // The database unique (exam_id, fingerprint) index makes retries duplicate-safe.
+    const { data: inserted, error: insertError } = await db.from("question_bank")
+      .upsert(records, { onConflict: "exam_id,fingerprint", ignoreDuplicates: true })
+      .select("id,subject,topic,difficulty");
     if (insertError) throw insertError;
 
     const subjects = [...new Set((inserted || []).map((q) => q.subject))].map((name) => ({ name }));
