@@ -4026,3 +4026,87 @@ undefined
     will-change: auto;
   }
 }
+
+
+/* ExamPrep realistic education-icon finish: glossy bevels, soft depth, and restrained motion. */
+.shell .feature-icon,
+.shell .stat-icon,
+.shell .daily-icon,
+.shell .history-icon,
+.shell .empty-icon,
+.shell .result-trophy,
+.shell .modal-icon,
+.shell .job-3d-icon {
+  position: relative;
+  isolation: isolate;
+  transform-style: preserve-3d;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.34), inset 0 -2px 0 rgba(0,0,0,.13), 0 5px 11px rgba(0,0,0,.18);
+  transition: transform .32s cubic-bezier(.2,.8,.2,1), box-shadow .32s ease, filter .32s ease;
+}
+.shell .feature-icon::before,
+.shell .stat-icon::before,
+.shell .daily-icon::before,
+.shell .history-icon::before,
+.shell .empty-icon::before,
+.shell .modal-icon::before,
+.shell .job-3d-icon::before {
+  content: "";
+  position: absolute;
+  inset: 1px 1px auto;
+  height: 46%;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.035) 82%, transparent);
+  opacity: .9;
+  z-index: -1;
+}
+.shell .feature-icon svg,
+.shell .stat-icon svg,
+.shell .daily-icon svg,
+.shell .history-icon svg,
+.shell .empty-icon svg,
+.shell .modal-icon svg,
+.shell .job-3d-icon svg {
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,.18)) drop-shadow(0 2px 2px rgba(0,0,0,.24));
+  transform: translateZ(5px);
+  transition: transform .32s cubic-bezier(.2,.8,.2,1), filter .32s ease;
+}
+.shell .feature-icon { border: 1px solid rgba(190,173,255,.28); background: linear-gradient(145deg,#40365f 0%,#29213f 52%,#1c192c 100%); }
+.shell .feature-icon.green-icon { border-color: rgba(121,223,176,.28); background: linear-gradient(145deg,#285d48 0%,#1a3d30 54%,#142a23 100%); }
+.shell .feature-icon.blue-icon { border-color: rgba(139,185,255,.30); background: linear-gradient(145deg,#315a87 0%,#203c5e 54%,#172a43 100%); }
+.shell .stat-icon.purple { border: 1px solid rgba(190,173,255,.28); background: linear-gradient(145deg,#40365f,#211c34); }
+.shell .stat-icon.gold { border: 1px solid rgba(231,189,114,.3); background: linear-gradient(145deg,#6b4d27,#332719); }
+.shell .stat-icon.green { border: 1px solid rgba(121,223,176,.28); background: linear-gradient(145deg,#285d48,#183428); }
+.shell .job-3d-icon { border: 1px solid rgba(190,173,255,.32); background: linear-gradient(145deg,#4d4177 0%,#2a2445 58%,#1b1a2c 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 12px rgba(0,0,0,.2), 0 0 20px rgba(151,128,255,.12); }
+@media (hover: hover) and (pointer: fine) {
+  .shell .feature-card:hover .feature-icon,
+  .shell .stat-card:hover .stat-icon,
+  .shell .history-item:hover .history-icon,
+  .shell .empty-state:hover .empty-icon,
+  .shell .job-card:hover .job-3d-icon {
+    transform: perspective(500px) translateY(-3px) rotateX(7deg) rotateY(-7deg) scale(1.055);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.46), 0 10px 18px rgba(0,0,0,.22), 0 0 24px rgba(151,128,255,.18);
+    filter: brightness(1.12) saturate(1.08);
+  }
+  .shell .feature-card:hover .feature-icon svg,
+  .shell .stat-card:hover .stat-icon svg,
+  .shell .history-item:hover .history-icon svg,
+  .shell .empty-state:hover .empty-icon svg,
+  .shell .job-card:hover .job-3d-icon svg { transform: translateZ(10px) scale(1.08); }
+}
+.shell.theme-light .feature-icon,
+.shell.theme-light .stat-icon,
+.shell.theme-light .daily-icon,
+.shell.theme-light .history-icon,
+.shell.theme-light .empty-icon,
+.shell.theme-light .modal-icon,
+.shell.theme-light .job-3d-icon {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.85), inset 0 -2px 0 rgba(66,57,98,.08), 0 7px 14px rgba(71,73,111,.14);
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell .feature-icon, .shell .stat-icon, .shell .daily-icon,
+  .shell .history-icon, .shell .empty-icon, .shell .modal-icon,
+  .shell .job-3d-icon, .shell .feature-icon svg, .shell .stat-icon svg,
+  .shell .daily-icon svg, .shell .history-icon svg, .shell .empty-icon svg,
+  .shell .modal-icon svg, .shell .job-3d-icon svg { transition: none !important; }
+}
