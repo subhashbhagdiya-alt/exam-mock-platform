@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, FileText, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Sparkles, Target, Trophy, Upload, X } from "lucide-react";
+import { scorePaperQuiz } from "../lib/paper-analysis-quiz.mjs";
 
 const supabaseBrowser = (
   typeof window !== "undefined" &&
@@ -820,6 +821,7 @@ export default function HomePage() {
   const [paperQuizAnswers, setPaperQuizAnswers] = useState({});
   const [paperQuizSubmitted, setPaperQuizSubmitted] = useState(false);
   const paperFileInputRef = useRef(null);
+  const paperQuizScore = scorePaperQuiz(paperAnalysis?.mcqs, paperQuizAnswers);
   const [practiceQuestionCount, setPracticeQuestionCount] = useState(10);
   const [practiceDuration, setPracticeDuration] = useState(10);
   const [selectedSubject, setSelectedSubject] = useState("all");
@@ -2060,15 +2062,15 @@ export default function HomePage() {
             <div className="paper-generated-questions">
               <div className="paper-generated-title"><Sparkles size={19}/><div><h2>{t("नए अभ्यास MCQ","New practice MCQs")}</h2><p>{t("पहले अपने उत्तर चुनें, फिर सबमिट करके स्कोर और व्याख्या देखें।","Choose your answers first, then submit to see your score and explanations.")}</p></div></div>
               <div className="paper-quiz-toolbar">
-                <div className="paper-quiz-progress"><b>{t("आपका अभ्यास","Your practice")}</b><span>{Object.keys(paperQuizAnswers).length} / {(paperAnalysis.mcqs || []).length} {t("उत्तर चुने","answered")}</span></div>
+                <div className="paper-quiz-progress"><b>{t("आपका अभ्यास","Your practice")}</b><span>{paperQuizScore.answered} / {paperQuizScore.total} {t("उत्तर चुने","answered")}</span></div>
                 <div className="paper-quiz-actions">
                   <button type="button" className="secondary-button" onClick={() => { setPaperQuizAnswers({}); setPaperQuizSubmitted(false); }} disabled={Object.keys(paperQuizAnswers).length === 0 && !paperQuizSubmitted}><RotateCcw size={15}/>{t("रीसेट","Reset")}</button>
                   <button type="button" className="primary-button" onClick={() => setPaperQuizSubmitted(true)} disabled={paperQuizSubmitted || Object.keys(paperQuizAnswers).length === 0}><CheckCircle2 size={16}/>{t("उत्तर जमा करें","Submit answers")}</button>
                 </div>
               </div>
               {paperQuizSubmitted && <div className="paper-quiz-score" aria-live="polite">
-                <div><span>{t("आपका स्कोर","Your score")}</span><b>{(paperAnalysis.mcqs || []).filter((question, index) => paperQuizAnswers[index] === question.answer_index).length} / {(paperAnalysis.mcqs || []).length}</b></div>
-                <p>{t("सही उत्तर","Correct")}: {(paperAnalysis.mcqs || []).filter((question, index) => paperQuizAnswers[index] === question.answer_index).length} · {t("गलत","Incorrect")}: {(paperAnalysis.mcqs || []).filter((question, index) => Object.prototype.hasOwnProperty.call(paperQuizAnswers, index) && paperQuizAnswers[index] !== question.answer_index).length} · {t("छूटे","Unanswered")}: {Math.max(0, (paperAnalysis.mcqs || []).length - Object.keys(paperQuizAnswers).length)}</p>
+                <div><span>{t("आपका स्कोर","Your score")}</span><b>{paperQuizScore.correct} / {paperQuizScore.total}</b></div>
+                <p>{t("सही उत्तर","Correct")}: {paperQuizScore.correct} · {t("गलत","Incorrect")}: {paperQuizScore.incorrect} · {t("छूटे","Unanswered")}: {paperQuizScore.unanswered}</p>
                 <span>{t("इन सवालों को अभ्यास सामग्री के रूप में बनाया गया है; इन्हें आधिकारिक PYQ नहीं माना गया है।","These questions are practice material and are not verified official PYQs.")}</span>
               </div>}
               {(paperAnalysis.mcqs || []).map((question, index) => {
