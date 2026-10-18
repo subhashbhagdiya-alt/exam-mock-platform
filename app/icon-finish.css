@@ -60,3 +60,20 @@
     transition: none !important;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .shell .login-content .login-icon:hover,
+  .shell .paper-analyzer-content .paper-analyzer-icon:hover,
+  .shell .paper-analyzer-content .paper-upload-icon:hover,
+  .shell .paper-analyzer-content .paper-upload-dropzone:hover .paper-upload-icon {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .shell .login-content .login-icon:hover > svg,
+  .shell .paper-analyzer-content .paper-analyzer-icon:hover > svg,
+  .shell .paper-analyzer-content .paper-upload-icon:hover > svg,
+  .shell .paper-analyzer-content .paper-upload-dropzone:hover .paper-upload-icon > svg {
+    transform: translateZ(6px) !important;
+  }
+}
