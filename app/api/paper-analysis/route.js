@@ -105,7 +105,6 @@ export async function POST(request) {
 
     const body = await request.json();
     const mimeType = String(body?.mimeType || "");
-    const fileName = String(body?.fileName || "uploaded-paper").slice(0, 140);
     const encoded = body?.fileBase64;
     if (!ALLOWED_TYPES.has(mimeType)) return jsonError("Upload a PDF, JPG, PNG, or WEBP file.", 400);
     if (typeof encoded !== "string" || !encoded.length || encoded.length > Math.ceil(MAX_FILE_BYTES * 4 / 3) + 16) {
@@ -145,7 +144,6 @@ Requirements:
 - Analyze visible sections and recurring topics conservatively. If counts are estimates, state this in limitations and use low confidence.
 - For a low-quality or mostly unreadable paper, return fewer MCQs and clearly explain the limitation.
 - Avoid copying long passages from the source. Questions should be original, based on concepts and topics visible in the source.
-Filename supplied by student: ${fileName}.
 Do not include personal details found in the document in the response.`;
 
     const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`, {
