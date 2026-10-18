@@ -824,7 +824,7 @@ export default function HomePage() {
   const [paperDragActive, setPaperDragActive] = useState(false);
   const paperFileInputRef = useRef(null);
   const paperQuizScore = scorePaperQuiz(paperAnalysis?.mcqs, paperQuizAnswers);
-  const [practiceQuestionCount, setPracticeQuestionCount] = useState(10);
+  const [practiceQuestionCount, setPracticeQuestionCount] = useState(30);
   const [practiceDuration, setPracticeDuration] = useState(10);
   const [selectedSubject, setSelectedSubject] = useState("all");
   const [selectedTopic, setSelectedTopic] = useState("all");
@@ -1135,7 +1135,9 @@ export default function HomePage() {
             [10, 20, 30, 40, 50, Math.min(100, actual)].filter(n => n > 0 && n <= actual)
           )).sort((a, b) => a - b);
           if (!validChoices.length) return 0;
-          return validChoices.includes(current) ? current : validChoices[0];
+          if (validChoices.includes(current)) return current;
+          const preferredDefault = Math.min(30, actual);
+          return validChoices.includes(preferredDefault) ? preferredDefault : validChoices[validChoices.length - 1];
         });
       } catch (error) {
         if (active) {
@@ -1838,7 +1840,7 @@ export default function HomePage() {
                   <span className="job-number">{String(index + 1).padStart(2,"0")}</span><div className="job-3d-icon"><GraduationCap size={17}/></div>
                   <div className="job-copy"><b>{hi ? track.name_hi : track.name_en}</b><span>{hi ? track.description_hi : track.description_en}</span><small>{track.exam_date_text ? "📅 " + track.exam_date_text : "📅 2026"}{track.form_status_text ? " · " + track.form_status_text : ""}</small></div>
                   <em>{track.question_bank_ready ? t("अभी उपलब्ध","READY") : t("जल्द आएगा","SOON")}</em>
-                  {expandedJobTrack === track.slug && <button type="button" className="job-open-button" disabled={!track.question_bank_ready || !track.exam_slug} onClick={(event) => { event.stopPropagation(); if (!track.question_bank_ready || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedSubject("all"); setSelectedTopic("all"); setSelectedExam(track.exam_slug); setAvailableQuestionCount(Number(track.verified_question_count || 0)); setQuestionLoadError(""); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Number(exam.duration_minutes || 10), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); setPracticeDuration(Number(exam.duration_minutes || 10)); } setView("setup"); if (typeof window !== "undefined") window.history.replaceState({view:"setup"}, "", "#exam-setup"); }}>{t("Open","Open")}<ArrowRight size={14}/></button>}
+                  {expandedJobTrack === track.slug && <button type="button" className="job-open-button" disabled={!track.question_bank_ready || !track.exam_slug} onClick={(event) => { event.stopPropagation(); if (!track.question_bank_ready || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedSubject("all"); setSelectedTopic("all"); setSelectedExam(track.exam_slug); setAvailableQuestionCount(Number(track.verified_question_count || 0)); setQuestionLoadError(""); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Math.max(30, Number(exam.duration_minutes || 10)), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); setPracticeQuestionCount(Math.min(30, Number(track.verified_question_count || 10))); setPracticeDuration(Math.max(30, Number(exam.duration_minutes || 10))); } setView("setup"); if (typeof window !== "undefined") window.history.replaceState({view:"setup"}, "", "#exam-setup"); }}>{t("Open","Open")}<ArrowRight size={14}/></button>}
                   {selectedJobTrack === track.slug && <Check className="job-selected-check" size={15}/>}
                 </article>)}</div> : <div className="exam-empty"><b>{t("इस बोर्ड में अभी कोई मैचिंग परीक्षा नहीं मिली।","No matching exams found for this board.")}</b><span>{t("सर्च हटाकर या दूसरा बोर्ड चुनकर देखें।","Clear the search or choose another board.")}</span></div>}
                 {selectedTrackData && getExamGroup(selectedTrackData) === group.key && <div className="exam-detail-panel">
