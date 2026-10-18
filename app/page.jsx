@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Target, Trophy, X } from "lucide-react";
+import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, FileText, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Sparkles, Target, Trophy, Upload, X } from "lucide-react";
 
 const supabaseBrowser = (
   typeof window !== "undefined" &&
@@ -813,6 +813,11 @@ export default function HomePage() {
   const [recoveryCode, setRecoveryCode] = useState("");
   const [authStep, setAuthStep] = useState("phone");
   const [authMessage, setAuthMessage] = useState("");
+  const [paperFile, setPaperFile] = useState(null);
+  const [paperAnalysis, setPaperAnalysis] = useState(null);
+  const [paperAnalysisError, setPaperAnalysisError] = useState("");
+  const [paperAnalysisBusy, setPaperAnalysisBusy] = useState(false);
+  const paperFileInputRef = useRef(null);
   const [practiceQuestionCount, setPracticeQuestionCount] = useState(10);
   const [practiceDuration, setPracticeDuration] = useState(10);
   const [selectedSubject, setSelectedSubject] = useState("all");
@@ -1242,6 +1247,60 @@ export default function HomePage() {
     loadHistory();
     return () => { active = false; };
   }, [user, trustedDeviceVerified]);
+
+  async function analyzeUploadedPaper(event) {
+    event.preventDefault();
+    setPaperAnalysisError("");
+    if (!user) {
+      setPaperAnalysisError(t("पहले अकाउंट में लॉगिन करें, फिर पेपर का विश्लेषण करें।", "Please sign in to your account before analyzing a paper."));
+      return;
+    }
+    if (!supabaseBrowser) {
+      setPaperAnalysisError(t("Login सेवा अभी उपलब्ध नहीं है।", "Login service is not available right now."));
+      return;
+    }
+    if (!paperFile) {
+      setPaperAnalysisError(t("पहले PDF या साफ़ पेपर फोटो चुनें।", "Choose a PDF or a clear paper photo first."));
+      return;
+    }
+    if (paperFile.size > 2 * 1024 * 1024) {
+      setPaperAnalysisError(t("फ़ाइल 2 MB या उससे छोटी होनी चाहिए।", "The file must be 2 MB or smaller."));
+      return;
+    }
+    const supportedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+    if (!supportedTypes.includes(paperFile.type)) {
+      setPaperAnalysisError(t("PDF, JPG, PNG या WEBP फ़ाइल चुनें।", "Choose a PDF, JPG, PNG, or WEBP file."));
+      return;
+    }
+    setPaperAnalysisBusy(true);
+    setPaperAnalysis(null);
+    try {
+      const { data: sessionData, error: sessionError } = await supabaseBrowser.auth.getSession();
+      const accessToken = sessionData?.session?.access_token || "";
+      if (sessionError || !accessToken) {
+        setPaperAnalysisError(t("सेशन समाप्त हो गया है। दोबारा लॉगिन करें।", "Your session has expired. Please sign in again."));
+        return;
+      }
+      const bytes = new Uint8Array(await paperFile.arrayBuffer());
+      let binary = "";
+      for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+      }
+      const fileBase64 = btoa(binary);
+      const response = await fetch("/api/paper-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ fileName: paperFile.name, mimeType: paperFile.type, fileBase64 })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || t("पेपर का विश्लेषण नहीं हो सका।", "Could not analyze this paper."));
+      setPaperAnalysis(payload.analysis || null);
+    } catch (error) {
+      setPaperAnalysisError(String(error?.message || t("कुछ गड़बड़ हुई। फिर कोशिश करें।", "Something went wrong. Please try again.")));
+    } finally {
+      setPaperAnalysisBusy(false);
+    }
+  }
 
   async function signInWithGoogle() {
     if (!supabaseBrowser) {
@@ -1673,11 +1732,12 @@ export default function HomePage() {
         {view !== "test" && view !== "instructions" && <button className={"nav-item " + (view === "home" ? "active" : "")} onClick={() => navigateTo("home")}><Home size={18}/>{t("होम","Home")}</button>}
         <button className={"nav-item " + (view === "boards" ? "active" : "")} onClick={() => navigateTo("boards")}><GraduationCap size={18}/>{t("परीक्षाएँ","Exams")}</button><button className={"nav-item " + (view === "history" ? "active" : "")} onClick={() => navigateTo("history")}><Award size={18}/>{t("मेरे रिज़ल्ट","My results")}</button><button className={"nav-item " + (view === "login" ? "active" : "")} onClick={() => navigateTo("login")}><ShieldCheck size={18}/>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button className={"nav-item " + (view === "settings" ? "active" : "")} onClick={() => navigateTo("settings")}><Settings size={18}/>{t("सेटिंग्स","Settings")}</button>
         <button className={"nav-item " + (view === "sources" ? "active" : "")} onClick={() => navigateTo("sources")}><Download size={18}/>{t("Source PDFs","Source PDFs")}</button>
+        <button className={"nav-item " + (view === "paper" ? "active" : "")} onClick={() => navigateTo("paper")}><FileText size={18}/>{t("पेपर विश्लेषण","Paper Analyzer")}</button>
         <div className="sidebar-bottom"><div className="daily-card"><div className="daily-icon"><Flame size={17}/></div><b>{t("लगातार अभ्यास करें","Keep your streak")}</b><p>{t("रोज़ थोड़ा अभ्यास, बेहतर रैंक।","Small daily practice. Better ranks.")}</p><div className="streak-dots"><i/><i/><i/><i/><i/><i/><i/></div></div><div className="profile"><div className="avatar">{(getUserDisplayName(user).charAt(0) || "अ").toUpperCase()}</div><div><b>{getUserDisplayName(user)}</b><span>{t("परीक्षा अभ्यर्थी","Exam candidate")}</span></div><ShieldCheck size={17} className="profile-check"/></div></div>
       </aside>
 
       <section className="main">
-        <header className="topbar"><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : view === "sources" ? t("Source PDFs","Source PDFs") : view === "about" ? t("ऐप के बारे में","About") : view === "settings" ? t("प्रोफाइल / सेटिंग्स","Profile / Settings") : view === "boards" ? t("परीक्षा बोर्ड","Exam boards") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="home-quick-button" onClick={() => navigateTo("home")} aria-label={t("होम पर जाएँ","Go to Home")} title={t("होम","Home")}><Home size={17}/><span>{t("होम","Home")}</span></button><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button><button className="theme-toggle" onClick={() => setThemeMode(effectiveTheme === "light" ? "dark" : "light")} title={themeMode === "light" ? "Night mode" : themeMode === "dark" ? "System mode" : "Day mode"}>{themeMode === "light" ? "☀️" : themeMode === "dark" ? "🌙" : "◐"}<span>{themeMode === "light" ? t("दिन","Day") : themeMode === "dark" ? t("रात","Night") : t("सिस्टम","System")}</span></button><button ref={menuButtonRef} className="menu-button" onClick={() => setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label="Menu" data-testid="menu-toggle"><SlidersHorizontal size={18}/></button>{menuOpen && <div ref={menuRef} className="menu-popover"><b>{t("दिखावट","Appearance")}</b><button onClick={() => {setThemeMode("light");setMenuOpen(false)}}>☀️ {t("Day Mode","Day Mode")}</button><button onClick={() => {setThemeMode("dark");setMenuOpen(false)}}>🌙 {t("Night Mode","Night Mode")}</button><button onClick={() => {setThemeMode("system");setMenuOpen(false)}}>◐ {t("System","System")}</button><hr/><button onClick={() => navigateTo("boards")}>{t("परीक्षाएँ","Exams")}</button><button onClick={() => navigateTo("history")}>{t("मेरे रिज़ल्ट","My results")}</button><button data-testid="menu-login" onClick={() => navigateTo("login")}>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button onClick={() => navigateTo("settings")}>{t("सेटिंग्स","Settings")}</button><button onClick={() => navigateTo("sources")}>Source PDFs</button><button onClick={() => navigateTo("about")}>{t("ऐप के बारे में","About ExamPrep")}</button></div>}</div></header>
+        <header className="topbar"><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : view === "paper" ? t("पेपर विश्लेषण","Paper Analyzer") : view === "sources" ? t("Source PDFs","Source PDFs") : view === "about" ? t("ऐप के बारे में","About") : view === "settings" ? t("प्रोफाइल / सेटिंग्स","Profile / Settings") : view === "boards" ? t("परीक्षा बोर्ड","Exam boards") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="home-quick-button" onClick={() => navigateTo("home")} aria-label={t("होम पर जाएँ","Go to Home")} title={t("होम","Home")}><Home size={17}/><span>{t("होम","Home")}</span></button><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button><button className="theme-toggle" onClick={() => setThemeMode(effectiveTheme === "light" ? "dark" : "light")} title={themeMode === "light" ? "Night mode" : themeMode === "dark" ? "System mode" : "Day mode"}>{themeMode === "light" ? "☀️" : themeMode === "dark" ? "🌙" : "◐"}<span>{themeMode === "light" ? t("दिन","Day") : themeMode === "dark" ? t("रात","Night") : t("सिस्टम","System")}</span></button><button ref={menuButtonRef} className="menu-button" onClick={() => setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label="Menu" data-testid="menu-toggle"><SlidersHorizontal size={18}/></button>{menuOpen && <div ref={menuRef} className="menu-popover"><b>{t("दिखावट","Appearance")}</b><button onClick={() => {setThemeMode("light");setMenuOpen(false)}}>☀️ {t("Day Mode","Day Mode")}</button><button onClick={() => {setThemeMode("dark");setMenuOpen(false)}}>🌙 {t("Night Mode","Night Mode")}</button><button onClick={() => {setThemeMode("system");setMenuOpen(false)}}>◐ {t("System","System")}</button><hr/><button onClick={() => navigateTo("boards")}>{t("परीक्षाएँ","Exams")}</button><button onClick={() => navigateTo("history")}>{t("मेरे रिज़ल्ट","My results")}</button><button data-testid="menu-login" onClick={() => navigateTo("login")}>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button onClick={() => navigateTo("settings")}>{t("सेटिंग्स","Settings")}</button><button onClick={() => navigateTo("sources")}>Source PDFs</button><button data-testid="menu-paper-analyzer" onClick={() => navigateTo("paper")}>{t("पेपर विश्लेषण","Paper Analyzer")}</button><button onClick={() => navigateTo("about")}>{t("ऐप के बारे में","About ExamPrep")}</button></div>}</div></header>
 
         {view === "home" && <div className="content dashboard-content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
           <div className="auth-panel" aria-label={t("वैकल्पिक लॉगिन","Optional login")}>
@@ -1937,6 +1997,73 @@ export default function HomePage() {
           <div className="result-actions"><button className="secondary-button" onClick={() => setView("home")}><Home size={17}/>{t("डैशबोर्ड","Dashboard")}</button><button className="primary-button" onClick={startTest}><RotateCcw size={17}/>{t("फिर से टेस्ट दें","Retake test")}</button></div>
         </div>}
 
+
+        {view === "paper" && <div className="content paper-analyzer-content">
+          <div className="eyebrow"><span className="eyebrow-line"/> AI PAPER WORKSPACE</div>
+          <div className="paper-analyzer-hero">
+            <div className="paper-analyzer-icon"><FileText size={28}/></div>
+            <div>
+              <h1 data-testid="paper-analyzer-title">{t("अपने प्रश्न-पत्र का विश्लेषण करें","Analyze your question paper")}</h1>
+              <p className="intro">{t("PDF या साफ़ फोटो चुनें। पेपर के विषय और कठिनाई का अनुमान मिलेगा, साथ में नए bilingual practice MCQs बनेंगे।","Upload a PDF or a clear photo to estimate topics and difficulty, then create new bilingual practice MCQs.")}</p>
+            </div>
+          </div>
+          <div className="paper-privacy-note">
+            <Info size={18}/>
+            <p>{t("पेपर ExamPrep में सेव नहीं होगा; विश्लेषण के लिए Gemini API को भेजा जाएगा। निजी दस्तावेज़ अपलोड न करें। तैयार सवाल अभ्यास के लिए हैं, verified official PYQ नहीं।","Your paper is not saved by ExamPrep; it is sent to the Gemini API for analysis. Do not upload private documents. Generated questions are for practice and are not verified official PYQs.")}</p>
+          </div>
+          {!user && <div className="paper-login-prompt">
+            <b>{t("विश्लेषण के लिए लॉगिन ज़रूरी है","Sign-in required")}</b>
+            <span>{t("लॉगिन करने के बाद अपनी फ़ाइल अपलोड कर सकते हैं।","Sign in to your account before uploading a file.")}</span>
+            <button type="button" className="primary-button" onClick={() => navigateTo("login")}>{t("लॉगिन / अकाउंट खोलें","Open Login / Account")}<ArrowRight size={17}/></button>
+          </div>}
+          <form className="paper-upload-card" onSubmit={analyzeUploadedPaper}>
+            <input
+              ref={paperFileInputRef}
+              className="paper-file-input"
+              type="file"
+              accept=".pdf,application/pdf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+              aria-label={t("प्रश्न-पत्र फ़ाइल चुनें","Choose question paper file")}
+              onChange={(event) => { setPaperFile(event.target.files?.[0] || null); setPaperAnalysis(null); setPaperAnalysisError(""); }}
+            />
+            <div className="paper-upload-dropzone">
+              <div className="paper-upload-icon"><Upload size={27}/></div>
+              <h2>{t("अपना पेपर चुनें","Choose your paper")}</h2>
+              <p>{t("PDF, JPG, PNG या WEBP · अधिकतम 2 MB","PDF, JPG, PNG, or WEBP · 2 MB maximum")}</p>
+              <button type="button" className="secondary-button" onClick={() => paperFileInputRef.current?.click()}><FileText size={17}/>{paperFile ? t("फ़ाइल बदलें","Change file") : t("फ़ाइल चुनें","Browse files")}</button>
+              {paperFile && <div className="paper-file-selected"><CheckCircle2 size={17}/><span>{paperFile.name}</span><small>{(paperFile.size / 1024 / 1024).toFixed(2)} MB</small></div>}
+            </div>
+            {paperAnalysisError && <div className="paper-analysis-error" role="alert">{paperAnalysisError}</div>}
+            <button type="submit" className="primary-button paper-analyze-button" disabled={!user || !paperFile || paperAnalysisBusy}>
+              {paperAnalysisBusy ? <><span className="paper-spinner"/> {t("विश्लेषण चल रहा है…","Analyzing paper…")}</> : <><Sparkles size={18}/>{t("विश्लेषण और MCQ बनाएं","Analyze & Generate MCQs")}</>}
+            </button>
+            <p className="paper-free-note">{t("केवल configured free-tier Gemini API इस्तेमाल होगा। Quota खत्म होने पर बाद में कोशिश करें—कोई paid fallback नहीं।","Uses only the configured Gemini API free tier. If quota is exhausted, try later—no paid fallback.")}</p>
+          </form>
+          {paperAnalysis && <div className="paper-results">
+            <div className="paper-result-heading">
+              <div><div className="eyebrow"><span className="eyebrow-line"/> PAPER REPORT</div><h2>{paperAnalysis.paper_title || t("पेपर रिपोर्ट","Paper report")}</h2><p>{paperAnalysis.exam_type || t("परीक्षा पहचान नहीं मिली","Exam not identified")} · {paperAnalysis.detected_language || "Unknown"}</p></div>
+              <div className="paper-question-count"><b>{paperAnalysis.mcqs?.length || 0}</b><span>{t("नए MCQ","New MCQs")}</span></div>
+            </div>
+            <div className="paper-report-stats">
+              <div><span>{t("अनुमानित प्रश्न","Estimated questions")}</span><b>{paperAnalysis.estimated_question_count || "—"}</b></div>
+              <div><span>{t("सेक्शन","Sections")}</span><b>{paperAnalysis.sections?.length || 0}</b></div>
+              <div><span>{t("प्रैक्टिस सवाल","Practice items")}</span><b>{paperAnalysis.mcqs?.length || 0}</b></div>
+            </div>
+            {Array.isArray(paperAnalysis.sections) && paperAnalysis.sections.length > 0 && <div className="paper-report-card"><h3>{t("विषय और अनुमानित कवरेज","Topics and estimated coverage")}</h3>{paperAnalysis.sections.map((section, index) => <div className="paper-section-row" key={section.name + index}><b>{section.name}</b><span>{(section.topic_counts || []).map((topic) => topic.topic + " (" + topic.count + ", " + topic.confidence + ")").join(" · ") || t("कोई साफ़ विषय नहीं मिला","No clear topics detected")}</span></div>)}</div>}
+            {Array.isArray(paperAnalysis.strengths) && paperAnalysis.strengths.length > 0 && <div className="paper-report-card"><h3>{t("मुख्य निष्कर्ष","Key observations")}</h3><ul>{paperAnalysis.strengths.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
+            {Array.isArray(paperAnalysis.limitations) && paperAnalysis.limitations.length > 0 && <div className="paper-report-card paper-report-caveat"><h3>{t("सावधानियाँ","Caveats")}</h3><ul>{paperAnalysis.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
+            <div className="paper-generated-questions">
+              <div className="paper-generated-title"><Sparkles size={19}/><div><h2>{t("नए अभ्यास MCQ","New practice MCQs")}</h2><p>{t("हर सवाल के साथ सही उत्तर और व्याख्या दी गई है।","Each question includes the answer and an explanation.")}</p></div></div>
+              {(paperAnalysis.mcqs || []).map((question, index) => <article className="paper-question-card" key={index}>
+                <div className="paper-question-meta"><span>Q{index + 1}</span><span>{question.topic}</span><span>{question.difficulty}</span></div>
+                <h3>{hi ? question.question_hi : question.question_en}</h3>
+                <ol>{(hi ? question.options_hi : question.options_en).map((option, optionIndex) => <li key={optionIndex} className={optionIndex === question.answer_index ? "paper-option-correct" : ""}><span>{String.fromCharCode(65 + optionIndex)}.</span>{option}{optionIndex === question.answer_index && <CheckCircle2 size={16}/>}</li>)}</ol>
+                <div className="paper-answer-explanation"><b>{t("सही उत्तर","Correct answer")}: {(hi ? question.options_hi : question.options_en)[question.answer_index]}</b><p>{hi ? question.explanation_hi : question.explanation_en}</p></div>
+              </article>)}
+            </div>
+            <p className="paper-privacy-note"><Info size={18}/><span>{t("यह रिपोर्ट इस पेज की मेमोरी में है; refresh करने पर हट जाएगी। सवालों को प्रश्न-बैंक में अपने-आप प्रकाशित नहीं किया गया है।","This report only lives in this page's memory and clears on refresh. Questions have not been automatically published to the question bank.")}</span></p>
+            <button type="button" className="secondary-button" onClick={() => { setPaperAnalysis(null); setPaperAnalysisError(""); setPaperFile(null); if (paperFileInputRef.current) paperFileInputRef.current.value = ""; }}>{t("नया पेपर विश्लेषित करें","Analyze another paper")}<RotateCcw size={16}/></button>
+          </div>}
+        </div>}
 
         {view === "sources" && <div className="content sources-content">
           <div className="eyebrow"><span className="eyebrow-line"/> SOURCE LIBRARY</div>
