@@ -817,6 +817,8 @@ export default function HomePage() {
   const [paperAnalysis, setPaperAnalysis] = useState(null);
   const [paperAnalysisError, setPaperAnalysisError] = useState("");
   const [paperAnalysisBusy, setPaperAnalysisBusy] = useState(false);
+  const [paperQuizAnswers, setPaperQuizAnswers] = useState({});
+  const [paperQuizSubmitted, setPaperQuizSubmitted] = useState(false);
   const paperFileInputRef = useRef(null);
   const [practiceQuestionCount, setPracticeQuestionCount] = useState(10);
   const [practiceDuration, setPracticeDuration] = useState(10);
@@ -1274,6 +1276,8 @@ export default function HomePage() {
     }
     setPaperAnalysisBusy(true);
     setPaperAnalysis(null);
+    setPaperQuizAnswers({});
+    setPaperQuizSubmitted(false);
     try {
       const { data: sessionData, error: sessionError } = await supabaseBrowser.auth.getSession();
       const accessToken = sessionData?.session?.access_token || "";
@@ -1295,6 +1299,8 @@ export default function HomePage() {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.error || t("पेपर का विश्लेषण नहीं हो सका।", "Could not analyze this paper."));
       setPaperAnalysis(payload.analysis || null);
+      setPaperQuizAnswers({});
+      setPaperQuizSubmitted(false);
     } catch (error) {
       setPaperAnalysisError(String(error?.message || t("कुछ गड़बड़ हुई। फिर कोशिश करें।", "Something went wrong. Please try again.")));
     } finally {
@@ -2023,7 +2029,7 @@ export default function HomePage() {
               type="file"
               accept=".pdf,application/pdf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
               aria-label={t("प्रश्न-पत्र फ़ाइल चुनें","Choose question paper file")}
-              onChange={(event) => { setPaperFile(event.target.files?.[0] || null); setPaperAnalysis(null); setPaperAnalysisError(""); }}
+              onChange={(event) => { setPaperFile(event.target.files?.[0] || null); setPaperAnalysis(null); setPaperAnalysisError(""); setPaperQuizAnswers({}); setPaperQuizSubmitted(false); }}
             />
             <div className="paper-upload-dropzone">
               <div className="paper-upload-icon"><Upload size={27}/></div>
@@ -2052,13 +2058,38 @@ export default function HomePage() {
             {Array.isArray(paperAnalysis.strengths) && paperAnalysis.strengths.length > 0 && <div className="paper-report-card"><h3>{t("मुख्य निष्कर्ष","Key observations")}</h3><ul>{paperAnalysis.strengths.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
             {Array.isArray(paperAnalysis.limitations) && paperAnalysis.limitations.length > 0 && <div className="paper-report-card paper-report-caveat"><h3>{t("सावधानियाँ","Caveats")}</h3><ul>{paperAnalysis.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
             <div className="paper-generated-questions">
-              <div className="paper-generated-title"><Sparkles size={19}/><div><h2>{t("नए अभ्यास MCQ","New practice MCQs")}</h2><p>{t("हर सवाल के साथ सही उत्तर और व्याख्या दी गई है।","Each question includes the answer and an explanation.")}</p></div></div>
-              {(paperAnalysis.mcqs || []).map((question, index) => <article className="paper-question-card" key={index}>
-                <div className="paper-question-meta"><span>Q{index + 1}</span><span>{question.topic}</span><span>{question.difficulty}</span></div>
-                <h3>{hi ? question.question_hi : question.question_en}</h3>
-                <ol>{(hi ? question.options_hi : question.options_en).map((option, optionIndex) => <li key={optionIndex} className={optionIndex === question.answer_index ? "paper-option-correct" : ""}><span>{String.fromCharCode(65 + optionIndex)}.</span>{option}{optionIndex === question.answer_index && <CheckCircle2 size={16}/>}</li>)}</ol>
-                <div className="paper-answer-explanation"><b>{t("सही उत्तर","Correct answer")}: {(hi ? question.options_hi : question.options_en)[question.answer_index]}</b><p>{hi ? question.explanation_hi : question.explanation_en}</p></div>
-              </article>)}
+              <div className="paper-generated-title"><Sparkles size={19}/><div><h2>{t("नए अभ्यास MCQ","New practice MCQs")}</h2><p>{t("पहले अपने उत्तर चुनें, फिर सबमिट करके स्कोर और व्याख्या देखें।","Choose your answers first, then submit to see your score and explanations.")}</p></div></div>
+              <div className="paper-quiz-toolbar">
+                <div className="paper-quiz-progress"><b>{t("आपका अभ्यास","Your practice")}</b><span>{Object.keys(paperQuizAnswers).length} / {(paperAnalysis.mcqs || []).length} {t("उत्तर चुने","answered")}</span></div>
+                <div className="paper-quiz-actions">
+                  <button type="button" className="secondary-button" onClick={() => { setPaperQuizAnswers({}); setPaperQuizSubmitted(false); }} disabled={Object.keys(paperQuizAnswers).length === 0 && !paperQuizSubmitted}><RotateCcw size={15}/>{t("रीसेट","Reset")}</button>
+                  <button type="button" className="primary-button" onClick={() => setPaperQuizSubmitted(true)} disabled={paperQuizSubmitted || Object.keys(paperQuizAnswers).length === 0}><CheckCircle2 size={16}/>{t("उत्तर जमा करें","Submit answers")}</button>
+                </div>
+              </div>
+              {paperQuizSubmitted && <div className="paper-quiz-score" aria-live="polite">
+                <div><span>{t("आपका स्कोर","Your score")}</span><b>{(paperAnalysis.mcqs || []).filter((question, index) => paperQuizAnswers[index] === question.answer_index).length} / {(paperAnalysis.mcqs || []).length}</b></div>
+                <p>{t("सही उत्तर","Correct")}: {(paperAnalysis.mcqs || []).filter((question, index) => paperQuizAnswers[index] === question.answer_index).length} · {t("गलत","Incorrect")}: {(paperAnalysis.mcqs || []).filter((question, index) => Object.prototype.hasOwnProperty.call(paperQuizAnswers, index) && paperQuizAnswers[index] !== question.answer_index).length} · {t("छूटे","Unanswered")}: {Math.max(0, (paperAnalysis.mcqs || []).length - Object.keys(paperQuizAnswers).length)}</p>
+                <span>{t("इन सवालों को अभ्यास सामग्री के रूप में बनाया गया है; इन्हें आधिकारिक PYQ नहीं माना गया है।","These questions are practice material and are not verified official PYQs.")}</span>
+              </div>}
+              {(paperAnalysis.mcqs || []).map((question, index) => {
+                const options = hi ? question.options_hi : question.options_en;
+                const selectedAnswer = paperQuizAnswers[index];
+                return <article className="paper-question-card" key={index}>
+                  <div className="paper-question-meta"><span>Q{index + 1}</span><span>{question.topic}</span><span>{question.difficulty}</span></div>
+                  <h3>{hi ? question.question_hi : question.question_en}</h3>
+                  <ol>{options.map((option, optionIndex) => {
+                    const selected = selectedAnswer === optionIndex;
+                    const correct = optionIndex === question.answer_index;
+                    const optionClass = "paper-option-button" +
+                      (selected ? " is-selected" : "") +
+                      (paperQuizSubmitted && correct ? " is-correct" : "") +
+                      (paperQuizSubmitted && selected && !correct ? " is-wrong" : "");
+                    return <li key={optionIndex}><button type="button" className={optionClass} aria-pressed={selected} disabled={paperQuizSubmitted} onClick={() => setPaperQuizAnswers((previous) => ({ ...previous, [index]: optionIndex }))}><span className="paper-option-letter">{String.fromCharCode(65 + optionIndex)}.</span><span className="paper-option-text">{option}</span>{paperQuizSubmitted && correct && <CheckCircle2 size={16}/>}{paperQuizSubmitted && selected && !correct && <X size={16}/>}</button></li>;
+                  })}</ol>
+                  {paperQuizSubmitted && <div className="paper-answer-explanation"><b>{t("सही उत्तर","Correct answer")}: {options[question.answer_index]}</b><p>{hi ? question.explanation_hi : question.explanation_en}</p></div>}
+                </article>;
+              })}
+              {paperQuizSubmitted && <button type="button" className="secondary-button" onClick={() => { setPaperQuizAnswers({}); setPaperQuizSubmitted(false); }}><RotateCcw size={16}/>{t("फिर से अभ्यास करें","Practice again")}</button>}
             </div>
             <p className="paper-privacy-note"><Info size={18}/><span>{t("यह रिपोर्ट इस पेज की मेमोरी में है; refresh करने पर हट जाएगी। सवालों को प्रश्न-बैंक में अपने-आप प्रकाशित नहीं किया गया है।","This report only lives in this page's memory and clears on refresh. Questions have not been automatically published to the question bank.")}</span></p>
             <button type="button" className="secondary-button" onClick={() => { setPaperAnalysis(null); setPaperAnalysisError(""); setPaperFile(null); if (paperFileInputRef.current) paperFileInputRef.current.value = ""; }}>{t("नया पेपर विश्लेषित करें","Analyze another paper")}<RotateCcw size={16}/></button>
