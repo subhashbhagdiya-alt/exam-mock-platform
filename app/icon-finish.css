@@ -1,0 +1,79 @@
+/* ExamPrep secondary icon finish: consistent depth without replacing each page's color theme. */
+.shell .login-content .login-icon,
+.shell .paper-analyzer-content .paper-analyzer-icon,
+.shell .paper-analyzer-content .paper-upload-icon {
+  position: relative;
+  isolation: isolate;
+  transform-style: preserve-3d;
+  transition: transform .3s cubic-bezier(.2,.8,.2,1), filter .3s ease, box-shadow .3s ease;
+}
+
+.shell .login-content .login-icon::before,
+.shell .paper-analyzer-content .paper-analyzer-icon::before,
+.shell .paper-analyzer-content .paper-upload-icon::before {
+  content: "";
+  position: absolute;
+  inset: 1px 1px auto;
+  height: 46%;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.045) 82%, transparent);
+  opacity: .9;
+  z-index: 0;
+}
+
+.shell .login-content .login-icon > svg,
+.shell .paper-analyzer-content .paper-analyzer-icon > svg,
+.shell .paper-analyzer-content .paper-upload-icon > svg {
+  position: relative;
+  z-index: 1;
+  transform: translateZ(6px);
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,.18)) drop-shadow(0 2px 2px rgba(0,0,0,.24));
+  transition: transform .3s cubic-bezier(.2,.8,.2,1), filter .3s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .shell .login-content .login-icon:hover,
+  .shell .paper-analyzer-content .paper-analyzer-icon:hover,
+  .shell .paper-analyzer-content .paper-upload-icon:hover,
+  .shell .paper-analyzer-content .paper-upload-dropzone:hover .paper-upload-icon {
+    transform: perspective(500px) translateY(-3px) rotateX(6deg) rotateY(-5deg) scale(1.04);
+    filter: brightness(1.07) saturate(1.06);
+  }
+
+  .shell .login-content .login-icon:hover > svg,
+  .shell .paper-analyzer-content .paper-analyzer-icon:hover > svg,
+  .shell .paper-analyzer-content .paper-upload-icon:hover > svg,
+  .shell .paper-analyzer-content .paper-upload-dropzone:hover .paper-upload-icon > svg {
+    transform: translateZ(10px) scale(1.06);
+    filter: drop-shadow(0 2px 0 rgba(255,255,255,.2)) drop-shadow(0 4px 4px rgba(0,0,0,.26));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell .login-content .login-icon,
+  .shell .paper-analyzer-content .paper-analyzer-icon,
+  .shell .paper-analyzer-content .paper-upload-icon,
+  .shell .login-content .login-icon > svg,
+  .shell .paper-analyzer-content .paper-analyzer-icon > svg,
+  .shell .paper-analyzer-content .paper-upload-icon > svg {
+    transition: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell .login-content .login-icon:hover,
+  .shell .paper-analyzer-content .paper-analyzer-icon:hover,
+  .shell .paper-analyzer-content .paper-upload-icon:hover,
+  .shell .paper-analyzer-content .paper-upload-dropzone:hover .paper-upload-icon {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .shell .login-content .login-icon:hover > svg,
+  .shell .paper-analyzer-content .paper-analyzer-icon:hover > svg,
+  .shell .paper-analyzer-content .paper-upload-icon:hover > svg,
+  .shell .paper-analyzer-content .paper-upload-dropzone:hover .paper-upload-icon > svg {
+    transform: translateZ(6px) !important;
+  }
+}
