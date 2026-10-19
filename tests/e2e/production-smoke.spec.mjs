@@ -40,7 +40,8 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   expect(bodyText.length, "The homepage should render visible content").toBeGreaterThan(40);
   await expect(page.locator("html")).toHaveAttribute("lang", /^(en|hi)$/);
   await expect(page.getByText("Exam Boards", { exact: true }).first()).toBeVisible();
-  // Capture the actual board/dashboard screen before navigating into secondary views.
+  // Keep both a readable first-screen capture and a complete-page diagnostic.
+  await page.screenshot({ path: "test-results/examprep-mobile-home-viewport.png" });
   await page.screenshot({ path: "test-results/examprep-mobile-home.png", fullPage: true });
 
   // Navigate through the real mobile menu into Account, then verify both login methods.
@@ -52,10 +53,37 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.getByTestId("login-method-email").click();
   await expect(page.getByTestId("login-email-input")).toBeVisible();
 
+  const loginIcon = page.locator(".login-content .login-icon");
+  await expect(loginIcon).toBeVisible();
+  const loginIconStyles = await loginIcon.evaluate((element) => ({
+    boxShadow: getComputedStyle(element).boxShadow,
+    topHighlight: getComputedStyle(element, "::before").backgroundImage,
+    svgFilter: getComputedStyle(element.querySelector("svg")).filter
+  }));
+  expect(loginIconStyles.boxShadow).toContain("0px 7px 14px");
+  expect(loginIconStyles.topHighlight).toContain("linear-gradient");
+  expect(loginIconStyles.svgFilter).toContain("drop-shadow");
+  await page.screenshot({ path: "test-results/examprep-mobile-login-viewport.png" });
+
   // The paper analyzer should be discoverable on mobile and gated behind account login.
   await page.getByTestId("menu-toggle").click();
   await page.getByTestId("menu-paper-analyzer").click();
   await expect(page.getByTestId("paper-analyzer-title")).toBeVisible();
+  const analyzerIcon = page.locator(".paper-analyzer-content .paper-analyzer-icon");
+  const uploadIcon = page.locator(".paper-analyzer-content .paper-upload-icon");
+  await expect(analyzerIcon).toBeVisible();
+  await expect(uploadIcon).toBeVisible();
+  for (const iconLocator of [analyzerIcon, uploadIcon]) {
+    const iconStyles = await iconLocator.evaluate((element) => ({
+      boxShadow: getComputedStyle(element).boxShadow,
+      topHighlight: getComputedStyle(element, "::before").backgroundImage,
+      svgFilter: getComputedStyle(element.querySelector("svg")).filter
+    }));
+    expect(iconStyles.boxShadow).toContain("0px 7px 14px");
+    expect(iconStyles.topHighlight).toContain("linear-gradient");
+    expect(iconStyles.svgFilter).toContain("drop-shadow");
+  }
+  await page.screenshot({ path: "test-results/examprep-mobile-paper-analyzer-viewport.png" });
   await expect(page.locator('input[type="file"][accept*=".pdf"]')).toBeAttached();
   await expect(page.getByRole("button", { name: /Analyze & Generate MCQs/i })).toBeDisabled();
 
