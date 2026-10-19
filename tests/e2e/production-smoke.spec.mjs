@@ -39,6 +39,9 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   const bodyText = (await page.locator("body").innerText()).trim();
   expect(bodyText.length, "The homepage should render visible content").toBeGreaterThan(40);
   await expect(page.locator("html")).toHaveAttribute("lang", /^(en|hi)$/);
+  await expect(page.getByText("Exam Boards", { exact: true }).first()).toBeVisible();
+  // Capture the actual board/dashboard screen before navigating into secondary views.
+  await page.screenshot({ path: "test-results/examprep-mobile-home.png", fullPage: true });
 
   // Navigate through the real mobile menu into Account, then verify both login methods.
   await page.getByTestId("menu-toggle").click();
@@ -66,7 +69,7 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   ).toBeLessThanOrEqual(dimensions.viewportWidth + 2);
 
   // Keep actionable diagnostics when the production build hides React's full hydration message.
-  await page.screenshot({ path: "test-results/examprep-mobile-home.png", fullPage: true });
+  await page.screenshot({ path: "test-results/examprep-mobile-paper-analyzer.png", fullPage: true });
   const diagnostics = await page.evaluate(({ pageErrors, consoleMessages, bodyText }) => ({
     url: location.href,
     title: document.title,
