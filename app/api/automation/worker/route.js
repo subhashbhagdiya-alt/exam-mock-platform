@@ -354,6 +354,10 @@ export async function GET(request) {
     await db.from("background_manager_tasks").update({
       status: retryDecision.deferred ? "queued" : "failed",
       ...(retryDecision.payload !== task.payload ? { payload: retryDecision.payload } : {}),
+      // A free-tier 429 is not actionable until quota recovers. Clear the resume-first
+      // timestamp so this task yields to other queued work while preserving result
+      // checkpoints; never switch to a paid provider or discard the saved draft.
+      ...(retryDecision.reason === "free_quota" ? { started_at: null } : {}),
       error_message: err?.message || "Task failed",
       completed_at: retryDecision.deferred ? null : new Date().toISOString()
     }).eq("id", task.id);
