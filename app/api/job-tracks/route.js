@@ -73,7 +73,7 @@ export async function GET() {
 
     for (const question of questions) {
       verifiedCounts.set(question.exam_id, (verifiedCounts.get(question.exam_id) || 0) + 1);
-      const key = \`${question.exam_id}:${question.source_type || "unknown"}\`;
+      const key = String(question.exam_id) + ":" + String(question.source_type || "unknown");
       sourceCounts.set(key, (sourceCounts.get(key) || 0) + 1);
       if (!subjectSets.has(question.exam_id)) subjectSets.set(question.exam_id, new Set());
       if (!topicSets.has(question.exam_id)) topicSets.set(question.exam_id, new Set());
