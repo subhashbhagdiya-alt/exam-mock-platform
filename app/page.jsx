@@ -776,6 +776,20 @@ export default function HomePage() {
   const [language, setLanguage] = useState("en");
   const [view, setView] = useState("boards");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  useEffect(() => {
+    if (!mobileNavOpen || typeof document === "undefined") return undefined;
+    const closeMobileNavOutside = (event) => {
+      if (event.target.closest?.(".sidebar.mobile-menu-open") || event.target.closest?.(".mobile-menu-toggle")) return;
+      setMobileNavOpen(false);
+    };
+    const closeMobileNavEscape = (event) => { if (event.key === "Escape") setMobileNavOpen(false); };
+    document.addEventListener("pointerdown", closeMobileNavOutside, true);
+    document.addEventListener("keydown", closeMobileNavEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeMobileNavOutside, true);
+      document.removeEventListener("keydown", closeMobileNavEscape);
+    };
+  }, [mobileNavOpen]);
   const [settingsSection, setSettingsSection] = useState("profile");
   const [answers, setAnswers] = useState({});
   const [review, setReview] = useState([]);
