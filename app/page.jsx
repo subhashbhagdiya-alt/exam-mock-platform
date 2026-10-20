@@ -1275,7 +1275,7 @@ export default function HomePage() {
     }
     if (file.size > MAX_PAPER_FILE_BYTES) {
       setPaperFile(null);
-      setPaperAnalysisError(t("फ़ाइल 3 MB या उससे छोटी होनी चाहिए।", "The file must be 3 MB or smaller."));
+      setPaperAnalysisError(t("फ़ाइल 4 MB या उससे छोटी होनी चाहिए।", "The file must be 4 MB or smaller."));
       return;
     }
     if (!isSupportedPaperFile(file.name, file.type)) {
@@ -1302,7 +1302,7 @@ export default function HomePage() {
       return;
     }
     if (paperFile.size > MAX_PAPER_FILE_BYTES) {
-      setPaperAnalysisError(t("फ़ाइल 3 MB या उससे छोटी होनी चाहिए।", "The file must be 3 MB or smaller."));
+      setPaperAnalysisError(t("फ़ाइल 4 MB या उससे छोटी होनी चाहिए।", "The file must be 4 MB or smaller."));
       return;
     }
     if (!isSupportedPaperFile(paperFile.name, paperFile.type)) {
@@ -1320,16 +1320,12 @@ export default function HomePage() {
         setPaperAnalysisError(t("सेशन समाप्त हो गया है। दोबारा लॉगिन करें।", "Your session has expired. Please sign in again."));
         return;
       }
-      const bytes = new Uint8Array(await paperFile.arrayBuffer());
-      let binary = "";
-      for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-        binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
-      }
-      const fileBase64 = btoa(binary);
+      const formData = new FormData();
+      formData.append("file", paperFile, paperFile.name);
       const response = await fetch("/api/paper-analysis", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ fileName: paperFile.name, mimeType: paperFile.type, fileBase64 })
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: formData
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.error || t("पेपर का विश्लेषण नहीं हो सका।", "Could not analyze this paper."));
@@ -2077,7 +2073,7 @@ export default function HomePage() {
             >
               <div className="paper-upload-icon"><Upload size={27}/></div>
               <h2>{t("अपना पेपर चुनें","Choose your paper")}</h2>
-              <p>{t("PDF, JPG, PNG या WEBP · अधिकतम 3 MB","PDF, JPG, PNG, or WEBP · 3 MB maximum")}</p>
+              <p>{t("PDF, JPG, PNG या WEBP · अधिकतम 4 MB","PDF, JPG, PNG, or WEBP · 4 MB maximum")}</p>
               <label htmlFor="exam-paper-upload-input" className="secondary-button paper-file-picker"><FileText size={17}/>{paperFile ? t("फ़ाइल बदलें","Change file") : t("फ़ाइल चुनें","Browse files")}</label>
               {paperFile && <div className="paper-file-selected"><CheckCircle2 size={17}/><span>{paperFile.name}</span><small>{(paperFile.size / 1024 / 1024).toFixed(2)} MB</small></div>}
             </div>
