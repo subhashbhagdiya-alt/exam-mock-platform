@@ -926,18 +926,26 @@ export default function HomePage() {
     { key: "SSC", labelHi: "SSC", labelEn: "SSC", icon: "📝" },
     { key: "RPF", labelHi: "RPF", labelEn: "RPF", icon: "🛡️" },
     { key: "RRB", labelHi: "RRB / रेलवे", labelEn: "RRB / Railway", icon: "🚆" },
+    { key: "POLICE", labelHi: "पुलिस भर्ती", labelEn: "Police Recruitment", icon: "👮" },
+    { key: "BANKING", labelHi: "बैंकिंग", labelEn: "Banking", icon: "🏦" },
+    { key: "DEFENCE", labelHi: "रक्षा भर्ती", labelEn: "Defence", icon: "🎖️" },
+    { key: "TEACHING", labelHi: "शिक्षक भर्ती", labelEn: "Teaching", icon: "📚" },
+    { key: "RAILWAY", labelHi: "अन्य रेलवे", labelEn: "Other Railway Exams", icon: "🚉" },
     { key: "OTHER", labelHi: "अन्य परीक्षाएँ", labelEn: "Other Exams", icon: "🎯" }
   ];
   const getExamGroup = (track) => {
     const board = String(track.exam_board || "").toUpperCase();
-    if (board.includes("MPESB") || board.includes("ESB")) return "MPESB";
-    if (board.includes("SSC")) return "SSC";
-    if (board.includes("RPF")) return "RPF";
-    if (board.includes("RRB") || board.includes("RAILWAY")) return "RRB";
     const slug = String(track.slug || "").toLowerCase();
-    if (slug.startsWith("rpf-")) return "RPF";
-    if (slug.startsWith("rrb-")) return "RRB";
-    if (slug.startsWith("ssc-")) return "SSC";
+    const name = String(track.name_en || track.name_hi || "").toUpperCase();
+    if (board.includes("MPESB") || board.includes("ESB") || slug.startsWith("mpesb-")) return "MPESB";
+    if (board.includes("SSC") || slug.startsWith("ssc-")) return "SSC";
+    if (board.includes("RPF") || slug.startsWith("rpf-")) return "RPF";
+    if (board.includes("RRB") || board.includes("RAILWAY") || slug.startsWith("rrb-")) return "RRB";
+    if (board.includes("BANK") || /BANK|IBPS|SBI|RBI|CLERK|PO-/.test(slug + " " + name)) return "BANKING";
+    if (board.includes("POLICE") || /POLICE|CONSTABLE|SI-|SUB-INSPECTOR|MPESB-POLICE/.test(slug + " " + name)) return "POLICE";
+    if (board.includes("DEFENCE") || /ARMY|AGNIVEER|NAVY|AIR-FORCE|AIRFORCE|CDS-|NDA-/.test(slug + " " + name)) return "DEFENCE";
+    if (board.includes("TEACH") || /TEACHER|TET|CTET|DSSSB|KVS|NVS/.test(slug + " " + name)) return "TEACHING";
+    if (board.includes("RAILWAY") || /RAILWAY|GROUP-D|ALP-|TECHNICIAN/.test(slug + " " + name)) return "RAILWAY";
     return "OTHER";
   };
 
