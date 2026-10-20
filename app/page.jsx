@@ -1536,7 +1536,7 @@ export default function HomePage() {
   async function runTest() {
     autoSubmitAttempted.current = false;
     setAuthMessage("");
-    if (!user) setAuthMessage(t("Guest practice mode: login के बिना टेस्ट शुरू हो रहा है। रिज़ल्ट इस device पर सेव होगा।","Guest practice mode: starting without login. The result will be saved on this device."));
+    if (!user) setAuthMessage(t("बिना लॉगिन अभ्यास मोड: टेस्ट शुरू हो रहा है। रिज़ल्ट इसी डिवाइस पर सेव होगा।","Guest practice mode: the test is starting without login. Your result will be saved on this device."));
     if (questionLoadError) { setAuthMessage(questionLoadError); return; }
     if (questionBankLoading) { setAuthMessage(t("सवाल अभी लोड हो रहे हैं। एक सेकंड रुककर फिर दबाएँ।","Questions are still loading. Wait a second and tap again.")); return; }
     const readyCount = Number(availableQuestionCount || 0);
