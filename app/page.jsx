@@ -1760,7 +1760,7 @@ export default function HomePage() {
   return (
     <main className={"shell theme-" + effectiveTheme + (view === "test" ? " exam-active" : "")}>
       {splashVisible && <div className="splash-screen" aria-label="ExamPrep loading"><div className="splash-orbit splash-orbit-one"/><div className="splash-orbit splash-orbit-two"/><div className="splash-logo"><GraduationCap size={54}/></div><h1>EXAM <span>PREP</span></h1><p>Study Smarter • Score Higher</p><div className="splash-loader"><span/></div><small>Loading…</small></div>}
-      <aside className={"sidebar " + (mobileNavOpen ? "mobile-menu-open" : "")}>
+      <aside className={"sidebar " + (mobileNavOpen ? "mobile-menu-open" : "")} onClick={event => { if (event.target.closest(".nav-item")) setMobileNavOpen(false); }}>
         <div className="brand"><div className="brand-icon"><GraduationCap size={23}/></div><span>Exam<span className="brand-accent">Prep</span><small>YOUR NEXT RANK STARTS HERE</small></span></div>
         <div className="side-label">{t("वर्कस्पेस","WORKSPACE")}</div>
         {view !== "test" && view !== "instructions" && <button className={"nav-item " + (view === "home" ? "active" : "")} onClick={() => navigateTo("home")}><Home size={18}/>{t("होम","Home")}</button>}
