@@ -4530,3 +4530,43 @@ button{cursor:pointer}
     z-index:120!important;
   }
 }
+
+
+/* Final mobile menu refinement: compact drawer, reliable inside taps, outside-only dismissal, smooth 3D motion. */
+@media (max-width:760px){
+  .shell .mobile-menu-backdrop{
+    z-index:109!important;
+    inset:calc(58px + env(safe-area-inset-top)) 0 0!important;
+    background:rgba(1,3,12,.38)!important;
+    animation:mobileMenuBackdropIn .18s ease-out both!important;
+  }
+  .shell .sidebar.mobile-menu-open{
+    z-index:120!important;top:calc(58px + env(safe-area-inset-top) + 5px)!important;
+    left:16px!important;right:16px!important;width:auto!important;
+    max-height:min(52dvh,430px)!important;overflow-y:auto!important;
+    padding:10px!important;gap:6px!important;
+    transform-origin:top center!important;
+    animation:mobileMenuDropIn .24s cubic-bezier(.2,.8,.2,1) both!important;
+    touch-action:pan-y!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item,
+  .shell .sidebar.mobile-menu-open .nav-item.active{
+    min-height:44px!important;padding:9px 12px!important;
+    border-radius:13px!important;font-size:13px!important;
+    transition:transform .16s ease,box-shadow .16s ease,filter .16s ease!important;
+    touch-action:manipulation!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item:active{
+    transform:translateY(2px) scale(.99)!important;filter:brightness(1.12)!important;
+  }
+  .shell .mobile-menu-toggle .menu-toggle-chevron{transition:transform .22s ease!important}
+  .shell .mobile-menu-toggle[aria-expanded="true"] .menu-toggle-chevron{transform:rotate(90deg)!important}
+}
+@keyframes mobileMenuDropIn{
+  0%{opacity:0;transform:perspective(900px) rotateX(-9deg) translateY(-10px) scale(.97);filter:blur(3px)}
+  100%{opacity:1;transform:perspective(900px) rotateX(0) translateY(0) scale(1);filter:blur(0)}
+}
+@keyframes mobileMenuBackdropIn{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .shell .sidebar.mobile-menu-open,.shell .mobile-menu-backdrop,.shell .sidebar.mobile-menu-open .nav-item{animation:none!important;transition:none!important}
+}
