@@ -1140,7 +1140,7 @@ export default function HomePage() {
         setAvailableQuestionCount(actual);
         setPracticeQuestionCount(current => {
           const validChoices = Array.from(new Set(
-            [10, 20, 30, 40, 50, Math.min(100, actual)].filter(n => n > 0 && n <= actual)
+            [10, 15, 20, 25, 30, 40, 50, 75, 100, Math.min(100, actual)].filter(n => n > 0 && n <= actual)
           )).sort((a, b) => a - b);
           if (!validChoices.length) return 0;
           if (validChoices.includes(current)) return current;
