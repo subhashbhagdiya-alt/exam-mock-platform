@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../../../../lib/weekly-exam-analysis.mjs";
+import { chooseReadyWorkerTask, classifyWorkerFailure } from "../../../../lib/worker-queue.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -125,7 +126,9 @@ async function generateWeeklyDraft(apiKey, task, context, previousDraft = []) {
   const need = target - previousDraft.length;
   // Keep each provider request small. The task result is persisted between worker
   // invocations, so the next scheduled run resumes from the saved draft.
-  const batchSize = 5;
+  // One successful worker run now creates a larger but still bounded draft batch.
+  // The following run independently reviews that batch before it can be staged.
+  const batchSize = 10;
   const requested = Math.min(batchSize, Math.max(need, 1));
   const prompt = `You are ExamPrep's exam-pattern analyst and question writer. Analyze the exam evidence and create NEW bilingual practice MCQs.
 Return valid JSON only with shape {"analysis":{"trend_summary":"...","subjects":[{"name":"...","weight_estimate":"...","evidence":"..."}],"topic_breakdown":[{"subject":"...","topic":"...","priority":"high|medium|low","reason":"..."}],"difficulty_breakdown":{"easy":"...","medium":"...","hard":"..."},"confidence_notes":"...","source_evidence":[{"title":"...","url":"...","source_type":"official_syllabus|official_paper|other","what_it_supports":"..."}]},"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}.
@@ -277,15 +280,28 @@ export async function GET(request) {
   const db = dbClient();
   if (!db) return NextResponse.json({ error: "Server database credentials are not configured" }, { status: 503 });
 
-  // Resume-first scheduling: finish multi-phase tasks before starting another one.
-  // Deferred analysis tasks preserve their original started_at, so their draft/review
-  // steps run on the next scheduled invocation instead of waiting behind the entire queue.
-  const { data: task, error: claimError } = await db.from("background_manager_tasks").select("*").eq("status", "queued")
+  // Resume-first scheduling. Skip tasks that are cooling down after free-tier
+  // quota exhaustion or a transient provider outage so one failing job cannot
+  // block every other queued exam. A Hobby cron runs only once per day, so the
+  // retry_after timestamp also guards duplicate/manual invocations.
+  const { data: queuedTasks, error: claimError } = await db.from("background_manager_tasks").select("*").eq("status", "queued")
     .order("started_at", { ascending: true, nullsFirst: false })
     .order("priority", { ascending: false })
-    .order("created_at", { ascending: true }).limit(1).maybeSingle();
+    .order("created_at", { ascending: true }).limit(100);
   if (claimError) return NextResponse.json({ error: claimError.message }, { status: 500 });
-  if (!task) return NextResponse.json({ ok: true, processed: false, message: "No queued task." });
+  const task = chooseReadyWorkerTask(queuedTasks || [], Date.now());
+  if (!task) {
+    const nextRetry = (queuedTasks || [])
+      .map((item) => Date.parse(String(item.payload?.retry_after || "")))
+      .filter((time) => Number.isFinite(time) && time > Date.now())
+      .sort((a, b) => a - b)[0];
+    return NextResponse.json({
+      ok: true,
+      processed: false,
+      message: queuedTasks?.length ? "Queued tasks are waiting for their free-tier retry cooldown." : "No queued task.",
+      next_retry_at: nextRetry ? new Date(nextRetry).toISOString() : null
+    });
+  }
 
   const { data: claimedRows, error: markError } = await db.from("background_manager_tasks").update({
     status: "running", started_at: task.started_at ?? new Date().toISOString(), error_message: null
@@ -337,27 +353,36 @@ export async function GET(request) {
 
     const deferred = Boolean(result?.deferred);
     const blocked = Boolean(result?.blocked);
+    const { retry_after: _retryAfter, ...payloadWithoutRetryAfter } = task.payload || {};
     await db.from("background_manager_tasks").update({
       status: deferred ? "queued" : blocked ? "blocked" : "done",
+      ...(deferred ? { payload: payloadWithoutRetryAfter } : {}),
       result,
       error_message: blocked ? result.reason : null,
       completed_at: deferred ? null : new Date().toISOString()
     }).eq("id", task.id);
     return NextResponse.json({ ok: true, processed: true, task_id: task.id, task_type: task.task_type, status: deferred ? "queued" : blocked ? "blocked" : "done", result });
   } catch (err) {
-    const quotaDeferred = err?.code === "FREE_QUOTA_EXHAUSTED";
+    const retry = classifyWorkerFailure(err, task.payload || {}, Date.now());
     await db.from("background_manager_tasks").update({
-      status: quotaDeferred ? "queued" : "failed",
+      status: retry.deferred ? "queued" : "failed",
+      ...(retry.deferred ? { payload: retry.payload } : {}),
       error_message: err?.message || "Task failed",
-      completed_at: quotaDeferred ? null : new Date().toISOString()
+      completed_at: retry.deferred ? null : new Date().toISOString()
     }).eq("id", task.id);
+    const retryMessage = retry.reason === "free_quota"
+      ? "Gemini free-tier quota is unavailable; this task will cool down for 24 hours and other queued tasks can proceed. No paid fallback is used."
+      : retry.deferred
+        ? `Transient Gemini failure; retry ${retry.retryCount}/3 is scheduled after the cooldown. No paid fallback is used.`
+        : undefined;
     return NextResponse.json({
-      ok: quotaDeferred,
+      ok: retry.deferred,
       processed: true,
       task_id: task.id,
-      status: quotaDeferred ? "queued" : "failed",
+      status: retry.deferred ? "queued" : "failed",
+      retry_after: retry.retryAfter,
       error: err?.message || "Task failed",
-      retry: quotaDeferred ? "The next scheduled worker run will retry; no paid-provider fallback is used." : undefined
-    }, { status: quotaDeferred ? 202 : 500 });
+      retry: retryMessage
+    }, { status: retry.deferred ? 202 : 500 });
   }
 }
