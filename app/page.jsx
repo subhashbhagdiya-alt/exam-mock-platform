@@ -2061,6 +2061,7 @@ export default function HomePage() {
           <form className="paper-upload-card" onSubmit={analyzeUploadedPaper}>
             <input
               ref={paperFileInputRef}
+              id="exam-paper-upload-input"
               className="paper-file-input"
               type="file"
               accept=".pdf,application/pdf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
@@ -2077,7 +2078,7 @@ export default function HomePage() {
               <div className="paper-upload-icon"><Upload size={27}/></div>
               <h2>{t("अपना पेपर चुनें","Choose your paper")}</h2>
               <p>{t("PDF, JPG, PNG या WEBP · अधिकतम 3 MB","PDF, JPG, PNG, or WEBP · 3 MB maximum")}</p>
-              <button type="button" className="secondary-button" onClick={() => paperFileInputRef.current?.click()}><FileText size={17}/>{paperFile ? t("फ़ाइल बदलें","Change file") : t("फ़ाइल चुनें","Browse files")}</button>
+              <label htmlFor="exam-paper-upload-input" className="secondary-button paper-file-picker"><FileText size={17}/>{paperFile ? t("फ़ाइल बदलें","Change file") : t("फ़ाइल चुनें","Browse files")}</label>
               {paperFile && <div className="paper-file-selected"><CheckCircle2 size={17}/><span>{paperFile.name}</span><small>{(paperFile.size / 1024 / 1024).toFixed(2)} MB</small></div>}
             </div>
             {paperAnalysisError && <div className="paper-analysis-error" role="alert">{paperAnalysisError}</div>}
