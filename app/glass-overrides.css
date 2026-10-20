@@ -4334,22 +4334,19 @@ button{cursor:pointer}
 /* Mobile exam UX hotfix: keep the finish action reachable and prevent bottom UI overlap. */
 @media (max-width: 760px) {
   .shell.exam-active .test-content {
-    padding-bottom: calc(100px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(280px + env(safe-area-inset-bottom)) !important;
   }
   .shell.exam-active .mobile-finish-test {
     z-index: 1001 !important;
-    bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+    /* Keep the action above the app's fixed multi-row mobile navigation. */
+    bottom: calc(205px + env(safe-area-inset-bottom)) !important;
     pointer-events: auto !important;
   }
   .shell.exam-active .test-content .question-controls {
     position: static !important;
     bottom: auto !important;
   }
-  .shell.exam-active .test-content .question-panel,
-  .shell.exam-active .test-content .question-nav {
-    transform: none !important;
-    perspective: none !important;
-  }
+  /* Preserve the approved 3D/glass treatment on exam cards. */
   .shell.exam-active .test-content .question-panel h2 {
     overflow-wrap: anywhere !important;
     line-height: 1.45 !important;
