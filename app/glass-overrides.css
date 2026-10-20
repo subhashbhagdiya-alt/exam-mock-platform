@@ -4570,3 +4570,20 @@ button{cursor:pointer}
 @media (prefers-reduced-motion:reduce){
   .shell .sidebar.mobile-menu-open,.shell .mobile-menu-backdrop,.shell .sidebar.mobile-menu-open .nav-item{animation:none!important;transition:none!important}
 }
+
+
+/* Smaller mobile drawer; outside touch is handled at document capture so floating widgets cannot block dismissal. */
+@media (max-width:760px){
+  .shell .sidebar.mobile-menu-open{
+    max-height:min(40dvh,340px)!important;
+    padding:8px!important;gap:5px!important;
+    border-radius:17px!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item,
+  .shell .sidebar.mobile-menu-open .nav-item.active{
+    min-height:38px!important;height:auto!important;
+    padding:7px 10px!important;gap:10px!important;
+    font-size:12px!important;border-radius:11px!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item svg{width:17px!important;height:17px!important}
+}
