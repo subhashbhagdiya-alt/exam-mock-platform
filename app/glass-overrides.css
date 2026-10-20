@@ -4427,3 +4427,26 @@ button{cursor:pointer}
     box-shadow: 0 10px 26px rgba(104,78,220,.38), 0 0 0 1px rgba(216,204,255,.32) !important;
   }
 }
+
+
+/* Fix: the multi-row mobile navigation was covering the final cards and notices. */
+@media (max-width: 760px) {
+  .shell {
+    padding-bottom: calc(276px + env(safe-area-inset-bottom)) !important;
+  }
+  .shell .main {
+    padding-bottom: calc(276px + env(safe-area-inset-bottom)) !important;
+  }
+  .shell .content {
+    padding-bottom: calc(286px + env(safe-area-inset-bottom)) !important;
+    scroll-padding-bottom: calc(286px + env(safe-area-inset-bottom)) !important;
+  }
+  .shell .bottom-note,
+  .shell .important-note,
+  .shell .practice-options-dashboard {
+    scroll-margin-bottom: calc(286px + env(safe-area-inset-bottom)) !important;
+  }
+  .shell .sidebar {
+    z-index: 100 !important;
+  }
+}
