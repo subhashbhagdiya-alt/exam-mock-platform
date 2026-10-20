@@ -4427,3 +4427,221 @@ button{cursor:pointer}
     box-shadow: 0 10px 26px rgba(104,78,220,.38), 0 0 0 1px rgba(216,204,255,.32) !important;
   }
 }
+
+
+/* Mobile navigation: replace the tall always-visible bottom button grid with a top menu toggle. */
+.mobile-menu-toggle{display:none}
+@media (max-width:760px){
+  .mobile-menu-toggle{
+    display:inline-flex!important;align-items:center;justify-content:center;gap:7px;
+    flex:0 0 auto;min-height:36px;padding:7px 10px;border-radius:12px;
+    border:1px solid rgba(157,132,255,.34);
+    background:linear-gradient(145deg,rgba(46,36,83,.96),rgba(19,22,40,.96));
+    color:#d9ceff;font-size:12px;font-weight:800;box-shadow:0 6px 18px rgba(0,0,0,.2);
+  }
+  .mobile-menu-toggle .menu-toggle-chevron{transition:transform .18s ease}
+  .mobile-menu-toggle .menu-toggle-chevron.open{transform:rotate(90deg)}
+  .shell .topbar{display:flex!important;align-items:center!important;gap:9px!important}
+  .shell .breadcrumb{flex:1;min-width:0}
+  .shell .top-actions{flex:0 0 auto}
+  .shell .top-actions .live-pill{display:none!important}
+  .shell .sidebar{
+    display:none!important;position:fixed!important;top:calc(58px + env(safe-area-inset-top))!important;
+    left:10px!important;right:10px!important;bottom:auto!important;width:auto!important;
+    height:auto!important;max-height:calc(100dvh - 82px - env(safe-area-inset-bottom))!important;
+    overflow-y:auto!important;overscroll-behavior:contain!important;
+    padding:14px!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:7px!important;border:1px solid rgba(157,132,255,.3)!important;
+    border-radius:20px!important;background:rgba(10,12,25,.97)!important;
+    box-shadow:0 22px 60px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.07)!important;
+    backdrop-filter:blur(24px)!important;-webkit-backdrop-filter:blur(24px)!important;
+    z-index:120!important;
+  }
+  .shell .sidebar.mobile-menu-open{display:grid!important}
+  .shell .sidebar .brand,.shell .sidebar .side-label{display:none!important}
+  .shell .sidebar .nav-item,.shell .sidebar .nav-item.active{
+    display:flex!important;flex-direction:row!important;justify-content:flex-start!important;
+    align-items:center!important;gap:10px!important;width:100%!important;min-width:0!important;
+    min-height:50px!important;height:auto!important;margin:0!important;padding:10px 11px!important;
+    border:1px solid rgba(157,165,195,.14)!important;border-radius:13px!important;
+    font-size:12px!important;line-height:1.25!important;text-align:left!important;
+    background:rgba(22,25,42,.86)!important;color:#b9c0d5!important;
+  }
+  .shell .sidebar .nav-item.active{background:linear-gradient(135deg,rgba(130,91,255,.35),rgba(51,48,91,.7))!important;border-color:rgba(177,151,255,.48)!important;color:#f0eaff!important}
+  .shell .sidebar .nav-item svg{width:19px!important;height:19px!important;flex:0 0 auto!important}
+  .shell .sidebar .sidebar-bottom{display:none!important}
+  .shell .main{padding-bottom:calc(24px + env(safe-area-inset-bottom))!important}
+  .shell{padding-bottom:calc(18px + env(safe-area-inset-bottom))!important}
+}
+
+
+/* Refine mobile menu: restore the premium 3D glass treatment and show every destination in a clear vertical list. */
+@media (max-width:760px){
+  .shell .sidebar.mobile-menu-open{
+    display:flex!important;flex-direction:column!important;align-items:stretch!important;
+    gap:9px!important;padding:15px!important;
+    background:linear-gradient(155deg,rgba(24,23,48,.98),rgba(7,11,23,.985))!important;
+    border:1px solid rgba(169,145,255,.48)!important;
+    box-shadow:0 26px 60px rgba(0,0,0,.65),0 8px 0 rgba(8,8,20,.82),inset 0 1px 0 rgba(255,255,255,.16),inset 0 -2px 0 rgba(129,99,255,.18)!important;
+    transform:perspective(900px) rotateX(1deg)!important;
+  }
+  .shell .sidebar .nav-item,.shell .sidebar .nav-item.active{
+    position:relative!important;display:flex!important;flex-direction:row!important;
+    align-items:center!important;justify-content:flex-start!important;gap:12px!important;
+    min-height:54px!important;padding:12px 14px!important;
+    border:1px solid rgba(161,169,211,.22)!important;border-bottom:2px solid rgba(4,6,17,.85)!important;
+    border-radius:15px!important;
+    background:linear-gradient(155deg,rgba(42,46,73,.98) 0%,rgba(22,25,44,.98) 58%,rgba(14,17,32,.99) 100%)!important;
+    box-shadow:0 5px 0 rgba(5,7,18,.9),0 9px 18px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.11),inset 0 -1px 0 rgba(135,116,255,.1)!important;
+    color:#d4d9ed!important;font-size:14px!important;font-weight:700!important;
+    letter-spacing:.01em!important;text-align:left!important;
+  }
+  .shell .sidebar .nav-item:active{transform:translateY(2px)!important;box-shadow:0 2px 0 rgba(5,7,18,.9),inset 0 1px 0 rgba(255,255,255,.08)!important}
+  .shell .sidebar .nav-item.active{
+    background:linear-gradient(145deg,#8965f5 0%,#6541d3 48%,#382879 100%)!important;
+    border-color:rgba(218,203,255,.72)!important;border-bottom-color:#291b60!important;
+    color:#fff!important;box-shadow:0 5px 0 #24184f,0 10px 23px rgba(109,76,236,.32),inset 0 1px 0 rgba(255,255,255,.42),inset 0 -2px 0 rgba(27,14,75,.3)!important;
+  }
+  .shell .sidebar .nav-item svg{filter:drop-shadow(0 2px 1px rgba(0,0,0,.4))!important}
+  .shell .mobile-menu-toggle{
+    min-height:42px!important;padding:8px 12px!important;border-radius:14px!important;
+    background:linear-gradient(150deg,#7050d8,#3b2b77 72%,#28204c)!important;
+    border:1px solid rgba(206,190,255,.55)!important;border-bottom:3px solid #211742!important;
+    box-shadow:0 4px 0 rgba(7,7,19,.88),0 8px 18px rgba(103,75,219,.3),inset 0 1px 0 rgba(255,255,255,.32)!important;
+    color:#fff!important;
+  }
+}
+
+
+/* Make the mobile navigation a dismissible, compact overlay rather than a full-screen blocker. */
+.mobile-menu-backdrop{display:none}
+@media (max-width:760px){
+  .shell .mobile-menu-backdrop{
+    display:block!important;position:fixed!important;inset:calc(58px + env(safe-area-inset-top)) 0 0!important;
+    width:100%!important;height:auto!important;padding:0!important;margin:0!important;
+    border:0!important;border-radius:0!important;background:rgba(1,3,12,.52)!important;
+    backdrop-filter:blur(3px)!important;-webkit-backdrop-filter:blur(3px)!important;
+    z-index:110!important;cursor:default!important;
+  }
+  .shell .sidebar.mobile-menu-open{
+    top:calc(58px + env(safe-area-inset-top))!important;
+    max-height:min(62dvh,560px)!important;
+    overflow-y:auto!important;overscroll-behavior:contain!important;
+    z-index:120!important;
+  }
+}
+
+
+/* Final mobile menu refinement: compact drawer, reliable inside taps, outside-only dismissal, smooth 3D motion. */
+@media (max-width:760px){
+  .shell .mobile-menu-backdrop{
+    z-index:109!important;
+    inset:calc(58px + env(safe-area-inset-top)) 0 0!important;
+    background:rgba(1,3,12,.38)!important;
+    animation:mobileMenuBackdropIn .18s ease-out both!important;
+  }
+  .shell .sidebar.mobile-menu-open{
+    z-index:120!important;top:calc(58px + env(safe-area-inset-top) + 5px)!important;
+    left:16px!important;right:16px!important;width:auto!important;
+    max-height:min(52dvh,430px)!important;overflow-y:auto!important;
+    padding:10px!important;gap:6px!important;
+    transform-origin:top center!important;
+    animation:mobileMenuDropIn .24s cubic-bezier(.2,.8,.2,1) both!important;
+    touch-action:pan-y!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item,
+  .shell .sidebar.mobile-menu-open .nav-item.active{
+    min-height:44px!important;padding:9px 12px!important;
+    border-radius:13px!important;font-size:13px!important;
+    transition:transform .16s ease,box-shadow .16s ease,filter .16s ease!important;
+    touch-action:manipulation!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item:active{
+    transform:translateY(2px) scale(.99)!important;filter:brightness(1.12)!important;
+  }
+  .shell .mobile-menu-toggle .menu-toggle-chevron{transition:transform .22s ease!important}
+  .shell .mobile-menu-toggle[aria-expanded="true"] .menu-toggle-chevron{transform:rotate(90deg)!important}
+}
+@keyframes mobileMenuDropIn{
+  0%{opacity:0;transform:perspective(900px) rotateX(-9deg) translateY(-10px) scale(.97);filter:blur(3px)}
+  100%{opacity:1;transform:perspective(900px) rotateX(0) translateY(0) scale(1);filter:blur(0)}
+}
+@keyframes mobileMenuBackdropIn{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .shell .sidebar.mobile-menu-open,.shell .mobile-menu-backdrop,.shell .sidebar.mobile-menu-open .nav-item{animation:none!important;transition:none!important}
+}
+
+
+/* Smaller mobile drawer; outside touch is handled at document capture so floating widgets cannot block dismissal. */
+@media (max-width:760px){
+  .shell .sidebar.mobile-menu-open{
+    max-height:min(40dvh,340px)!important;
+    padding:8px!important;gap:5px!important;
+    border-radius:17px!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item,
+  .shell .sidebar.mobile-menu-open .nav-item.active{
+    min-height:38px!important;height:auto!important;
+    padding:7px 10px!important;gap:10px!important;
+    font-size:12px!important;border-radius:11px!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item svg{width:17px!important;height:17px!important}
+}
+
+
+/* Fix drawer still feeling full-screen: compact floating panel anchored directly under Menu. */
+@media (max-width:760px){
+  .shell .sidebar.mobile-menu-open{
+    position:fixed!important;
+    top:calc(108px + env(safe-area-inset-top))!important;
+    left:20px!important;right:auto!important;
+    width:min(310px,calc(100vw - 40px))!important;
+    max-height:min(34dvh,285px)!important;
+    overflow-y:auto!important;
+    padding:7px!important;gap:4px!important;
+    border-radius:17px!important;
+    background:linear-gradient(155deg,rgba(25,24,52,.985),rgba(7,10,22,.99))!important;
+    box-shadow:0 18px 42px rgba(0,0,0,.52),0 5px 0 rgba(5,6,17,.9),inset 0 1px 0 rgba(255,255,255,.14)!important;
+    transform-origin:top left!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item,
+  .shell .sidebar.mobile-menu-open .nav-item.active{
+    min-height:34px!important;padding:6px 9px!important;
+    gap:9px!important;font-size:12px!important;
+    border-radius:10px!important;
+    box-shadow:0 3px 0 rgba(4,5,15,.88),inset 0 1px 0 rgba(255,255,255,.09)!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item svg{width:16px!important;height:16px!important}
+}
+
+
+/* Transparent text-led mobile menu: keep the original placement and touch behavior, remove the bulky opaque panel. */
+@media (max-width:760px){
+  .shell .sidebar.mobile-menu-open{
+    background:linear-gradient(145deg,rgba(18,20,38,.38),rgba(7,9,20,.22))!important;
+    border:1px solid rgba(185,166,255,.24)!important;
+    box-shadow:0 12px 32px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.12)!important;
+    backdrop-filter:blur(10px) saturate(125%)!important;
+    -webkit-backdrop-filter:blur(10px) saturate(125%)!important;
+    animation:transparentMenuFadeIn .2s ease-out both!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item,
+  .shell .sidebar.mobile-menu-open .nav-item.active{
+    background:linear-gradient(110deg,rgba(113,91,188,.16),rgba(19,23,42,.16))!important;
+    border:1px solid rgba(197,185,255,.17)!important;
+    border-bottom:1px solid rgba(197,185,255,.23)!important;
+    box-shadow:0 3px 10px rgba(0,0,0,.08),inset 0 1px 0 rgba(255,255,255,.1)!important;
+    backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important;
+    color:rgba(235,237,255,.94)!important;
+    text-shadow:0 1px 7px rgba(0,0,0,.48)!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item.active{
+    background:linear-gradient(110deg,rgba(145,108,255,.36),rgba(88,63,172,.23))!important;
+    border-color:rgba(208,190,255,.48)!important;
+    box-shadow:0 4px 14px rgba(109,78,235,.16),inset 0 1px 0 rgba(255,255,255,.2)!important;
+  }
+}
+@keyframes transparentMenuFadeIn{
+  from{opacity:0;transform:translateY(-5px);filter:blur(2px)}
+  to{opacity:1;transform:translateY(0);filter:blur(0)}
+}
