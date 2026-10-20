@@ -4613,3 +4613,35 @@ button{cursor:pointer}
   }
   .shell .sidebar.mobile-menu-open .nav-item svg{width:16px!important;height:16px!important}
 }
+
+
+/* Transparent text-led mobile menu: keep the original placement and touch behavior, remove the bulky opaque panel. */
+@media (max-width:760px){
+  .shell .sidebar.mobile-menu-open{
+    background:linear-gradient(145deg,rgba(18,20,38,.38),rgba(7,9,20,.22))!important;
+    border:1px solid rgba(185,166,255,.24)!important;
+    box-shadow:0 12px 32px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.12)!important;
+    backdrop-filter:blur(10px) saturate(125%)!important;
+    -webkit-backdrop-filter:blur(10px) saturate(125%)!important;
+    animation:transparentMenuFadeIn .2s ease-out both!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item,
+  .shell .sidebar.mobile-menu-open .nav-item.active{
+    background:linear-gradient(110deg,rgba(113,91,188,.16),rgba(19,23,42,.16))!important;
+    border:1px solid rgba(197,185,255,.17)!important;
+    border-bottom:1px solid rgba(197,185,255,.23)!important;
+    box-shadow:0 3px 10px rgba(0,0,0,.08),inset 0 1px 0 rgba(255,255,255,.1)!important;
+    backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important;
+    color:rgba(235,237,255,.94)!important;
+    text-shadow:0 1px 7px rgba(0,0,0,.48)!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item.active{
+    background:linear-gradient(110deg,rgba(145,108,255,.36),rgba(88,63,172,.23))!important;
+    border-color:rgba(208,190,255,.48)!important;
+    box-shadow:0 4px 14px rgba(109,78,235,.16),inset 0 1px 0 rgba(255,255,255,.2)!important;
+  }
+}
+@keyframes transparentMenuFadeIn{
+  from{opacity:0;transform:translateY(-5px);filter:blur(2px)}
+  to{opacity:1;transform:translateY(0);filter:blur(0)}
+}
