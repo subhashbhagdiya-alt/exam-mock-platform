@@ -4645,3 +4645,62 @@ button{cursor:pointer}
   from{opacity:0;transform:translateY(-5px);filter:blur(2px)}
   to{opacity:1;transform:translateY(0);filter:blur(0)}
 }
+
+
+/* Cinematic exam-board intro: continuous, subtle aurora/light sweep rather than a static empty block. */
+.shell .boards-content .job-heading{
+  position:relative!important;isolation:isolate!important;overflow:hidden!important;
+  border-radius:22px!important;
+}
+.shell .boards-content .job-heading::before{
+  content:""!important;position:absolute!important;inset:-45% -70%!important;
+  z-index:-1!important;pointer-events:none!important;
+  background:
+    radial-gradient(ellipse at 18% 50%,rgba(137,100,255,.22),transparent 34%),
+    radial-gradient(ellipse at 72% 40%,rgba(41,191,207,.12),transparent 30%),
+    linear-gradient(112deg,transparent 25%,rgba(183,158,255,.12) 42%,rgba(255,255,255,.045) 48%,transparent 61%);
+  background-size:100% 100%,100% 100%,220% 100%!important;
+  animation:examCinematicAurora 12s ease-in-out infinite alternate!important;
+}
+.shell .boards-content .job-heading::after{
+  content:""!important;position:absolute!important;inset:0!important;z-index:-1!important;
+  pointer-events:none!important;border-radius:inherit!important;
+  background:linear-gradient(120deg,transparent 0%,rgba(163,137,255,.08) 48%,transparent 68%)!important;
+  transform:translateX(-110%) skewX(-12deg)!important;
+  animation:examCinematicSweep 8s ease-in-out infinite!important;
+}
+.shell .boards-content .job-heading h2{
+  text-shadow:0 0 22px rgba(153,126,255,.16)!important;
+  animation:examCinematicTitle 6s ease-in-out infinite!important;
+}
+.shell .boards-content .job-heading .section-count{
+  position:relative!important;
+  text-shadow:0 0 14px rgba(157,126,255,.34)!important;
+}
+.shell .boards-content .exam-board-tab.active{
+  animation:examBoardLivingGlow 5.5s ease-in-out infinite!important;
+}
+@keyframes examCinematicAurora{
+  0%{transform:translate3d(-2%,0,0) rotate(-2deg);filter:hue-rotate(0deg) brightness(.9)}
+  50%{transform:translate3d(2%,1%,0) rotate(1deg);filter:hue-rotate(12deg) brightness(1.12)}
+  100%{transform:translate3d(-1%,-1%,0) rotate(2deg);filter:hue-rotate(-8deg) brightness(1)}
+}
+@keyframes examCinematicSweep{
+  0%,28%{transform:translateX(-115%) skewX(-12deg);opacity:0}
+  38%{opacity:.7}
+  66%,100%{transform:translateX(115%) skewX(-12deg);opacity:0}
+}
+@keyframes examCinematicTitle{
+  0%,100%{text-shadow:0 0 12px rgba(153,126,255,.1)}
+  50%{text-shadow:0 0 24px rgba(153,126,255,.28)}
+}
+@keyframes examBoardLivingGlow{
+  0%,100%{filter:drop-shadow(0 0 0 rgba(139,112,245,0));}
+  50%{filter:drop-shadow(0 0 8px rgba(139,112,245,.18));}
+}
+@media(prefers-reduced-motion:reduce){
+  .shell .boards-content .job-heading::before,
+  .shell .boards-content .job-heading::after,
+  .shell .boards-content .job-heading h2,
+  .shell .boards-content .exam-board-tab.active{animation:none!important}
+}
