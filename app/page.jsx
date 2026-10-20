@@ -941,6 +941,14 @@ export default function HomePage() {
     { key: "SSC", labelHi: "SSC", labelEn: "SSC", icon: "📝" },
     { key: "RPF", labelHi: "RPF", labelEn: "RPF", icon: "🛡️" },
     { key: "RRB", labelHi: "RRB / रेलवे", labelEn: "RRB / Railway", icon: "🚆" },
+    { key: "MPPSC", labelHi: "MPPSC", labelEn: "MPPSC", icon: "🏢" },
+    { key: "IBPS", labelHi: "IBPS", labelEn: "IBPS", icon: "🏦" },
+    { key: "SBI", labelHi: "SBI", labelEn: "SBI", icon: "🏦" },
+    { key: "UPSC", labelHi: "UPSC", labelEn: "UPSC", icon: "🎖️" },
+    { key: "NTA", labelHi: "NTA / प्रवेश परीक्षा", labelEn: "NTA / Entrance Exams", icon: "🎓" },
+    { key: "CTET", labelHi: "CTET", labelEn: "CTET", icon: "🍎" },
+    { key: "UGC-NET", labelHi: "UGC-NET", labelEn: "UGC-NET", icon: "📚" },
+    { key: "CSIR-NET", labelHi: "CSIR-NET", labelEn: "CSIR-NET", icon: "🔬" },
     { key: "OTHER", labelHi: "अन्य परीक्षाएँ", labelEn: "Other Exams", icon: "🎯" }
   ];
   const getExamGroup = (track) => {
@@ -949,10 +957,26 @@ export default function HomePage() {
     if (board.includes("SSC")) return "SSC";
     if (board.includes("RPF")) return "RPF";
     if (board.includes("RRB") || board.includes("RAILWAY")) return "RRB";
+    if (board.includes("MPPSC")) return "MPPSC";
+    if (board.includes("IBPS")) return "IBPS";
+    if (board.includes("SBI")) return "SBI";
+    if (board.includes("UPSC")) return "UPSC";
+    if (board.includes("NTA")) return "NTA";
+    if (board.includes("CTET")) return "CTET";
+    if (board.includes("UGC")) return "UGC-NET";
+    if (board.includes("CSIR")) return "CSIR-NET";
     const slug = String(track.slug || "").toLowerCase();
     if (slug.startsWith("rpf-")) return "RPF";
     if (slug.startsWith("rrb-")) return "RRB";
     if (slug.startsWith("ssc-")) return "SSC";
+    if (slug.startsWith("jee-") || slug.startsWith("neet-") || slug.startsWith("cuet-")) return "NTA";
+    if (slug.startsWith("csir-")) return "CSIR-NET";
+    if (slug.startsWith("ugc-")) return "UGC-NET";
+    if (slug.startsWith("ctet-")) return "CTET";
+    if (slug.startsWith("upsc-")) return "UPSC";
+    if (slug.startsWith("ibps-")) return "IBPS";
+    if (slug.startsWith("sbi-")) return "SBI";
+    if (slug.startsWith("mppsc-")) return "MPPSC";
     return "OTHER";
   };
 
