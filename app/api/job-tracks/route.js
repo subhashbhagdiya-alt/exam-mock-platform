@@ -44,18 +44,36 @@ export async function GET() {
   const predictionCandidates = new Map();
 
   if (examIds.length) {
-    const { data: questions, error: questionError } = await questionClient
-      .from("question_bank")
-      .select("exam_id,source_type,subject,topic,prediction_score,question_hi,question_en")
-      .in("exam_id", examIds)
-      .eq("active", true)
-      .eq("verified", true);
+    // Supabase/PostgREST can cap a response at 1,000 rows. Fetch stable pages so
+    // large banks (e.g. Group D/Police) cannot hide later exam counts and mark
+    // otherwise-ready exams as "Soon" just because they fell after the first page.
+    const pageSize = 1000;
+    const maxPages = 50;
+    const questions = [];
+    for (let page = 0; page < maxPages; page += 1) {
+      const from = page * pageSize;
+      const { data: rows, error: questionError } = await questionClient
+        .from("question_bank")
+        .select("id,exam_id,source_type,subject,topic,prediction_score,question_hi,question_en")
+        .in("exam_id", examIds)
+        .eq("active", true)
+        .eq("verified", true)
+        .order("exam_id", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
 
-    if (questionError) return NextResponse.json({ error: questionError.message }, { status: 500 });
+      if (questionError) return NextResponse.json({ error: questionError.message }, { status: 500 });
+      const pageRows = rows || [];
+      questions.push(...pageRows);
+      if (pageRows.length < pageSize) break;
+      if (page === maxPages - 1) {
+        return NextResponse.json({ error: "Question-bank summary exceeded the safe pagination limit." }, { status: 503 });
+      }
+    }
 
-    for (const question of questions || []) {
+    for (const question of questions) {
       verifiedCounts.set(question.exam_id, (verifiedCounts.get(question.exam_id) || 0) + 1);
-      const key = `${question.exam_id}:${question.source_type || "unknown"}`;
+      const key = \`${question.exam_id}:${question.source_type || "unknown"}\`;
       sourceCounts.set(key, (sourceCounts.get(key) || 0) + 1);
       if (!subjectSets.has(question.exam_id)) subjectSets.set(question.exam_id, new Set());
       if (!topicSets.has(question.exam_id)) topicSets.set(question.exam_id, new Set());
