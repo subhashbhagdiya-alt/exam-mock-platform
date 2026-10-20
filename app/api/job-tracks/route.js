@@ -44,25 +44,38 @@ export async function GET() {
   const predictionCandidates = new Map();
 
   if (examIds.length) {
-    const { data: questions, error: questionError } = await questionClient
-      .from("question_bank")
-      .select("exam_id,source_type,subject,topic,prediction_score,question_hi,question_en")
-      .in("exam_id", examIds)
-      .eq("active", true)
-      .eq("verified", true);
+    // PostgREST limits each response page. Fetch every page so board readiness
+    // and PYQ/practice counts stay correct after the combined bank grows.
+    const PAGE_SIZE = 500;
+    let offset = 0;
 
-    if (questionError) return NextResponse.json({ error: questionError.message }, { status: 500 });
+    while (true) {
+      const { data: questions, error: questionError } = await questionClient
+        .from("question_bank")
+        .select("exam_id,source_type,subject,topic,prediction_score,question_hi,question_en")
+        .in("exam_id", examIds)
+        .eq("active", true)
+        .eq("verified", true)
+        .order("id", { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1);
 
-    for (const question of questions || []) {
-      verifiedCounts.set(question.exam_id, (verifiedCounts.get(question.exam_id) || 0) + 1);
-      const key = `${question.exam_id}:${question.source_type || "unknown"}`;
-      sourceCounts.set(key, (sourceCounts.get(key) || 0) + 1);
-      if (!subjectSets.has(question.exam_id)) subjectSets.set(question.exam_id, new Set());
-      if (!topicSets.has(question.exam_id)) topicSets.set(question.exam_id, new Set());
-      if (question.subject) subjectSets.get(question.exam_id).add(question.subject);
-      if (question.topic) topicSets.get(question.exam_id).add(question.topic);
-      if (!predictionCandidates.has(question.exam_id)) predictionCandidates.set(question.exam_id, []);
-      predictionCandidates.get(question.exam_id).push(question);
+      if (questionError) return NextResponse.json({ error: questionError.message }, { status: 500 });
+
+      const page = questions || [];
+      for (const question of page) {
+        verifiedCounts.set(question.exam_id, (verifiedCounts.get(question.exam_id) || 0) + 1);
+        const key = question.exam_id + ":" + (question.source_type || "unknown");
+        sourceCounts.set(key, (sourceCounts.get(key) || 0) + 1);
+        if (!subjectSets.has(question.exam_id)) subjectSets.set(question.exam_id, new Set());
+        if (!topicSets.has(question.exam_id)) topicSets.set(question.exam_id, new Set());
+        if (question.subject) subjectSets.get(question.exam_id).add(question.subject);
+        if (question.topic) topicSets.get(question.exam_id).add(question.topic);
+        if (!predictionCandidates.has(question.exam_id)) predictionCandidates.set(question.exam_id, []);
+        predictionCandidates.get(question.exam_id).push(question);
+      }
+
+      if (page.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
     }
   }
 
