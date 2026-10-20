@@ -357,7 +357,12 @@ export async function GET(request) {
       // A free-tier 429 is not actionable until quota recovers. Clear the resume-first
       // timestamp so this task yields to other queued work while preserving result
       // checkpoints; never switch to a paid provider or discard the saved draft.
-      ...(retryDecision.reason === "free_quota" ? { started_at: null } : {}),
+      ...(retryDecision.reason === "free_quota" ? {
+        started_at: null,
+        // Yield behind normal queued work too; otherwise a high-priority quota-
+        // limited task could remain first even after its resume marker is cleared.
+        priority: Math.min(Number(task.priority ?? 0), 0)
+      } : {}),
       error_message: err?.message || "Task failed",
       completed_at: retryDecision.deferred ? null : new Date().toISOString()
     }).eq("id", task.id);
