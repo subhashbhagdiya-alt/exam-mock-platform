@@ -4704,3 +4704,28 @@ button{cursor:pointer}
   .shell .boards-content .job-heading h2,
   .shell .boards-content .exam-board-tab.active{animation:none!important}
 }
+
+
+/* Clean mobile header: move frequent utility controls into the Menu popover. */
+@media (max-width: 760px) {
+  .shell .top-actions .home-quick-button,
+  .shell .top-actions .lang-button,
+  .shell .top-actions .theme-toggle {
+    display:none!important;
+  }
+  .shell .top-actions .menu-button {
+    margin-left:auto!important;
+  }
+  .shell .top-actions .menu-popover {
+    z-index:1200!important;
+    max-width:min(88vw,340px)!important;
+    max-height:min(72vh,560px)!important;
+    overflow-y:auto!important;
+  }
+  .shell .top-actions .menu-popover button {
+    display:flex!important;
+    align-items:center!important;
+    gap:10px!important;
+    min-height:42px!important;
+  }
+}
