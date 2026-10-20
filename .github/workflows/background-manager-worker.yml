@@ -13,9 +13,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  process-one-task:
+  process-queued-work:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    # Two bounded worker invocations help complete generation/review phases
+    # sooner while staying well below each Gemini/Vercel request timeout.
+    timeout-minutes: 5
     steps:
       - name: Check worker secret
         env:
@@ -25,19 +27,34 @@ jobs:
             echo "::error::Repository secret CRON_SECRET is missing. Add the same value as the Vercel ExamPrep CRON_SECRET; do not paste it into code or logs."
             exit 1
           fi
-      - name: Process one queued task
+      - name: Process up to two queued phases
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -eu
-          code="$(curl --silent --show-error --max-time 70 \
-            --output worker-response.json --write-out '%{http_code}' \
-            --header "Authorization: Bearer ${CRON_SECRET}" \
-            --header 'Accept: application/json' \
-            'https://exam-prep-direct-box.vercel.app/api/automation/worker')"
-          cat worker-response.json
-          echo
-          case "$code" in
-            200|202) echo "Worker accepted the invocation (HTTP $code)." ;;
-            *) echo "::error::Worker returned HTTP $code."; exit 1 ;;
-          esac
+          for attempt in 1 2; do
+            code="$(curl --silent --show-error --max-time 70 \
+              --output worker-response.json --write-out '%{http_code}' \
+              --header "Authorization: Bearer ${CRON_SECRET}" \
+              --header 'Accept: application/json' \
+              'https://exam-prep-direct-box.vercel.app/api/automation/worker')"
+            cat worker-response.json
+            echo
+            case "$code" in
+              200|202) echo "Worker accepted invocation $attempt (HTTP $code)." ;;
+              *) echo "::error::Worker returned HTTP $code."; exit 1 ;;
+            esac
+
+            # Quota/timeouts return a retry message. Do not hammer the free-tier
+            # provider immediately; defer to the next scheduled run instead.
+            retry="$(jq -r '.retry // empty' worker-response.json)"
+            processed="$(jq -r '.processed // false' worker-response.json)"
+            if [ -n "$retry" ] || [ "$processed" != "true" ]; then
+              echo "Stopping after invocation $attempt; worker requested a defer or has no eligible task."
+              break
+            fi
+
+            if [ "$attempt" -lt 2 ]; then
+              echo "Task progressed; attempting one more queue phase in this run."
+            fi
+          done
