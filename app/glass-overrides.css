@@ -4379,3 +4379,51 @@ button{cursor:pointer}
 .shell.theme-light .practice-options-dashboard{background:linear-gradient(145deg,#fff,#f1efff)!important;border-color:#d7d0f6!important}
 .shell.theme-light .practice-options-dashboard>summary{color:#242039!important}
 .shell.theme-light .practice-options-dashboard>summary small{color:#66627a!important}
+
+
+/* Mobile setup usability pass: keep the primary start action reachable while scrolling. */
+@media (max-width: 760px) {
+  .exam-setup-content {
+    padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+  }
+  .exam-setup-content .setup-hero {
+    margin-bottom: 12px !important;
+  }
+  .exam-setup-content .setup-summary {
+    flex-wrap: wrap !important;
+    row-gap: 7px !important;
+  }
+  .exam-setup-content .setup-card {
+    margin-top: 12px !important;
+    padding: 15px 13px !important;
+  }
+  .exam-setup-content .setup-card .section-heading {
+    margin-bottom: 12px !important;
+  }
+  .exam-setup-content .setup-block {
+    padding: 11px 0 !important;
+  }
+  .exam-setup-content .setup-options {
+    gap: 7px !important;
+    margin: 9px 0 6px !important;
+  }
+  .exam-setup-content .setup-options button {
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+  }
+  .exam-setup-content .setup-filter-panel {
+    margin-top: 12px !important;
+    padding: 12px !important;
+  }
+  .exam-setup-content .setup-auto {
+    padding: 11px !important;
+    margin: 9px 0 !important;
+  }
+  .exam-setup-content .setup-start {
+    position: sticky !important;
+    bottom: calc(82px + env(safe-area-inset-bottom)) !important;
+    z-index: 30 !important;
+    margin-top: 12px !important;
+    box-shadow: 0 10px 26px rgba(104,78,220,.38), 0 0 0 1px rgba(216,204,255,.32) !important;
+  }
+}
