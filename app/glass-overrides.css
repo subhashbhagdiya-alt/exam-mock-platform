@@ -4587,3 +4587,29 @@ button{cursor:pointer}
   }
   .shell .sidebar.mobile-menu-open .nav-item svg{width:17px!important;height:17px!important}
 }
+
+
+/* Fix drawer still feeling full-screen: compact floating panel anchored directly under Menu. */
+@media (max-width:760px){
+  .shell .sidebar.mobile-menu-open{
+    position:fixed!important;
+    top:calc(108px + env(safe-area-inset-top))!important;
+    left:20px!important;right:auto!important;
+    width:min(310px,calc(100vw - 40px))!important;
+    max-height:min(34dvh,285px)!important;
+    overflow-y:auto!important;
+    padding:7px!important;gap:4px!important;
+    border-radius:17px!important;
+    background:linear-gradient(155deg,rgba(25,24,52,.985),rgba(7,10,22,.99))!important;
+    box-shadow:0 18px 42px rgba(0,0,0,.52),0 5px 0 rgba(5,6,17,.9),inset 0 1px 0 rgba(255,255,255,.14)!important;
+    transform-origin:top left!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item,
+  .shell .sidebar.mobile-menu-open .nav-item.active{
+    min-height:34px!important;padding:6px 9px!important;
+    gap:9px!important;font-size:12px!important;
+    border-radius:10px!important;
+    box-shadow:0 3px 0 rgba(4,5,15,.88),inset 0 1px 0 rgba(255,255,255,.09)!important;
+  }
+  .shell .sidebar.mobile-menu-open .nav-item svg{width:16px!important;height:16px!important}
+}
