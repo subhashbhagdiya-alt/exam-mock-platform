@@ -4842,3 +4842,158 @@ undefined
 @media(prefers-reduced-motion:reduce){
  .shell .dashboard-content .dashboard-exam-launcher *, .shell .dashboard-content .dashboard-account-note *{animation:none!important;transition:none!important}
 }
+
+/* Mobile exam-board picker refinement: calmer hierarchy, cleaner spacing, same purple palette. */
+@media (max-width: 600px) {
+  .shell .boards-content .job-section {
+    margin-top: 2px;
+    min-width: 0;
+  }
+  .shell .boards-content .job-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 10px;
+    margin: 0 0 14px;
+    padding: 0 2px;
+  }
+  .shell .boards-content .job-heading > div {
+    min-width: 0;
+  }
+  .shell .boards-content .job-heading h2 {
+    margin: 0 0 7px;
+    font-size: clamp(17px, 4.7vw, 20px);
+    line-height: 1.25;
+    letter-spacing: -.45px;
+  }
+  .shell .boards-content .job-heading p {
+    max-width: 34ch;
+    font-size: 11px;
+    line-height: 1.55;
+    overflow-wrap: break-word;
+  }
+  .shell .boards-content .job-heading .section-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: end;
+    padding: 6px 8px;
+    border: 1px solid rgba(158,143,235,.22);
+    border-radius: 999px;
+    background: rgba(18,16,34,.76);
+    color: #b5a4ff;
+    font-size: 8px;
+    letter-spacing: .8px;
+    white-space: nowrap;
+  }
+  .shell .boards-content .exam-board-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    margin: 0 0 12px;
+    padding: 7px;
+    border-radius: 17px;
+  }
+  .shell .boards-content .exam-board-tab {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: start;
+    align-content: start;
+    gap: 7px;
+    min-width: 0;
+    min-height: 104px;
+    padding: 10px 9px 9px;
+    border-radius: 14px;
+  }
+  .shell .boards-content .exam-board-tab .board-tab-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+  }
+  .shell .boards-content .exam-board-tab .board-tab-copy {
+    min-width: 0;
+    width: 100%;
+  }
+  .shell .boards-content .exam-board-tab .board-tab-copy b {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+  .shell .boards-content .exam-board-tab .board-tab-copy small {
+    display: block;
+    margin-top: 3px;
+    font-size: 9px;
+    line-height: 1.3;
+  }
+  .shell .boards-content .exam-board-tab em {
+    max-width: 100%;
+    font-size: 7px;
+    letter-spacing: .45px;
+    white-space: nowrap;
+  }
+  .shell .boards-content .exam-toolbar {
+    gap: 10px;
+    margin-bottom: 13px;
+    padding: 11px;
+    border-radius: 15px;
+  }
+  .shell .boards-content .exam-search {
+    min-width: 0;
+    min-height: 44px;
+    border-radius: 11px;
+  }
+  .shell .boards-content .exam-search input {
+    min-width: 0;
+    font-size: 12px;
+  }
+  .shell .boards-content .exam-filters {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 0 0 2px;
+    scrollbar-width: none;
+  }
+  .shell .boards-content .exam-filters::-webkit-scrollbar {
+    display: none;
+  }
+  .shell .boards-content .exam-filters button {
+    flex: 0 0 auto;
+    min-height: 39px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 10px;
+  }
+  .shell .boards-content .active-board-head {
+    align-items: center;
+    gap: 10px;
+  }
+  .shell .boards-content .active-board-head h3 {
+    font-size: 21px;
+    line-height: 1.25;
+  }
+}
+@media (max-width: 370px) {
+  .shell .boards-content .job-heading .section-count {
+    padding: 5px 6px;
+    font-size: 7px;
+  }
+  .shell .boards-content .exam-board-tabs {
+    gap: 5px;
+    padding: 5px;
+  }
+  .shell .boards-content .exam-board-tab {
+    padding: 9px 7px;
+  }
+  .shell .boards-content .exam-board-tab .board-tab-copy b {
+    font-size: 10px;
+  }
+  .shell .boards-content .exam-filters button {
+    padding-inline: 9px;
+  }
+}
