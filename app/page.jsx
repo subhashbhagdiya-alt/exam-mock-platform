@@ -776,6 +776,7 @@ export default function HomePage() {
   const [language, setLanguage] = useState("en");
   const [view, setView] = useState("boards");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileQuickSettingsOpen, setMobileQuickSettingsOpen] = useState(false);
   useEffect(() => {
     if (!mobileNavOpen || typeof document === "undefined") return undefined;
     const closeMobileNavOutside = (event) => {
@@ -1777,6 +1778,19 @@ export default function HomePage() {
       <aside className={"sidebar " + (mobileNavOpen ? "mobile-menu-open" : "")} onClick={event => { if (event.target.closest(".nav-item")) setMobileNavOpen(false); }}>
         <div className="brand"><div className="brand-icon"><GraduationCap size={23}/></div><span>Exam<span className="brand-accent">Prep</span><small>YOUR NEXT RANK STARTS HERE</small></span></div>
         <div className="side-label">{t("वर्कस्पेस","WORKSPACE")}</div>
+        <div className={"mobile-menu-utilities " + (mobileQuickSettingsOpen ? "open" : "")}>
+          <button type="button" className="mobile-menu-utilities-toggle" aria-expanded={mobileQuickSettingsOpen} onClick={() => setMobileQuickSettingsOpen(open => !open)}>
+            <SlidersHorizontal size={17}/><span>{t("भाषा और दिखावट","Language & appearance")}</span><ChevronRight size={15} className={mobileQuickSettingsOpen ? "open" : ""}/>
+          </button>
+          {mobileQuickSettingsOpen && <div className="mobile-menu-utilities-panel">
+            <button type="button" onClick={() => {setLanguage(hi ? "en" : "hi");setMenuOpen(false);setMobileQuickSettingsOpen(false);setMobileNavOpen(false);}}><Languages size={16}/>{hi ? "Switch to English" : "हिंदी भाषा"}</button>
+            <div className="mobile-menu-theme-row">
+              <button type="button" className={themeMode === "light" ? "active" : ""} onClick={() => {setThemeMode("light");setMenuOpen(false);setMobileQuickSettingsOpen(false);setMobileNavOpen(false);}}>☀️ {t("दिन","Day")}</button>
+              <button type="button" className={themeMode === "dark" ? "active" : ""} onClick={() => {setThemeMode("dark");setMenuOpen(false);setMobileQuickSettingsOpen(false);setMobileNavOpen(false);}}>🌙 {t("रात","Night")}</button>
+              <button type="button" className={themeMode === "system" ? "active" : ""} onClick={() => {setThemeMode("system");setMenuOpen(false);setMobileQuickSettingsOpen(false);setMobileNavOpen(false);}}>◐ {t("सिस्टम","System")}</button>
+            </div>
+          </div>}
+        </div>
         {view !== "test" && view !== "instructions" && <button className={"nav-item " + (view === "home" ? "active" : "")} onClick={() => navigateTo("home")}><Home size={18}/>{t("होम","Home")}</button>}
         <button className={"nav-item " + (view === "boards" ? "active" : "")} onClick={() => navigateTo("boards")}><GraduationCap size={18}/>{t("परीक्षाएँ","Exams")}</button><button className={"nav-item " + (view === "history" ? "active" : "")} onClick={() => navigateTo("history")}><Award size={18}/>{t("मेरे रिज़ल्ट","My results")}</button><button className={"nav-item " + (view === "login" ? "active" : "")} onClick={() => navigateTo("login")}><ShieldCheck size={18}/>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button className={"nav-item " + (view === "settings" ? "active" : "")} onClick={() => navigateTo("settings")}><Settings size={18}/>{t("सेटिंग्स","Settings")}</button>
         <button className={"nav-item " + (view === "sources" ? "active" : "")} onClick={() => navigateTo("sources")}><Download size={18}/>{t("Source PDFs","Source PDFs")}</button>
