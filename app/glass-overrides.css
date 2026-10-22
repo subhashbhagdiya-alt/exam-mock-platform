@@ -4729,3 +4729,102 @@ button{cursor:pointer}
     min-height:42px!important;
   }
 }
+
+
+/* Final mobile header cleanup: keep a single top-level Menu and put language/theme controls inside it. */
+.mobile-menu-utilities{display:none}
+@media (max-width:760px){
+  .shell .top-actions .menu-button{display:none!important}
+  .shell .top-actions .home-quick-button,
+  .shell .top-actions .lang-button,
+  .shell .top-actions .theme-toggle{display:none!important}
+  .shell .top-actions{display:none!important}
+  .shell .mobile-menu-utilities{
+    display:flex!important;flex-direction:column!important;gap:6px!important;
+    margin:0 0 4px!important;padding:0 0 9px!important;
+    border-bottom:1px solid rgba(180,159,255,.16)!important;
+  }
+  .shell .mobile-menu-utilities-toggle{
+    width:100%!important;min-height:39px!important;display:flex!important;align-items:center!important;
+    gap:9px!important;padding:8px 10px!important;border-radius:12px!important;
+    border:1px solid rgba(165,146,255,.26)!important;border-bottom:2px solid rgba(5,7,18,.8)!important;
+    background:linear-gradient(145deg,rgba(66,57,112,.62),rgba(19,23,42,.66))!important;
+    color:#e4dcff!important;font-size:12px!important;font-weight:750!important;text-align:left!important;
+    box-shadow:0 3px 0 rgba(5,7,18,.82),inset 0 1px 0 rgba(255,255,255,.12)!important;
+  }
+  .shell .mobile-menu-utilities-toggle span{flex:1!important}
+  .shell .mobile-menu-utilities-toggle>svg:last-child{transition:transform .18s ease!important}
+  .shell .mobile-menu-utilities-toggle>svg:last-child.open{transform:rotate(90deg)!important}
+  .shell .mobile-menu-utilities-panel{display:flex!important;flex-direction:column!important;gap:6px!important;padding:2px 4px 5px!important}
+  .shell .mobile-menu-utilities-panel>button,
+  .shell .mobile-menu-theme-row>button{
+    min-height:34px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+    gap:7px!important;padding:7px 9px!important;border-radius:10px!important;
+    border:1px solid rgba(159,164,204,.18)!important;
+    background:linear-gradient(145deg,rgba(37,42,65,.8),rgba(15,19,34,.8))!important;
+    color:#d6d9ec!important;font-size:11px!important;font-weight:700!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important;
+  }
+  .shell .mobile-menu-utilities-panel>button{justify-content:flex-start!important}
+  .shell .mobile-menu-theme-row{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:5px!important}
+  .shell .mobile-menu-theme-row>button.active{
+    border-color:rgba(202,185,255,.52)!important;
+    background:linear-gradient(140deg,rgba(122,89,231,.55),rgba(62,48,122,.7))!important;
+    color:#fff!important;box-shadow:0 3px 0 rgba(30,21,67,.9),inset 0 1px 0 rgba(255,255,255,.19)!important;
+  }
+}
+
+/* Keep the cinematic exam-board animation behind content, without clipping or tinting the title copy. */
+.shell .boards-content .job-heading{
+  overflow:hidden!important;isolation:isolate!important;position:relative!important;
+  height:auto!important;min-height:0!important;max-height:none!important;
+  align-items:flex-start!important;padding:10px 8px 13px!important;
+  gap:8px 10px!important;
+  display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;
+}
+.shell .boards-content .job-heading>div{
+  position:relative!important;z-index:2!important;grid-column:1 / -1!important;
+  min-width:0!important;width:100%!important;
+}
+.shell .boards-content .job-heading .section-count{
+  position:relative!important;z-index:2!important;grid-column:2!important;
+  justify-self:end!important;align-self:end!important;margin:0!important;
+}
+.shell .boards-content .job-heading h2{
+  margin:0 0 7px!important;line-height:1.25!important;
+}
+.shell .boards-content .job-heading p{
+  margin:0!important;line-height:1.5!important;overflow-wrap:anywhere!important;
+}
+.shell .boards-content .job-heading::before{
+  inset:0!important;z-index:0!important;transform:none!important;filter:none!important;
+  background-size:140% 100%,140% 100%,240% 100%!important;
+  animation:examCinematicAurora 14s ease-in-out infinite alternate!important;
+}
+.shell .boards-content .job-heading::after{
+  inset:0!important;z-index:1!important;transform:none!important;filter:none!important;
+  background-size:240% 100%!important;
+  animation:examCinematicSweep 9s ease-in-out infinite!important;
+}
+@keyframes examCinematicAurora{
+  0%{background-position:0% 50%,100% 50%,100% 50%}
+  50%{background-position:100% 50%,0% 50%,35% 50%}
+  100%{background-position:15% 50%,85% 50%,0% 50%}
+}
+@keyframes examCinematicSweep{
+  0%,28%{background-position:100% 50%;opacity:0}
+  38%{opacity:.42}
+  66%,100%{background-position:0% 50%;opacity:0}
+}
+@media(max-width:760px){
+  .shell .boards-content .job-heading{grid-template-columns:minmax(0,1fr) auto!important;padding:9px 3px 12px!important}
+  .shell .boards-content .job-heading h2{font-size:clamp(17px,5.2vw,21px)!important;line-height:1.28!important}
+  .shell .boards-content .job-heading p{font-size:clamp(11px,3.5vw,13px)!important;line-height:1.52!important}
+  .shell .boards-content .job-heading .section-count{font-size:10px!important;letter-spacing:.07em!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .shell .boards-content .job-heading::before,
+  .shell .boards-content .job-heading::after,
+  .shell .boards-content .job-heading h2,
+  .shell .boards-content .exam-board-tab.active{animation:none!important}
+}
