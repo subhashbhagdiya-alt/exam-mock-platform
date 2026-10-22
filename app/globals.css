@@ -4768,3 +4768,236 @@ undefined
 @media (max-width: 600px) {
   .shell .job-official-link { margin-bottom: 12px; min-height: 42px; }
 }
+/* Focused dashboard exam picker: useful controls, same dark/glass palette. */
+.shell .dashboard-content .dashboard-account-note{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;padding:11px 13px;border:1px solid rgba(154,139,235,.20);border-radius:14px;background:linear-gradient(130deg,rgba(24,24,42,.86),rgba(10,13,21,.84));box-shadow:0 8px 22px rgba(0,0,0,.13),inset 0 1px 0 rgba(255,255,255,.04)}
+.shell .dashboard-content .dashboard-account-copy{display:flex;align-items:center;gap:10px;min-width:0}
+.shell .dashboard-content .dashboard-account-icon{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border:1px solid rgba(163,143,255,.25);border-radius:10px;color:#c3b8ff;background:rgba(110,83,213,.16)}
+.shell .dashboard-content .dashboard-account-copy>div{min-width:0}
+.shell .dashboard-content .dashboard-account-copy b{display:block;font-size:11px;color:var(--text-primary,#f5f3ff)}
+.shell .dashboard-content .dashboard-account-copy p{margin:3px 0 0;color:var(--text-secondary,#979fb3);font-size:10px;line-height:1.4}
+.shell .dashboard-content .dashboard-account-action{flex:0 0 auto;padding:9px 11px;font-size:10px;white-space:nowrap}
+.shell .dashboard-content .dashboard-exam-launcher{position:relative;isolation:isolate;overflow:hidden;display:grid;gap:16px;margin:0 0 24px;padding:clamp(16px,3vw,24px);border:1px solid rgba(163,143,255,.25);border-radius:20px;background:radial-gradient(ellipse at 100% 0%,rgba(72,150,206,.10),transparent 40%),radial-gradient(ellipse at 0% 100%,rgba(126,78,255,.12),transparent 48%),linear-gradient(145deg,rgba(20,20,37,.98),rgba(9,12,20,.98));box-shadow:0 17px 38px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.055)}
+.shell .dashboard-content .dashboard-exam-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.shell .dashboard-content .dashboard-exam-header h2{margin:9px 0 5px;color:var(--text-primary,#faf9ff);font:800 clamp(20px,2.5vw,27px)/1.2 Manrope,'Noto Sans Devanagari',sans-serif;letter-spacing:-.5px}
+.shell .dashboard-content .dashboard-exam-header p{margin:0;color:var(--text-secondary,#9da5b8);font-size:11px;line-height:1.55;max-width:60ch}
+.shell .dashboard-content .dashboard-exam-status{flex:0 0 auto;padding:7px 10px;border:1px solid rgba(224,185,107,.25);border-radius:999px;color:#d9b872;background:rgba(88,63,26,.15);font:800 8px Manrope,sans-serif;letter-spacing:.8px;white-space:nowrap}
+.shell .dashboard-content .dashboard-exam-status.ready{border-color:rgba(105,224,173,.27);color:#80e6b5;background:rgba(17,65,46,.25)}
+.shell .dashboard-content .dashboard-exam-field{display:grid;gap:7px;min-width:0}
+.shell .dashboard-content .dashboard-exam-field>span,.shell .dashboard-content .dashboard-config-heading b{color:var(--text-secondary,#b1b7c9);font-size:10px;font-weight:800;letter-spacing:.4px}
+.shell .dashboard-content .dashboard-exam-select{width:100%;min-width:0;min-height:47px;padding:0 14px;border:1px solid rgba(157,153,192,.29);border-radius:12px;color:#f7f5ff;background:linear-gradient(145deg,#171a29,#0e111b);font:600 12px 'DM Sans','Noto Sans Devanagari',sans-serif;outline:none}
+.shell .dashboard-content .dashboard-exam-select:focus-visible{border-color:#9b87ff;box-shadow:0 0 0 3px rgba(139,113,255,.15)}
+.shell .dashboard-content .dashboard-exam-select option{color:#f7f5ff;background:#111421}
+.shell .dashboard-content .dashboard-exam-description{margin:-5px 0 0;color:var(--text-secondary,#9099ad);font-size:11px;line-height:1.55}
+.shell .dashboard-content .dashboard-launch-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.shell .dashboard-content .dashboard-launch-metrics>div{display:grid;align-content:start;gap:6px;min-width:0;padding:11px 10px;border:1px solid rgba(151,146,190,.15);border-radius:12px;background:rgba(4,7,14,.35)}
+.shell .dashboard-content .dashboard-launch-metrics span{color:#8e97ad;font-size:8px;line-height:1.35;letter-spacing:.5px;font-weight:800}
+.shell .dashboard-content .dashboard-launch-metrics b{color:#f5f2ff;font:800 16px/1.2 Manrope,'DM Sans',sans-serif;overflow-wrap:anywhere}
+.shell .dashboard-content .dashboard-launch-settings{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.shell .dashboard-content .dashboard-config-block{min-width:0;padding:12px;border:1px solid rgba(151,146,190,.16);border-radius:13px;background:rgba(6,8,16,.40)}
+.shell .dashboard-content .dashboard-config-heading{display:grid;gap:4px;margin-bottom:10px}
+.shell .dashboard-content .dashboard-config-heading small{color:#707a91;font-size:9px;line-height:1.4}
+.shell .dashboard-content .dashboard-config-block .config-options{gap:6px}
+.shell .dashboard-content .dashboard-config-block .config-options button{min-width:42px;min-height:37px;padding:8px 11px;border:1px solid rgba(153,147,194,.20);border-radius:9px;color:#b9c0d1;background:rgba(20,24,37,.88);font-size:10px;font-weight:800}
+.shell .dashboard-content .dashboard-config-block .config-options button.active{color:#fff;border-color:#9f8bff;background:linear-gradient(130deg,#8263e8,#6346c3);box-shadow:0 5px 13px rgba(92,65,180,.20)}
+.shell .dashboard-content .dashboard-config-block .config-options button:disabled{opacity:.35}
+.shell .dashboard-content .dashboard-config-empty{align-self:center;color:#8690a6;font-size:10px;line-height:1.4}
+.shell .dashboard-content .dashboard-exam-notice,.shell .dashboard-content .dashboard-exam-error{margin:0;padding:10px 12px;border:1px solid rgba(217,184,114,.18);border-radius:10px;color:#d9c18f;background:rgba(68,48,18,.17);font-size:10px;line-height:1.5}
+.shell .dashboard-content .dashboard-exam-error{border-color:rgba(242,135,161,.2);color:#f0b2c2;background:rgba(80,20,43,.18);overflow-wrap:anywhere}
+.shell .dashboard-content .dashboard-launch-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:13px;border-top:1px solid rgba(151,146,190,.14)}
+.shell .dashboard-content .dashboard-launch-footer small{max-width:42ch;color:#858ea4;font-size:9px;line-height:1.5}
+.shell .dashboard-content .dashboard-launch-footer .primary-button{min-height:43px;flex:0 0 auto;padding:11px 15px;border-radius:12px}
+.shell .dashboard-content .stats-grid{margin-top:0}
+.shell .boards-content .boards-hero-meta{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:11px}
+.shell .boards-content .boards-hero-meta span{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border:1px solid rgba(158,143,235,.18);border-radius:999px;color:#aeb6ca;background:rgba(12,15,26,.50);font-size:8px;font-weight:800;letter-spacing:.3px;white-space:nowrap}
+.shell .boards-content .boards-hero-meta span:first-child{color:#82dfb4;border-color:rgba(105,224,173,.18);background:rgba(15,50,37,.24)}
+@media(max-width:760px){
+ .shell .dashboard-content .dashboard-account-note{gap:8px;margin-bottom:16px;padding:9px 10px;border-radius:12px}
+ .shell .dashboard-content .dashboard-account-icon{width:29px;height:29px;flex-basis:29px;border-radius:9px}
+ .shell .dashboard-content .dashboard-account-copy b{font-size:10px}
+ .shell .dashboard-content .dashboard-account-copy p{font-size:9px}
+ .shell .dashboard-content .dashboard-account-action{padding:8px 9px;font-size:9px}
+ .shell .dashboard-content .dashboard-exam-launcher{gap:12px;margin-bottom:20px;padding:14px 12px;border-radius:17px}
+ .shell .dashboard-content .dashboard-exam-header{gap:8px}
+ .shell .dashboard-content .dashboard-exam-header h2{font-size:20px}
+ .shell .dashboard-content .dashboard-exam-header p{font-size:10px;line-height:1.45}
+ .shell .dashboard-content .dashboard-exam-status{padding:6px 7px;font-size:6px;letter-spacing:.4px}
+ .shell .dashboard-content .dashboard-exam-select{min-height:44px;padding-inline:11px;font-size:11px}
+ .shell .dashboard-content .dashboard-launch-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .shell .dashboard-content .dashboard-launch-metrics>div{padding:9px;border-radius:10px}
+ .shell .dashboard-content .dashboard-launch-metrics span{font-size:7px}
+ .shell .dashboard-content .dashboard-launch-metrics b{font-size:14px}
+ .shell .dashboard-content .dashboard-launch-settings{grid-template-columns:1fr;gap:8px}
+ .shell .dashboard-content .dashboard-config-block{padding:10px;border-radius:11px}
+ .shell .dashboard-content .dashboard-config-heading{margin-bottom:8px}
+ .shell .dashboard-content .dashboard-config-heading b{font-size:9px}
+ .shell .dashboard-content .dashboard-config-heading small{font-size:8px}
+ .shell .dashboard-content .dashboard-config-block .config-options button{min-height:36px;min-width:40px;padding:8px 10px;font-size:10px}
+ .shell .dashboard-content .dashboard-launch-footer{align-items:stretch;flex-direction:column-reverse;gap:9px}
+ .shell .dashboard-content .dashboard-launch-footer .primary-button{width:100%}
+ .shell .dashboard-content .dashboard-launch-footer small{max-width:none;font-size:8px}
+ .shell .boards-content .boards-hero-meta{gap:5px;margin-top:9px}
+ .shell .boards-content .boards-hero-meta span{font-size:7px;padding:5px 7px}
+ .shell .boards-content .job-heading .section-count{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .shell .dashboard-content .dashboard-exam-launcher *, .shell .dashboard-content .dashboard-account-note *{animation:none!important;transition:none!important}
+}
+
+/* Mobile exam-board picker refinement: calmer hierarchy, cleaner spacing, same purple palette. */
+@media (max-width: 600px) {
+  .shell .boards-content .job-section {
+    margin-top: 2px;
+    min-width: 0;
+  }
+  .shell .boards-content .job-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 10px;
+    margin: 0 0 14px;
+    padding: 0 2px;
+  }
+  .shell .boards-content .job-heading > div {
+    min-width: 0;
+  }
+  .shell .boards-content .job-heading h2 {
+    margin: 0 0 7px;
+    font-size: clamp(17px, 4.7vw, 20px);
+    line-height: 1.25;
+    letter-spacing: -.45px;
+  }
+  .shell .boards-content .job-heading p {
+    max-width: 34ch;
+    font-size: 11px;
+    line-height: 1.55;
+    overflow-wrap: break-word;
+  }
+  .shell .boards-content .job-heading .section-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: end;
+    padding: 6px 8px;
+    border: 1px solid rgba(158,143,235,.22);
+    border-radius: 999px;
+    background: rgba(18,16,34,.76);
+    color: #b5a4ff;
+    font-size: 8px;
+    letter-spacing: .8px;
+    white-space: nowrap;
+  }
+  .shell .boards-content .exam-board-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    margin: 0 0 12px;
+    padding: 7px;
+    border-radius: 17px;
+  }
+  .shell .boards-content .exam-board-tab {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: start;
+    align-content: start;
+    gap: 7px;
+    min-width: 0;
+    min-height: 104px;
+    padding: 10px 9px 9px;
+    border-radius: 14px;
+  }
+  .shell .boards-content .exam-board-tab .board-tab-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+  }
+  .shell .boards-content .exam-board-tab .board-tab-copy {
+    min-width: 0;
+    width: 100%;
+  }
+  .shell .boards-content .exam-board-tab .board-tab-copy b {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+  .shell .boards-content .exam-board-tab .board-tab-copy small {
+    display: block;
+    margin-top: 3px;
+    font-size: 9px;
+    line-height: 1.3;
+  }
+  .shell .boards-content .exam-board-tab em {
+    max-width: 100%;
+    font-size: 7px;
+    letter-spacing: .45px;
+    white-space: nowrap;
+  }
+  .shell .boards-content .exam-toolbar {
+    gap: 10px;
+    margin-bottom: 13px;
+    padding: 11px;
+    border-radius: 15px;
+  }
+  .shell .boards-content .exam-search {
+    min-width: 0;
+    min-height: 44px;
+    border-radius: 11px;
+  }
+  .shell .boards-content .exam-search input {
+    min-width: 0;
+    font-size: 12px;
+  }
+  .shell .boards-content .exam-filters {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 0 0 2px;
+    scrollbar-width: none;
+  }
+  .shell .boards-content .exam-filters::-webkit-scrollbar {
+    display: none;
+  }
+  .shell .boards-content .exam-filters button {
+    flex: 0 0 auto;
+    min-height: 39px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 10px;
+  }
+  .shell .boards-content .active-board-head {
+    align-items: center;
+    gap: 10px;
+  }
+  .shell .boards-content .active-board-head h3 {
+    font-size: 21px;
+    line-height: 1.25;
+  }
+}
+@media (max-width: 370px) {
+  .shell .boards-content .job-heading .section-count {
+    padding: 5px 6px;
+    font-size: 7px;
+  }
+  .shell .boards-content .exam-board-tabs {
+    gap: 5px;
+    padding: 5px;
+  }
+  .shell .boards-content .exam-board-tab {
+    padding: 9px 7px;
+  }
+  .shell .boards-content .exam-board-tab .board-tab-copy b {
+    font-size: 10px;
+  }
+  .shell .boards-content .exam-filters button {
+    padding-inline: 9px;
+  }
+}
+
+
+/* Failed exam-data load is distinct from a genuinely empty catalog. */
+.shell .boards-content .boards-load-error{margin:10px 0 0;padding:10px 12px;border:1px solid rgba(242,135,161,.2);border-radius:10px;color:#f0b2c2;background:rgba(80,20,43,.18);font-size:10px;line-height:1.5;overflow-wrap:anywhere}
