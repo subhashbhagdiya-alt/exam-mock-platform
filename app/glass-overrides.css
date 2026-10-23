@@ -4828,3 +4828,27 @@ button{cursor:pointer}
   .shell .boards-content .job-heading h2,
   .shell .boards-content .exam-board-tab.active{animation:none!important}
 }
+
+
+/* Mobile menu usability fix: anchor the floating drawer to the actual topbar and keep settings reachable. */
+@media (max-width:760px){
+  .shell .mobile-menu-backdrop{
+    inset:calc(64px + env(safe-area-inset-top)) 0 0!important;
+  }
+  .shell .sidebar.mobile-menu-open{
+    top:calc(68px + env(safe-area-inset-top))!important;
+    max-height:min(54dvh,430px)!important;
+    max-width:calc(100vw - 40px)!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain!important;
+    scroll-padding-block:8px!important;
+    scrollbar-width:thin!important;
+  }
+  .shell .mobile-menu-utilities{flex:0 0 auto!important}
+  .shell .mobile-menu-utilities-panel{width:100%!important}
+  .shell .mobile-menu-utilities-toggle,
+  .shell .mobile-menu-utilities-panel button{
+    touch-action:manipulation!important;
+  }
+}
