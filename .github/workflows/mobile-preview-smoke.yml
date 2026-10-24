@@ -1,0 +1,74 @@
+name: ExamPrep PR Mobile Preview Smoke
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/page.jsx"
+      - "app/globals.css"
+      - "app/glass-overrides.css"
+      - "app/api/job-tracks/route.js"
+      - "app/api/questions/route.js"
+      - "tests/e2e/production-smoke.spec.mjs"
+      - ".github/workflows/mobile-preview-smoke.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: examprep-mobile-preview-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mobile-smoke:
+    # Only run this read-only mobile smoke against this repo's dedicated PR preview.
+    # Do not run the production write-capable API tests here.
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/home-exam-picker-sync-2026-10-22'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      E2E_BASE_URL: https://exam-prep-git-fix-home-exam-picker-sync-2026-10-22-direct-box.vercel.app
+      E2E_SKIP_PRIVILEGED_API_TESTS: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install project dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+      - name: Install temporary Playwright test runner
+        run: npm install --no-save --package-lock=false @playwright/test
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Wait for this branch's preview build
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 36); do
+            page="$(curl --fail --silent --show-error "$E2E_BASE_URL/" 2>/dev/null || true)"
+            if printf '%s' "$page" | grep -q 'data-testid="mobile-nav-home"'; then
+              echo "The branch preview contains the current mobile navigation build."
+              exit 0
+            fi
+            echo "Preview build not updated yet (attempt $attempt/36)."
+            sleep 5
+          done
+          echo "Timed out waiting for the current branch preview."
+          exit 1
+      - name: Run mobile navigation and layout smoke tests
+        run: npx playwright test tests/e2e/production-smoke.spec.mjs --reporter=list
+      - name: Upload mobile screenshot diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: examprep-pr-mobile-smoke-${{ github.run_id }}
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
