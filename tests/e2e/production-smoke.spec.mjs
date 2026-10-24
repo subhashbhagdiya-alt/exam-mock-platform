@@ -55,6 +55,19 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(page.locator(".sidebar.mobile-menu-open")).toHaveCount(0);
   await expect(mobileMenuToggle).toHaveAttribute("aria-expanded", "false");
+
+  // Verify the mobile Home picker and its safe unavailable-credentials state in Preview.
+  await mobileMenuToggle.click();
+  await page.locator(".sidebar.mobile-menu-open").getByTestId("mobile-nav-home").click();
+  await expect(page.getByTestId("dashboard-exam-title")).toBeVisible();
+  await expect(page.getByTestId("dashboard-exam-picker")).toBeVisible();
+  await expect(page.getByTestId("configure-mock-test")).toBeVisible();
+  if (process.env.E2E_SKIP_PRIVILEGED_API_TESTS === "true") {
+    await expect(page.locator(".dashboard-exam-error[role=alert]").first()).toContainText(/server-only Supabase key/i);
+    await expect(page.locator(".dashboard-exam-status")).toContainText("SERVER SETUP");
+    await expect(page.getByTestId("configure-mock-test")).toBeDisabled();
+  }
+
   await mobileMenuToggle.click();
   await page.locator(".sidebar.mobile-menu-open").getByTestId("mobile-nav-login").click();
   await expect(page.getByTestId("login-email-input")).toBeVisible();
