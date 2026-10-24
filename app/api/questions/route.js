@@ -61,7 +61,10 @@ function selectBalancedQuestions(rows, limit) {
 }
 
 export async function GET(request) {
-  if (!url || !serverKeys.length) return NextResponse.json({ error: "Question bank server credentials are not configured" }, { status: 503 });
+  if (!url || !serverKeys.length) return NextResponse.json({
+    error: "Question bank server credentials are missing. Configure SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY in this deployment environment; keep the key server-side and never use a NEXT_PUBLIC_ variable.",
+    code: "QUESTION_BANK_SERVER_CREDENTIALS_MISSING"
+  }, { status: 503 });
   const { searchParams } = new URL(request.url);
   const exam = searchParams.get("exam") || "mpesb";
   const requestedLimit = searchParams.get("limit");
