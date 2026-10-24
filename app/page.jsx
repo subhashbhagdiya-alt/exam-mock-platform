@@ -1848,7 +1848,7 @@ export default function HomePage() {
             </div>
           </div>}
         </div>
-        {view !== "test" && view !== "instructions" && <button className={"nav-item " + (view === "home" ? "active" : "")} onClick={() => navigateTo("home")}><Home size={18}/>{t("होम","Home")}</button>}
+        {view !== "test" && view !== "instructions" && <button data-testid="mobile-nav-home" className={"nav-item " + (view === "home" ? "active" : "")} onClick={() => navigateTo("home")}><Home size={18}/>{t("होम","Home")}</button>}
         <button className={"nav-item " + (view === "boards" ? "active" : "")} onClick={() => navigateTo("boards")}><GraduationCap size={18}/>{t("परीक्षाएँ","Exams")}</button><button className={"nav-item " + (view === "history" ? "active" : "")} onClick={() => navigateTo("history")}><Award size={18}/>{t("मेरे रिज़ल्ट","My results")}</button><button data-testid="mobile-nav-login" className={"nav-item " + (view === "login" ? "active" : "")} onClick={() => navigateTo("login")}><ShieldCheck size={18}/>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button className={"nav-item " + (view === "settings" ? "active" : "")} onClick={() => navigateTo("settings")}><Settings size={18}/>{t("सेटिंग्स","Settings")}</button>
         <button className={"nav-item " + (view === "sources" ? "active" : "")} onClick={() => navigateTo("sources")}><Download size={18}/>{t("Source PDFs","Source PDFs")}</button>
         <button data-testid="mobile-nav-paper-analyzer" className={"nav-item " + (view === "paper" ? "active" : "")} onClick={() => navigateTo("paper")}><FileText size={18}/>{t("पेपर विश्लेषण","Paper Analyzer")}</button>
@@ -1888,7 +1888,7 @@ export default function HomePage() {
             <div className="dashboard-exam-header">
               <div>
                 <div className="eyebrow"><span className="eyebrow-line"/> {t("मॉक टेस्ट चुनें","CHOOSE YOUR MOCK TEST")}</div>
-                <h2 id="dashboard-exam-title">{t("अपनी परीक्षा चुनें","Pick your exam")}</h2>
+                <h2 id="dashboard-exam-title" data-testid="dashboard-exam-title">{t("अपनी परीक्षा चुनें","Pick your exam")}</h2>
                 <p>{t("भर्ती चुनें, उपलब्ध सवाल देखें और टेस्ट का समय तय करें।","Choose a recruitment, see available questions, and set your time limit.")}</p>
               </div>
               <span className={"dashboard-exam-status " + (canStartSelectedPractice ? "ready" : "soon")}>
@@ -1898,7 +1898,7 @@ export default function HomePage() {
 
             <label className="dashboard-exam-field">
               <span>{t("परीक्षा / भर्ती","Exam / recruitment")}</span>
-              <select className="dashboard-exam-select" value={selectedJobTrack} disabled={jobTracksLoading || !dashboardExamTracks.length} onChange={event => selectDashboardExam(event.target.value)}>
+              <select data-testid="dashboard-exam-picker" className="dashboard-exam-select" value={selectedJobTrack} disabled={jobTracksLoading || !dashboardExamTracks.length} onChange={event => selectDashboardExam(event.target.value)}>
                 {jobTracksLoading && <option value={selectedJobTrack}>{t("परीक्षाएँ लोड हो रही हैं…","Loading exams…")}</option>}
                 {!jobTracksLoading && jobTracksLoadError && <option value="">{t("परीक्षा विकल्प लोड नहीं हो सके","Exam options could not be loaded")}</option>}
                 {!jobTracksLoading && !jobTracksLoadError && !dashboardExamTracks.length && <option value="">{t("अभी परीक्षा विकल्प उपलब्ध नहीं","No exam options configured yet")}</option>}
@@ -1937,7 +1937,7 @@ export default function HomePage() {
 
             <div className="dashboard-launch-footer">
               <small>{t("Guest mode में भी टेस्ट और रिज़ल्ट इस device पर काम करते हैं।","Tests and results also work locally in guest mode.")}</small>
-              <button type="button" className="primary-button" onClick={startTest} disabled={!canStartSelectedPractice}>
+              <button type="button" data-testid="configure-mock-test" className="primary-button" onClick={startTest} disabled={!canStartSelectedPractice}>
                 {t("टेस्ट सेट करें","Configure test")}<ArrowRight size={17}/>
               </button>
             </div>
