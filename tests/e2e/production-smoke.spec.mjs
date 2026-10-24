@@ -75,7 +75,7 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
         effective_status: "practice"
       }] })
     }));
-    await page.route(/\\/api\\/questions(?:\\?.*)?$/, route => route.fulfill({
+    await page.route("**/api/questions**", route => route.fulfill({
       status: 503,
       contentType: "application/json",
       body: JSON.stringify({
