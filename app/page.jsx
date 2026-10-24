@@ -1148,7 +1148,12 @@ export default function HomePage() {
         if (selectedTopic !== "all") params.set("topic", selectedTopic);
         const response = await fetch(`/api/questions?${params.toString()}`, { cache: "no-store" });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload?.error || "Question bank unavailable");
+        if (!response.ok) {
+          const message = payload?.code === "QUESTION_BANK_SERVER_CREDENTIALS_MISSING"
+            ? t("इस preview में सवालों की जाँच के लिए server-only Supabase key चाहिए।", "This preview needs a server-only Supabase key to verify question availability.")
+            : payload?.error || "Question bank unavailable";
+          throw new Error(message);
+        }
         if (!active) return;
         const actual = Number(payload?.meta?.available ?? (Array.isArray(payload.data) ? payload.data.length : 0));
         setAvailableQuestionCount(actual);
@@ -1897,7 +1902,7 @@ export default function HomePage() {
                 {jobTracksLoading && <option value={selectedJobTrack}>{t("परीक्षाएँ लोड हो रही हैं…","Loading exams…")}</option>}
                 {!jobTracksLoading && jobTracksLoadError && <option value="">{t("परीक्षा विकल्प लोड नहीं हो सके","Exam options could not be loaded")}</option>}
                 {!jobTracksLoading && !jobTracksLoadError && !dashboardExamTracks.length && <option value="">{t("अभी परीक्षा विकल्प उपलब्ध नहीं","No exam options configured yet")}</option>}
-                {dashboardExamTracks.map(track => <option key={track.slug} value={track.slug}>{(hi ? track.name_hi : track.name_en) || track.slug}{track.question_bank_check_available === false ? " · CONFIG" : track.question_bank_ready ? " · READY" : " · SOON"}</option>)}
+                {dashboardExamTracks.map(track => <option key={track.slug} value={track.slug}>{(hi ? track.name_hi : track.name_en) || track.slug}{track.question_bank_check_available === false ? " · SETUP" : track.question_bank_ready ? " · READY" : " · SOON"}</option>)}
               </select>
             </label>
             {jobTracksLoadError && <p className="dashboard-exam-error" role="alert">{t("परीक्षा डेटा लोड नहीं हो सका: ","Exam data failed to load: ")}{jobTracksLoadError}</p>}
@@ -1926,7 +1931,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {!jobTracksLoading && selectedTrackData && selectedTrackData.question_bank_check_available === false && <p className="dashboard-exam-notice">{t("इस deployment में verified सवालों की जाँच के लिए server-only Supabase credential चाहिए।","This deployment needs a server-only Supabase credential to verify question availability.")}</p>}
             {!jobTracksLoading && selectedTrackData && selectedTrackData.question_bank_check_available !== false && (!selectedTrackData.question_bank_ready || !selectedTrackData.exam_slug) && <p className="dashboard-exam-notice">{t("इस भर्ती का verified question bank अभी तैयार नहीं है। कोई दूसरा READY विकल्प चुनें।","This recruitment's verified question bank is not ready yet. Choose another READY option.")}</p>}
             {questionLoadError && <p className="dashboard-exam-error" role="alert">{questionLoadError}</p>}
             {authMessage && <p className="dashboard-exam-error" role="status" aria-live="polite">{authMessage}</p>}
@@ -1981,7 +1985,7 @@ export default function HomePage() {
                   {selectedJobTrack === track.slug && <Check className="job-selected-check" size={15}/>}
                 </article>)}</div> : <div className="exam-empty"><b>{t("इस बोर्ड में अभी कोई मैचिंग परीक्षा नहीं मिली।","No matching exams found for this board.")}</b><span>{t("सर्च हटाकर या दूसरा बोर्ड चुनकर देखें।","Clear the search or choose another board.")}</span></div>}
                 {selectedTrackData && getExamGroup(selectedTrackData) === group.key && <div className="exam-detail-panel">
-                  <div className="exam-detail-head"><div><span className="active-board-kicker">{group.icon} {t("परीक्षा विवरण","EXAM DETAILS")}</span><h3>{hi ? selectedTrackData.name_hi : selectedTrackData.name_en}</h3><p>{hi ? selectedTrackData.description_hi : selectedTrackData.description_en}</p></div><span className={"detail-status " + (selectedTrackData.question_bank_ready ? "ready" : "soon")}>{selectedTrackData.question_bank_check_available === false ? "CONFIG" : selectedTrackData.question_bank_ready ? "✓ READY" : "SOON"}</span></div>
+                  <div className="exam-detail-head"><div><span className="active-board-kicker">{group.icon} {t("परीक्षा विवरण","EXAM DETAILS")}</span><h3>{hi ? selectedTrackData.name_hi : selectedTrackData.name_en}</h3><p>{hi ? selectedTrackData.description_hi : selectedTrackData.description_en}</p></div><span className={"detail-status " + (selectedTrackData.question_bank_ready ? "ready" : "soon")}>{selectedTrackData.question_bank_check_available === false ? "SETUP" : selectedTrackData.question_bank_ready ? "✓ READY" : "SOON"}</span></div>
                   {selectedTrackData.official_url && <a className="job-official-link" href={selectedTrackData.official_url} target="_blank" rel="noopener noreferrer"><Globe2 size={15}/>{t("आधिकारिक वेबसाइट खोलें","Open official website")}<ArrowRight size={14}/></a>}
                   <div className="exam-detail-stats"><div><span>{t("सवाल","QUESTIONS")}</span><b>{Number(selectedTrackData.verified_question_count || 0)}</b></div><div><span>{t("टेस्ट समय","TEST TIME")}</span><b>{examConfig.duration_minutes} min</b></div><div><span>{t("मार्किंग","MARKING")}</span><b>{examConfig.marks_per_question} / -{examConfig.negative_marks}</b></div><div><span>{t("सोर्स","SOURCE")}</span><b>{Number(selectedTrackData.pyq_question_count || 0) + Number(selectedTrackData.official_question_count || 0) > 0 ? (Number(selectedTrackData.practice_question_count || 0) > 0 ? "MIXED BANK" : "OFFICIAL / PYQ") : "PRACTICE BANK"}</b></div></div>
                   <div className="exam-detail-actions"><span>{selectedTrackData.question_bank_ready ? t("Question bank उपलब्ध है।","Question bank is available.") : t("Question bank तैयार होते ही unlock होगा।","Unlocks when the question bank is ready.")}</span>{selectedTrackData.question_bank_ready && Number(selectedTrackData.verified_question_count || 0) > 0 && <button className="primary-button" onClick={startTest}>{t("मॉक टेस्ट शुरू करें","Start mock test")}<ArrowRight size={17}/></button>}</div>
