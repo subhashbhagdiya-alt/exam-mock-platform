@@ -7,12 +7,17 @@ const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPA
 const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY]
   .filter(value => typeof value === "string" && value.trim())
   .map(value => value.trim()))];
+const hasServerQuestionAccess = serverKeys.length > 0;
 
 export async function GET() {
-  if (!url || !key || !serverKeys.length) return NextResponse.json({ error: "Job tracks server credentials are not configured" }, { status: 503 });
+  if (!url || !key) return NextResponse.json({ error: "Public Supabase configuration is not configured" }, { status: 503 });
 
+  // Public exam/recruitment metadata can load with the publishable key. Private question-bank
+  // summaries stay server-only; never weaken question_bank RLS to make previews appear ready.
   const client = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-  const questionClient = createClient(url, serverKeys[0], { auth: { autoRefreshToken: false, persistSession: false } });
+  const questionClient = hasServerQuestionAccess
+    ? createClient(url, serverKeys[0], { auth: { autoRefreshToken: false, persistSession: false } })
+    : null;
   const { data, error } = await client
     .from("job_tracks")
     .select("id,exam_board,slug,name_hi,name_en,description_hi,description_en,status,exam_slug,exam_category,official_url,exam_date_text,form_status_text,last_verified_at")
@@ -43,10 +48,10 @@ export async function GET() {
   const topicSets = new Map();
   const predictionCandidates = new Map();
 
-  if (examIds.length) {
+  if (examIds.length && questionClient) {
     const { data: questions, error: questionError } = await questionClient
       .from("question_bank")
-      .select("exam_id,source_type,subject,topic,prediction_score,question_hi,question_en")
+      .select("exam_id,source_type,subject,topic,prediction_score")
       .in("exam_id", examIds)
       .eq("active", true)
       .eq("verified", true);
@@ -68,20 +73,22 @@ export async function GET() {
 
   const enriched = tracks.map((track) => {
     const exam = track.exam_slug ? examsBySlug.get(track.exam_slug) : null;
-    const verifiedQuestionCount = exam ? (verifiedCounts.get(exam.id) || 0) : 0;
+    const verifiedQuestionCount = questionClient && exam ? (verifiedCounts.get(exam.id) || 0) : null;
     const requiredQuestionCount = exam?.total_questions || 0;
-    const questionBankReady = Boolean(exam && verifiedQuestionCount >= requiredQuestionCount && requiredQuestionCount > 0);
+    const questionBankReady = Boolean(questionClient && exam && verifiedQuestionCount >= requiredQuestionCount && requiredQuestionCount > 0);
 
     return {
       ...track,
       verified_question_count: verifiedQuestionCount,
       required_question_count: requiredQuestionCount,
       question_bank_ready: questionBankReady,
-      pyq_question_count: sourceCounts.get(`${exam?.id}:pyq`) || 0,
-      official_question_count: sourceCounts.get(`${exam?.id}:official`) || 0,
-      practice_question_count: sourceCounts.get(`${exam?.id}:curated`) || 0,
-      subjects: exam ? [...(subjectSets.get(exam.id) || new Set())].sort() : [],
-      topics: exam ? [...(topicSets.get(exam.id) || new Set())].sort() : [],
+      question_bank_check_available: Boolean(questionClient),
+      question_bank_status: questionClient ? (questionBankReady ? "ready" : "incomplete") : "server_credentials_required",
+      pyq_question_count: questionClient ? (sourceCounts.get(`${exam?.id}:pyq`) || 0) : null,
+      official_question_count: questionClient ? (sourceCounts.get(`${exam?.id}:official`) || 0) : null,
+      practice_question_count: questionClient ? (sourceCounts.get(`${exam?.id}:curated`) || 0) : null,
+      subjects: questionClient && exam ? [...(subjectSets.get(exam.id) || new Set())].sort() : [],
+      topics: questionClient && exam ? [...(topicSets.get(exam.id) || new Set())].sort() : [],
       analysis_candidates: exam ? [...(predictionCandidates.get(exam.id) || [])]
         .sort((a,b) => Number(b.prediction_score || 0) - Number(a.prediction_score || 0))
         .slice(0,5)

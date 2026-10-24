@@ -33,6 +33,9 @@ jobs:
     timeout-minutes: 12
     env:
       E2E_BASE_URL: ${{ github.event.inputs.base_url || 'https://exam-prep-direct-box.vercel.app' }}
+      # Preview deployments may intentionally lack a dedicated, isolated server-only question-bank key.
+      # Skip write-capable mock-session API tests there; keep the full suite on the production alias.
+      E2E_SKIP_PRIVILEGED_API_TESTS: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.base_url || 'https://exam-prep-direct-box.vercel.app') != 'https://exam-prep-direct-box.vercel.app' }}
     steps:
       - uses: actions/checkout@v4
         with:
