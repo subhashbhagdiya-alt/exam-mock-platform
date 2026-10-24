@@ -44,9 +44,19 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.screenshot({ path: "test-results/examprep-mobile-home-viewport.png" });
   await page.screenshot({ path: "test-results/examprep-mobile-home.png", fullPage: true });
 
-  // Navigate through the real mobile menu into Account, then verify both login methods.
-  await page.getByTestId("menu-toggle").click();
-  await page.getByTestId("menu-login").click();
+  // Exercise the visible mobile drawer, its quick settings, Escape dismissal, and Account navigation.
+  const mobileMenuToggle = page.getByTestId("mobile-nav-toggle");
+  await mobileMenuToggle.click();
+  await expect(mobileMenuToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator(".sidebar.mobile-menu-open")).toBeVisible();
+  await page.locator(".sidebar.mobile-menu-open").getByRole("button", { name: /Language & appearance/i }).click();
+  await expect(page.locator(".mobile-menu-utilities-panel")).toBeVisible();
+  await expect(page.locator(".mobile-menu-theme-row button")).toHaveCount(3);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".sidebar.mobile-menu-open")).toHaveCount(0);
+  await expect(mobileMenuToggle).toHaveAttribute("aria-expanded", "false");
+  await mobileMenuToggle.click();
+  await page.locator(".sidebar.mobile-menu-open").getByTestId("mobile-nav-login").click();
   await expect(page.getByTestId("login-email-input")).toBeVisible();
   await page.getByTestId("login-method-phone").click();
   await expect(page.getByPlaceholder("10 अंकों का मोबाइल नंबर")).toBeVisible();
@@ -66,8 +76,9 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.screenshot({ path: "test-results/examprep-mobile-login-viewport.png" });
 
   // The paper analyzer should be discoverable on mobile and gated behind account login.
-  await page.getByTestId("menu-toggle").click();
-  await page.getByTestId("menu-paper-analyzer").click();
+  await mobileMenuToggle.click();
+  await expect(mobileMenuToggle).toHaveAttribute("aria-expanded", "true");
+  await page.locator(".sidebar.mobile-menu-open").getByTestId("mobile-nav-paper-analyzer").click();
   await expect(page.getByTestId("paper-analyzer-title")).toBeVisible();
   const analyzerIcon = page.locator(".paper-analyzer-content .paper-analyzer-icon");
   const uploadIcon = page.locator(".paper-analyzer-content .paper-upload-icon");
@@ -117,6 +128,7 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
 });
 
 test("mock test API grades an attempt and keeps repeated submission idempotent", async ({ request }) => {
+  test.skip(process.env.E2E_SKIP_PRIVILEGED_API_TESTS === "true", "Preview does not have a dedicated non-production question-bank credential.");
   const sessionResponse = await request.get(`${baseURL}/api/questions?exam=mpesb-police-constable-2026&limit=10`, { timeout: 30_000 });
   const sessionText = await sessionResponse.text();
   expect(sessionResponse.status(), `Question session API response: ${sessionText}`).toBe(200);
@@ -150,6 +162,7 @@ test("mock test API grades an attempt and keeps repeated submission idempotent",
 });
 
 test("question catalog supports normalized subject and topic filters", async ({ request }) => {
+  test.skip(process.env.E2E_SKIP_PRIVILEGED_API_TESTS === "true", "Preview does not have a dedicated non-production question-bank credential.");
   const catalogResponse = await request.get(
     `${baseURL}/api/questions?exam=mpesb-police-constable-2026&limit=100&mode=availability`,
     { timeout: 30_000 }
@@ -185,6 +198,7 @@ test("question catalog supports normalized subject and topic filters", async ({ 
 
 
 test("grading API rejects a session that does not exist", async ({ request }) => {
+  test.skip(process.env.E2E_SKIP_PRIVILEGED_API_TESTS === "true", "Preview does not have a dedicated non-production question-bank credential.");
   // A valid-format but nonexistent session makes the RPC return before any database write.
   const response = await request.post(`${baseURL}/api/grade`, {
     data: {
