@@ -26,6 +26,65 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
     }
   });
 
+  if (process.env.E2E_LOCAL_FIXTURE_MODE === "true") {
+    // Local UI smoke is isolated from Supabase: fixture data keeps the mobile flows deterministic
+    // and simulates the safe, missing-server-credential response without touching any database.
+    await page.route("**/api/exams", route => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ data: [{
+        id: "00000000-0000-4000-8000-000000000101",
+        name: "MPESB Mock Test",
+        slug: "mpesb",
+        total_questions: 40,
+        duration_minutes: 120,
+        marks_per_question: 1,
+        negative_marks: 0.25,
+        passing_percentage: 33
+      }] })
+    }));
+    await page.route("**/api/job-tracks", route => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ data: [{
+        id: "00000000-0000-4000-8000-000000000102",
+        exam_board: "MPESB",
+        slug: "mpesb-common",
+        name_hi: "MPESB सामान्य तैयारी",
+        name_en: "MPESB Common Preparation",
+        description_hi: "सभी MPESB भर्तियों के common sections के लिए आधार अभ्यास।",
+        description_en: "Foundation practice for MPESB recruitment.",
+        status: "practice",
+        exam_slug: "mpesb",
+        exam_category: "recruitment",
+        official_url: null,
+        exam_date_text: null,
+        form_status_text: null,
+        last_verified_at: null,
+        verified_question_count: null,
+        required_question_count: 40,
+        question_bank_ready: false,
+        question_bank_check_available: false,
+        question_bank_status: "server_credentials_required",
+        pyq_question_count: null,
+        official_question_count: null,
+        practice_question_count: null,
+        subjects: [],
+        topics: [],
+        analysis_candidates: [],
+        effective_status: "practice"
+      }] })
+    }));
+    await page.route(/\\/api\\/questions(?:\\?.*)?$/, route => route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: "Question bank server credentials are missing.",
+        code: "QUESTION_BANK_SERVER_CREDENTIALS_MISSING"
+      })
+    }));
+  }
+
   const response = await page.goto(baseURL, {
     waitUntil: "domcontentloaded",
     timeout: 60_000
