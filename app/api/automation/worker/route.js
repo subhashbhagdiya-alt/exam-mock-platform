@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../../../../lib/weekly-exam-analysis.mjs";
 import { classifyWorkerFailure, resetWorkerRetryCount, MAX_TRANSIENT_PROVIDER_RETRIES } from "../../../../lib/background-task-retry.mjs";
 import { publicDbError } from "../../../../lib/api-errors.mjs";
+import { buildGeminiGenerateContentBody, buildGroqChatCompletionBody, extractWorkerText, resolveWorkerTextProvider } from "../../../../lib/ai-text-provider.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -19,38 +20,24 @@ function dbClient() {
   return url && key ? createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } }) : null;
 }
 
-function extractGeminiText(body) {
-  return (body.candidates?.[0]?.content?.parts || []).map((part) => part.text || "").join("");
-}
-
-async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
-  // Groq handles text-only automation when configured. No automatic provider fallback.
-  const groqKey = process.env.GROQ_API_KEY;
-  const provider = groqKey ? "groq" : "gemini";
-  const model = groqKey
-    ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b")
-    : (process.env.GEMINI_WORKER_MODEL || "gemini-3.6-flash");
+async function callModel(prompt, maxOutputTokens = 16000) {
+  const config = resolveWorkerTextProvider(process.env);
+  if (!config) throw new Error("Configure GROQ_API_KEY or GEMINI_API_KEY before running AI worker tasks.");
+  const { provider, apiKey, model } = config;
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       const response = provider === "groq"
         ? await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
-            headers: { "content-type": "application/json", Authorization: `Bearer ${groqKey}` },
-            body: JSON.stringify({
-              model,
-              messages: [{ role: "user", content: prompt }],
-              temperature: 0.2,
-              max_completion_tokens: maxOutputTokens,
-              response_format: { type: "json_object" },
-              ...(model.startsWith("openai/gpt-oss-") ? { reasoning_format: "hidden" } : {})
-            }),
+            headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
+            body: JSON.stringify(buildGroqChatCompletionBody({ model, prompt, maxOutputTokens })),
             signal: AbortSignal.timeout(15000)
           })
         : await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
             method: "POST",
             headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
-            body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", maxOutputTokens } }),
+            body: JSON.stringify(buildGeminiGenerateContentBody(prompt, maxOutputTokens)),
             signal: AbortSignal.timeout(15000)
           });
       if (!response.ok) {
@@ -65,8 +52,8 @@ async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
         throw failure;
       }
       const body = await response.json();
-      const rawText = provider === "groq" ? (body.choices?.[0]?.message?.content || "") : extractGeminiText(body);
-      const text = rawText.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+      const rawText = extractWorkerText(provider, body);
+      const text = rawText.replace(/^\\s*\\`{3}(?:json)?\\s*/i, "").replace(/\\s*\\`{3}\\s*$/, "");
       try { return JSON.parse(text); } catch { throw new Error(`${provider === "groq" ? "Groq" : "Gemini"} response was not valid JSON; no questions were published.`); }
     } catch (error) {
       const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
@@ -93,7 +80,7 @@ async function generateCandidates(task, db) {
   const { data: exams, error } = await db.from("exams").select("id,name,description").eq("is_active", true).order("name").limit(8);
   if (error) throw error;
   const prompt = `Create 5 high-quality Indian competitive-exam practice MCQs for ExamPrep. Return JSON only: {"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}. Do not label questions PYQ or official. Exams: ${JSON.stringify(exams)}. Task: ${JSON.stringify(task.payload)}.`;
-  const parsed = await callModel(apiKey, prompt, 5000);
+  const parsed = await callModel(prompt, 5000);
   const valid = (Array.isArray(parsed.questions) ? parsed.questions : []).filter(validateGeneratedQuestion);
   return { blocked: false, candidates: valid, generated: valid.length, note: "Legacy small-batch candidates." };
 }
@@ -151,7 +138,7 @@ Request only ${requested} questions in this small resumable batch. Do not try to
 Evidence from existing bank and stored official/PYQ questions: ${JSON.stringify(patternEvidence(context))}.
 Previously generated questions from this same task (do not duplicate): ${JSON.stringify(previousDraft.map((q) => ({ question_hi: q.question_hi, question_en: q.question_en, subject: q.subject, topic: q.topic })))}
 Do not claim to browse or open websites in this free-tier workflow. Use stored PYQ/official questions, exam configuration, topic coverage, and the supplied official_source_references metadata only. Treat listed source URLs as references, not proof that their contents were inspected. Include source_evidence only for evidence actually present in the supplied records; do not invent citations, paper contents, exact frequencies, official status, or guarantees that a question will appear. When authentic past-paper question content is absent, explicitly state that frequency estimates are weak and recommend practice priorities from the available syllabus/description and topic coverage. All generated questions are curated practice, not PYQs. Check each answer and explanation before returning it. Each question needs four distinct options, 0-based answer_index, Hindi/English versions, and concise explanations. Avoid all concepts/questions already in the bank; favor coverage gaps and varied easy/medium/hard difficulty.`;
-  const parsed = await callModel(apiKey, prompt, 16000);
+  const parsed = await callModel(prompt, 16000);
   if (!parsed.analysis || typeof parsed.analysis.trend_summary !== "string" || !Array.isArray(parsed.analysis.topic_breakdown)) {
     throw new Error("Weekly exam-pattern analysis failed schema validation.");
   }
@@ -186,7 +173,7 @@ async function runWeeklyExamAnalysis(task, db) {
 
   if (task.result?.phase === "generated") {
     const reviewPrompt = `Independently review these bilingual competitive-exam practice questions for factual correctness, correct answer index, ambiguity, translation agreement, and explanation accuracy. Fix errors; do not add or remove questions. Return JSON only: {"questions":[same question schema]}. Do not label them official or PYQ. If a fact is uncertain, replace the question with a reliable syllabus-level question. Exam: ${context.exam.name}. Pattern analysis: ${JSON.stringify(task.result.analysis)}. Questions: ${JSON.stringify(task.result.draft_questions)}`;
-    const reviewed = await callModel(apiKey, reviewPrompt, 16000);
+    const reviewed = await callModel(reviewPrompt, 16000);
     const reviewedQuestions = Array.isArray(reviewed.questions) ? reviewed.questions.filter(validateGeneratedQuestion) : [];
     const unique = dedupeGeneratedQuestions(reviewedQuestions, context.existing.map((q) => q.question_en), context.existing.map((q) => q.question_hi));
     const pool = unique.slice(0, target);
@@ -332,7 +319,7 @@ export async function GET(request) {
       const apiKey = process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY;
       if (apiKey) {
         try {
-          const assessment = await callModel(apiKey,
+          const assessment = await callModel(
             `Summarize this operational task-health snapshot as JSON only: {"severity":"low|medium|high","summary":"...","recommended_checks":["..."]}. Do not claim an account compromise; do not recommend automatic destructive actions. No changes are authorized. Snapshot: ${JSON.stringify(deterministic)}`,
             1200
           );
