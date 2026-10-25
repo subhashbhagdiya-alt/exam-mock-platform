@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { publicDbError } from "../../../lib/api-errors.mjs";
+import { fetchAllRowsInPages } from "../../../lib/fetch-all-rows-in-pages.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -50,12 +51,17 @@ export async function GET() {
   const predictionCandidates = new Map();
 
   if (examIds.length && questionClient) {
-    const { data: questions, error: questionError } = await questionClient
-      .from("question_bank")
-      .select("exam_id,source_type,subject,topic,prediction_score")
-      .in("exam_id", examIds)
-      .eq("active", true)
-      .eq("verified", true);
+    const { data: questions, error: questionError } = await fetchAllRowsInPages(
+      (from, to) => questionClient
+        .from("question_bank")
+        .select("exam_id,source_type,subject,topic,prediction_score", { count: "exact" })
+        .in("exam_id", examIds)
+        .eq("active", true)
+        .eq("verified", true)
+        .order("exam_id", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to)
+    );
 
     if (questionError) return publicDbError("Question bank summary", questionError);
 
