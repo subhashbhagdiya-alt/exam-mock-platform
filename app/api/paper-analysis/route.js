@@ -177,7 +177,7 @@ Do not include personal details found in the document in the response.`;
 
     let safe;
     try { safe = validateAnalysis(analysis); }
-    catch (error) { return jsonError(error.message || "Could not validate the generated practice questions.", 422); }
+    catch { return jsonError("The AI response did not match the expected question format. Please try again with a clearer paper.", 422); }
     return NextResponse.json({
       analysis: safe,
       note: "Upload is not saved in ExamPrep. Generated questions are practice-only and have not been independently verified as official PYQs."
