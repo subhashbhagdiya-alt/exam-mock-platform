@@ -14,7 +14,8 @@
     "test:background-task-retry": "node scripts/test-background-task-retry.mjs",
     "test:paper-analysis-quiz": "node scripts/test-paper-analysis-quiz.mjs",
     "test:paper-analysis-upload": "node scripts/test-paper-analysis-upload.mjs",
-    "test:ai-text-provider": "node scripts/test-ai-text-provider.mjs"
+    "test:ai-text-provider": "node scripts/test-ai-text-provider.mjs",
+    "test:service-worker-cache-policy": "node scripts/test-service-worker-cache-policy.mjs"
   },
   "dependencies": {
     "next": "16.3.8",
