@@ -15,7 +15,7 @@ const routeFiles = [
   "app/api/automation/worker/route.js"
 ];
 const rawResponseError = /\b(?:error|analysis_error)\s*:\s*(?:error|err|[A-Za-z_$][\w$]*Error)\??\.message\b/;
-const rawJsonErrorMessage = /\\bjsonError\\(\\s*(?:error|err)\\??\\.message\\b/;
+const rawJsonErrorMessage = /\bjsonError\(\s*(?:error|err)\??\.message\b/;
 const conditionalRawResponseMessage = /\b(?:error|analysis_error)\s*:\s*[^,\n}]*\?\s*(?:message|(?:error|err|[A-Za-z_$][\w$]*Error)\??\.message)\s*:/;
 for (const path of routeFiles) {
   const source = await readFile(path, "utf8");
