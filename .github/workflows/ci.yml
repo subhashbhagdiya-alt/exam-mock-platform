@@ -32,13 +32,13 @@ jobs:
       - run: npm run check:localizations
       - run: npm run build
       - name: Install temporary Playwright runner for isolated mobile smoke
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/home-exam-picker-sync-2026-10-22'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         run: npm install --no-save --package-lock=false @playwright/test
       - name: Install Chromium for isolated mobile smoke
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/home-exam-picker-sync-2026-10-22'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         run: npx playwright install --with-deps chromium
       - name: Start the built app locally for mobile smoke
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/home-exam-picker-sync-2026-10-22'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         run: |
           set -euo pipefail
           npm run start -- --hostname 127.0.0.1 --port 3000 > /tmp/examprep-mobile-smoke.log 2>&1 &
@@ -54,14 +54,14 @@ jobs:
           echo "The local production server failed to start."
           exit 1
       - name: Run real mobile browser smoke tests against local build
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/home-exam-picker-sync-2026-10-22'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         env:
           E2E_BASE_URL: http://127.0.0.1:3000
           E2E_LOCAL_FIXTURE_MODE: "true"
           E2E_SKIP_PRIVILEGED_API_TESTS: "true"
         run: npx playwright test tests/e2e/production-smoke.spec.mjs --grep "production homepage renders in a mobile viewport|direct links restore login and paper analyzer views" --reporter=list
       - name: Upload mobile browser screenshots and diagnostics
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/home-exam-picker-sync-2026-10-22'
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/upload-artifact@v4
         with:
           name: examprep-pr-mobile-smoke-${{ github.run_id }}
