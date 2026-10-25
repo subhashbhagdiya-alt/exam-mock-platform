@@ -243,13 +243,14 @@ async function runWeeklyExamAnalysis(task, db) {
       difficulty_breakdown: { ...analysis.difficulty_breakdown, generated_batch: generatedDifficulties, generated_topic_counts: generatedTopics },
       trend_summary: trendSummary
     });
+    if (analysisError) console.error("[api] exam analysis save failed:", analysisError?.code || "", analysisError?.message || "");
     return {
       deferred: false,
       blocked: false,
       exam: context.exam.name,
       exam_slug: context.exam.slug,
       analysis_saved: !analysisError,
-      analysis_error: analysisError?.message || null,
+      analysis_error: analysisError ? "Could not save the exam analysis." : null,
       analysis_summary: analysis.trend_summary,
       confidence_notes: analysis.confidence_notes || "Not supplied",
       actual_past_paper_evidence_count: context.historicalEvidence.length,
