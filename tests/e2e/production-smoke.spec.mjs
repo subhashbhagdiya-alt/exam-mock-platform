@@ -205,6 +205,17 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
     pageErrors,
     `The page should not emit uncaught JavaScript errors: ${pageErrors.map(error => error.message).join(" | ")}`
   ).toEqual([]);
+
+  // Run the overflow and mobile-menu check at all requested phone widths.
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    const viewportCheck = await page.evaluate(() => ({
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth
+    }));
+    expect(viewportCheck.documentWidth, `No horizontal overflow at ${width}px`).toBeLessThanOrEqual(width + 2);
+    await expect(page.getByTestId("mobile-nav-toggle")).toBeVisible();
+  }
 });
 
 test("direct links restore login and paper analyzer views", async ({ page }) => {
