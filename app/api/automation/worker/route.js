@@ -53,7 +53,8 @@ async function callModel(prompt, maxOutputTokens = 16000) {
       }
       const body = await response.json();
       const rawText = extractWorkerText(provider, body);
-      const text = rawText.replace(/^\\s*\\`{3}(?:json)?\\s*/i, "").replace(/\\s*\\`{3}\\s*$/, "");
+      const fence = "`".repeat(3);
+      const text = rawText.replace(new RegExp("^\\s*" + fence + "(?:json)?\\s*", "i"), "").replace(new RegExp("\\s*" + fence + "\\s*$"), "");
       try { return JSON.parse(text); } catch { throw new Error(`${provider === "groq" ? "Groq" : "Gemini"} response was not valid JSON; no questions were published.`); }
     } catch (error) {
       const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
