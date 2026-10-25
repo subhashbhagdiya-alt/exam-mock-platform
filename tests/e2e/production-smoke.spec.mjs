@@ -6,7 +6,9 @@ const baseURL = (process.env.E2E_BASE_URL || "https://exam-prep-direct-box.verce
 test.use({
   viewport: { width: 390, height: 844 },
   isMobile: true,
-  hasTouch: true
+  hasTouch: true,
+  // Page.route API fixtures must not be bypassed by the app's service worker.
+  serviceWorkers: "block"
 });
 
 test("production homepage renders in a mobile viewport", async ({ page }) => {
