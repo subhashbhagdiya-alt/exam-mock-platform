@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { publicDbError } from "../../../lib/api-errors.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -24,7 +25,7 @@ export async function GET() {
     .eq("active", true)
     .order("sort_order");
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return publicDbError("Exam list", error);
 
   const tracks = data || [];
   const examSlugs = tracks.map((track) => track.exam_slug).filter(Boolean);
@@ -37,7 +38,7 @@ export async function GET() {
       .in("slug", examSlugs)
       .eq("is_active", true);
 
-    if (examError) return NextResponse.json({ error: examError.message }, { status: 500 });
+    if (examError) return publicDbError("Exam list", examError);
     examsBySlug = new Map((exams || []).map((exam) => [exam.slug, exam]));
   }
 
@@ -56,7 +57,7 @@ export async function GET() {
       .eq("active", true)
       .eq("verified", true);
 
-    if (questionError) return NextResponse.json({ error: questionError.message }, { status: 500 });
+    if (questionError) return publicDbError("Question bank summary", questionError);
 
     for (const question of questions || []) {
       verifiedCounts.set(question.exam_id, (verifiedCounts.get(question.exam_id) || 0) + 1);
