@@ -24,27 +24,32 @@ function extractGeminiText(body) {
 }
 
 async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
-  // Free-tier provider only: never fall back to a paid provider or a paid model.
-  const model = "gemini-3.6-flash";
+  // Groq handles text-only automation when configured. No automatic provider fallback.
+  const groqKey = process.env.GROQ_API_KEY;
+  const provider = groqKey ? "groq" : "gemini";
+  const model = groqKey
+    ? (process.env.GROQ_MODEL || "llama-3.3-70b-versatile")
+    : (process.env.GEMINI_WORKER_MODEL || "gemini-3.6-flash");
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json", maxOutputTokens }
-        }),
-        // Keep all attempts inside Vercel's 60-second function budget.
-        signal: AbortSignal.timeout(15000)
-      });
+      const response = provider === "groq"
+        ? await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { "content-type": "application/json", Authorization: `Bearer ${groqKey}` },
+            body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], temperature: 0.2, max_tokens: maxOutputTokens, response_format: { type: "json_object" } }),
+            signal: AbortSignal.timeout(15000)
+          })
+        : await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+            body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", maxOutputTokens } }),
+            signal: AbortSignal.timeout(15000)
+          });
       if (!response.ok) {
-        const failure = new Error(`Gemini API returned HTTP ${response.status}; no paid-provider fallback was attempted.`);
+        const failure = new Error(`${provider === "groq" ? "Groq" : "Gemini"} API returned HTTP ${response.status}; no automatic provider fallback was attempted.`);
         failure.status = response.status;
         if (response.status === 429) failure.code = "FREE_QUOTA_EXHAUSTED";
-        // Retry transient service errors only. Rate/quota limits are deferred to the
-        // next scheduled worker run instead of consuming the entire function budget.
         if ([500, 502, 503, 504].includes(response.status) && attempt < maxAttempts) {
           const delay = (500 * (2 ** (attempt - 1))) + Math.floor(Math.random() * 300);
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -53,8 +58,9 @@ async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
         throw failure;
       }
       const body = await response.json();
-      const text = extractGeminiText(body).replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
-      try { return JSON.parse(text); } catch { throw new Error("Gemini response was not valid JSON; no questions were published."); }
+      const rawText = provider === "groq" ? (body.choices?.[0]?.message?.content || "") : extractGeminiText(body);
+      const text = rawText.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+      try { return JSON.parse(text); } catch { throw new Error(`${provider === "groq" ? "Groq" : "Gemini"} response was not valid JSON; no questions were published.`); }
     } catch (error) {
       const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
       const retryableStatus = [500, 502, 503, 504].includes(error?.status);
@@ -64,17 +70,16 @@ async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
         continue;
       }
       if (timedOut) {
-        const timeoutError = new Error(`Gemini request timed out after ${maxAttempts} bounded attempts; no paid-provider fallback was attempted.`);
+        const timeoutError = new Error(`${provider} request timed out after ${maxAttempts} bounded attempts; no automatic provider fallback was attempted.`);
         timeoutError.status = 504;
-        timeoutError.code = "GEMINI_TRANSIENT_FAILURE";
+        timeoutError.code = "AI_TRANSIENT_FAILURE";
         throw timeoutError;
       }
       throw error;
     }
   }
-  throw new Error("Gemini request failed after bounded retries; no paid-provider fallback was attempted.");
+  throw new Error("AI request failed after bounded retries; no automatic provider fallback was attempted.");
 }
-
 async function generateCandidates(task, db) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return { blocked: true, reason: "GEMINI_API_KEY is not configured. No AI-generated question was created." };
@@ -335,7 +340,7 @@ export async function GET(request) {
         }
       } else {
         deterministic.ai_assessment = null;
-        deterministic.ai_note = "GEMINI_API_KEY is not configured; deterministic task-health findings were retained.";
+        deterministic.ai_note = "No GROQ_API_KEY or GEMINI_API_KEY is configured; deterministic task-health findings were retained.";
       }
       result = deterministic;
     }
