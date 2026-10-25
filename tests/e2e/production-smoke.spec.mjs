@@ -170,6 +170,14 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await expect(page.locator('input[type="file"][accept*=".pdf"]')).toBeAttached();
   await expect(page.getByRole("button", { name: /Analyze & Generate MCQs/i })).toBeDisabled();
 
+  // Browser Back/Forward restores the navigable view instead of leaving the app.
+  await page.goBack();
+  await expect(page).toHaveURL(/#login$/);
+  await expect(page.getByTestId("login-email-input")).toBeVisible();
+  await page.goForward();
+  await expect(page).toHaveURL(/#paper$/);
+  await expect(page.getByTestId("paper-analyzer-title")).toBeVisible();
+
   const dimensions = await page.evaluate(() => ({
     viewportWidth: window.innerWidth,
     documentWidth: document.documentElement.scrollWidth
@@ -199,6 +207,31 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   ).toEqual([]);
 });
 
+test("direct links restore login and paper analyzer views", async ({ page }) => {
+  test.skip(process.env.E2E_LOCAL_FIXTURE_MODE !== "true", "Runs only against the isolated local build.");
+  await page.route("**/api/exams", route => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ data: [] })
+  }));
+  await page.route("**/api/job-tracks", route => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ data: [] })
+  }));
+  await page.route("**/api/questions**", route => route.fulfill({
+    status: 503, contentType: "application/json",
+    body: JSON.stringify({ error: "Question bank server credentials are missing.", code: "QUESTION_BANK_SERVER_CREDENTIALS_MISSING" })
+  }));
+
+  const loginResponse = await page.goto(baseURL + "/#login", { waitUntil: "domcontentloaded", timeout: 60_000 });
+  expect(loginResponse, "Direct login URL should return a response").not.toBeNull();
+  expect(loginResponse.status()).toBeLessThan(400);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("login-email-input")).toBeVisible({ timeout: 15_000 });
+  await expect(page).toHaveURL(/#login$/);
+
+  await page.goto(baseURL + "/#paper", { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("paper-analyzer-title")).toBeVisible({ timeout: 15_000 });
+  await expect(page).toHaveURL(/#paper$/);
+});
 test("mock test API grades an attempt and keeps repeated submission idempotent", async ({ request }) => {
   test.skip(process.env.E2E_SKIP_PRIVILEGED_API_TESTS === "true", "Preview does not have a dedicated non-production question-bank credential.");
   const sessionResponse = await request.get(`${baseURL}/api/questions?exam=mpesb-police-constable-2026&limit=10`, { timeout: 30_000 });
