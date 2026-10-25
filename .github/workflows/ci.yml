@@ -22,6 +22,7 @@ jobs:
             npm install
           fi
       - run: npm run lint
+      - run: node scripts/test-api-error-leaks.mjs
       - run: npm run test:result-validation
       - run: npm run test:mfa-assurance
       - run: npm run test:background-task-retry
@@ -58,7 +59,7 @@ jobs:
           E2E_BASE_URL: http://127.0.0.1:3000
           E2E_LOCAL_FIXTURE_MODE: "true"
           E2E_SKIP_PRIVILEGED_API_TESTS: "true"
-        run: npx playwright test tests/e2e/production-smoke.spec.mjs --grep "production homepage renders in a mobile viewport" --reporter=list
+        run: npx playwright test tests/e2e/production-smoke.spec.mjs --grep "production homepage renders in a mobile viewport|direct links restore login and paper analyzer views" --reporter=list
       - name: Upload mobile browser screenshots and diagnostics
         if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/home-exam-picker-sync-2026-10-22'
         uses: actions/upload-artifact@v4
