@@ -243,6 +243,89 @@ test("direct links restore login and paper analyzer views", async ({ page }) => 
   await expect(page.getByTestId("paper-analyzer-title")).toBeVisible({ timeout: 15_000 });
   await expect(page).toHaveURL(/#paper$/);
 });
+test("setup navigation preserves browser back and forward history", async ({ page }) => {
+  test.skip(process.env.E2E_LOCAL_FIXTURE_MODE !== "true", "Runs only against the isolated local build.");
+
+  const exam = {
+    id: "00000000-0000-4000-8000-000000000101",
+    name: "MPESB Mock Test",
+    slug: "mpesb",
+    total_questions: 40,
+    duration_minutes: 50,
+    marks_per_question: 1,
+    negative_marks: 0.25,
+    passing_percentage: 33
+  };
+  await page.route("**/api/exams", route => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ data: [exam] })
+  }));
+  await page.route("**/api/job-tracks", route => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ data: [{
+      id: "00000000-0000-4000-8000-000000000102",
+      exam_board: "MPESB",
+      slug: "mpesb-common",
+      name_hi: "MPESB सामान्य तैयारी",
+      name_en: "MPESB Common Preparation",
+      description_hi: "MPESB भर्ती अभ्यास",
+      description_en: "MPESB recruitment practice",
+      status: "question_bank_ready",
+      exam_slug: "mpesb",
+      exam_category: "recruitment",
+      official_url: null,
+      exam_date_text: null,
+      form_status_text: null,
+      last_verified_at: null,
+      verified_question_count: 40,
+      required_question_count: 40,
+      question_bank_ready: true,
+      question_bank_check_available: true,
+      question_bank_status: "ready",
+      pyq_question_count: 0,
+      official_question_count: 0,
+      practice_question_count: 40,
+      subjects: ["General Knowledge"],
+      topics: ["History"],
+      analysis_candidates: [],
+      effective_status: "question_bank_ready"
+    }] })
+  }));
+  await page.route("**/api/questions**", route => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      exam,
+      data: [],
+      meta: {
+        requested: 100,
+        available: 40,
+        subjects: ["General Knowledge"],
+        subject_topics: [{ subject: "General Knowledge", topic: "History" }]
+      }
+    })
+  }));
+
+  const response = await page.goto(baseURL + "/#home", { waitUntil: "domcontentloaded", timeout: 60_000 });
+  expect(response).not.toBeNull();
+  expect(response.status()).toBeLessThan(400);
+  const setupButton = page.getByTestId("configure-mock-test");
+  await expect(setupButton).toBeEnabled({ timeout: 15_000 });
+  await setupButton.click();
+  await expect(page).toHaveURL(/#exam-setup$/);
+  await expect(page.locator(".exam-setup-content .setup-hero")).toBeVisible();
+
+  await page.goBack();
+  await expect(page).toHaveURL(/#home$/);
+  await expect(page.getByTestId("dashboard-exam-picker")).toBeVisible();
+
+  await page.goForward();
+  await expect(page).toHaveURL(/#exam-setup$/);
+  await expect(page.locator(".exam-setup-content .setup-hero")).toBeVisible();
+});
+
 test("mock test API grades an attempt and keeps repeated submission idempotent", async ({ request }) => {
   test.skip(process.env.E2E_SKIP_PRIVILEGED_API_TESTS === "true", "Preview does not have a dedicated non-production question-bank credential.");
   const sessionResponse = await request.get(`${baseURL}/api/questions?exam=mpesb-police-constable-2026&limit=10`, { timeout: 30_000 });

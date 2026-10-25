@@ -810,7 +810,7 @@ export default function HomePage() {
     else if (window.location.hash && window.location.hash !== "#exams") {
       window.history.replaceState({ view: "boards" }, "", "#exams");
     }
-    const onPopState = () => {
+    const onPopState = (event) => {
       if (initialViewFrame !== null) {
         window.cancelAnimationFrame(initialViewFrame);
         initialViewFrame = null;
@@ -821,7 +821,7 @@ export default function HomePage() {
         return;
       }
       setMobileNavOpen(false);
-      setView(viewFromHash(window.location.hash));
+      setView(event?.state?.view === "setup" ? "setup" : viewFromHash(window.location.hash));
     };
     window.addEventListener("popstate", onPopState);
     return () => {
@@ -1724,7 +1724,7 @@ export default function HomePage() {
       return;
     }
     setView("setup");
-    if (typeof window !== "undefined") window.history.replaceState({ view: "setup" }, "", "#exam-setup");
+    if (typeof window !== "undefined") window.history.pushState({ view: "setup" }, "", "#exam-setup");
   }
 
    async function finishTest() {
@@ -2020,7 +2020,7 @@ export default function HomePage() {
                   <span className="job-number">{String(index + 1).padStart(2,"0")}</span><div className="job-3d-icon"><GraduationCap size={17}/></div>
                   <div className="job-copy"><b>{hi ? track.name_hi : track.name_en}</b><span>{hi ? track.description_hi : track.description_en}</span><small>{track.exam_date_text ? "📅 " + track.exam_date_text : ""}{track.form_status_text ? (track.exam_date_text ? " · " : "") + track.form_status_text : ""}</small></div>
                   <em>{track.question_bank_check_available === false ? t("सेटअप चाहिए","SETUP") : track.question_bank_ready ? t("अभी उपलब्ध","READY") : t("जल्द आएगा","SOON")}</em>
-                  {expandedJobTrack === track.slug && <button type="button" className="job-open-button" disabled={!track.question_bank_ready || !track.exam_slug} onClick={(event) => { event.stopPropagation(); if (!track.question_bank_ready || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedSubject("all"); setSelectedTopic("all"); setSelectedExam(track.exam_slug); setAvailableQuestionCount(Number(track.verified_question_count || 0)); setQuestionLoadError(""); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Math.max(30, Number(exam.duration_minutes || 10)), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); setPracticeQuestionCount(Math.min(30, Number(track.verified_question_count || 10))); setPracticeDuration(Math.max(30, Number(exam.duration_minutes || 10))); } setView("setup"); if (typeof window !== "undefined") window.history.replaceState({view:"setup"}, "", "#exam-setup"); }}>{t("Open","Open")}<ArrowRight size={14}/></button>}
+                  {expandedJobTrack === track.slug && <button type="button" className="job-open-button" disabled={!track.question_bank_ready || !track.exam_slug} onClick={(event) => { event.stopPropagation(); if (!track.question_bank_ready || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedSubject("all"); setSelectedTopic("all"); setSelectedExam(track.exam_slug); setAvailableQuestionCount(Number(track.verified_question_count || 0)); setQuestionLoadError(""); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Math.max(30, Number(exam.duration_minutes || 10)), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); setPracticeQuestionCount(Math.min(30, Number(track.verified_question_count || 10))); setPracticeDuration(Math.max(30, Number(exam.duration_minutes || 10))); } setView("setup"); if (typeof window !== "undefined") window.history.pushState({view:"setup"}, "", "#exam-setup"); }}>{t("Open","Open")}<ArrowRight size={14}/></button>}
                   {selectedJobTrack === track.slug && <Check className="job-selected-check" size={15}/>}
                 </article>)}</div> : <div className="exam-empty"><b>{t("इस बोर्ड में अभी कोई मैचिंग परीक्षा नहीं मिली।","No matching exams found for this board.")}</b><span>{t("सर्च हटाकर या दूसरा बोर्ड चुनकर देखें।","Clear the search or choose another board.")}</span></div>}
                 {selectedTrackData && getExamGroup(selectedTrackData) === group.key && <div className="exam-detail-panel">
