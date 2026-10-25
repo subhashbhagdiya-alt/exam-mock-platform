@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { publicDbError } from "../../../../lib/api-errors.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 15;
@@ -49,7 +50,7 @@ export async function POST(request) {
     .in("status", ["queued", "running"])
     .order("created_at", { ascending: false })
     .limit(100);
-  if (taskError) return NextResponse.json({ error: taskError.message }, { status: 500 });
+  if (taskError) return publicDbError("Task queue", taskError);
 
   const matching = (existing || []).filter((task) =>
     task.payload?.exam_id === examId && task.payload?.bulk_run === true
@@ -88,7 +89,7 @@ export async function POST(request) {
   const { data: inserted, error: insertError } = await db.from("background_manager_tasks")
     .insert(tasks)
     .select("id,task_type,status,priority,payload");
-  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
+  if (insertError) return publicDbError("Question import", insertError);
 
   return NextResponse.json({
     ok: true,
