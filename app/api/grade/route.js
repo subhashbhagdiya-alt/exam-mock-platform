@@ -44,7 +44,12 @@ export async function POST(request) {
         }, { status: 503 });
       }
       const status = /not found|expired|already been submitted|no longer valid/i.test(message) ? 409 : 400;
-      return NextResponse.json({ error: /test session|question set|invalid answer/i.test(message) ? message : "Could not grade this test" }, { status });
+      let safeMessage = "Could not grade this test";
+      if (/already been submitted/i.test(message)) safeMessage = "This test has already been submitted.";
+      else if (/expired|test session/i.test(message)) safeMessage = "This test session is invalid or expired. Please start a new test.";
+      else if (/question set|no longer valid/i.test(message)) safeMessage = "The question set is no longer valid. Please start a new test.";
+      else if (/invalid answer/i.test(message)) safeMessage = "One or more selected answers are invalid.";
+      return NextResponse.json({ error: safeMessage }, { status });
     }
     if (!data || typeof data !== "object") return NextResponse.json({ error: "Grading returned an invalid result" }, { status: 500 });
     return NextResponse.json({ data });
