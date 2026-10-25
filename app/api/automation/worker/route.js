@@ -28,7 +28,7 @@ async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
   const groqKey = process.env.GROQ_API_KEY;
   const provider = groqKey ? "groq" : "gemini";
   const model = groqKey
-    ? (process.env.GROQ_MODEL || "llama-3.3-70b-versatile")
+    ? (process.env.GROQ_MODEL || "openai/gpt-oss-120b")
     : (process.env.GEMINI_WORKER_MODEL || "gemini-3.6-flash");
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -37,7 +37,14 @@ async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
         ? await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: { "content-type": "application/json", Authorization: `Bearer ${groqKey}` },
-            body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], temperature: 0.2, max_tokens: maxOutputTokens, response_format: { type: "json_object" } }),
+            body: JSON.stringify({
+              model,
+              messages: [{ role: "user", content: prompt }],
+              temperature: 0.2,
+              max_completion_tokens: maxOutputTokens,
+              response_format: { type: "json_object" },
+              ...(model.startsWith("openai/gpt-oss-") ? { reasoning_format: "hidden" } : {})
+            }),
             signal: AbortSignal.timeout(15000)
           })
         : await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
