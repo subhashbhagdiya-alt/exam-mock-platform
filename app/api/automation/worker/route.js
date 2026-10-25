@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../../../../lib/weekly-exam-analysis.mjs";
 import { classifyWorkerFailure, resetWorkerRetryCount, MAX_TRANSIENT_PROVIDER_RETRIES } from "../../../../lib/background-task-retry.mjs";
+import { publicDbError } from "../../../../lib/api-errors.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -288,13 +289,13 @@ export async function GET(request) {
     .order("started_at", { ascending: true, nullsFirst: false })
     .order("priority", { ascending: false })
     .order("created_at", { ascending: true }).limit(1).maybeSingle();
-  if (claimError) return NextResponse.json({ error: claimError.message }, { status: 500 });
+  if (claimError) return publicDbError("Task queue", claimError);
   if (!task) return NextResponse.json({ ok: true, processed: false, message: "No queued task." });
 
   const { data: claimedRows, error: markError } = await db.from("background_manager_tasks").update({
     status: "running", started_at: task.started_at ?? new Date().toISOString(), error_message: null
   }).eq("id", task.id).eq("status", "queued").select("id");
-  if (markError) return NextResponse.json({ error: markError.message }, { status: 500 });
+  if (markError) return publicDbError("Task queue", markError);
   if (!claimedRows?.length) return NextResponse.json({ ok: true, processed: false, message: "Task was claimed by another worker." });
 
   try {
@@ -376,7 +377,7 @@ export async function GET(request) {
       processed: true,
       task_id: task.id,
       status: retryDecision.deferred ? "queued" : "failed",
-      error: err?.message || "Task failed",
+      error: "Task failed",
       retry: retryMessage
     }, { status: retryDecision.deferred ? 202 : 500 });
   }
