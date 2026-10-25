@@ -805,11 +805,16 @@ export default function HomePage() {
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
     const initialView = viewFromHash(window.location.hash);
-    if (initialView !== "boards") setView(initialView);
+    let initialViewFrame = null;
+    if (initialView !== "boards") initialViewFrame = window.requestAnimationFrame(() => setView(initialView));
     else if (window.location.hash && window.location.hash !== "#exams") {
       window.history.replaceState({ view: "boards" }, "", "#exams");
     }
     const onPopState = () => {
+      if (initialViewFrame !== null) {
+        window.cancelAnimationFrame(initialViewFrame);
+        initialViewFrame = null;
+      }
       // Back/forward must never silently abandon a running test.
       if (viewRef.current === "test") {
         window.history.pushState({ view: "test" }, "", "#test");
@@ -819,7 +824,10 @@ export default function HomePage() {
       setView(viewFromHash(window.location.hash));
     };
     window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      if (initialViewFrame !== null) window.cancelAnimationFrame(initialViewFrame);
+    };
   }, []);
   const [settingsSection, setSettingsSection] = useState("profile");
   const [answers, setAnswers] = useState({});
