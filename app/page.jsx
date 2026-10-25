@@ -772,6 +772,15 @@ const formatTime = (seconds) => {
   return m + ":" + s;
 };
 
+const VIEW_ROUTES = { boards: "#exams", setup: "#exam-setup", test: "#test", login: "#login" };
+// Only views that do not depend on in-memory exam/test state can be restored from a URL.
+const RESTORABLE_VIEWS = ["about", "history", "home", "login", "paper", "settings", "sources"];
+function routeForView(nextView) { return VIEW_ROUTES[nextView] || "#" + nextView; }
+function viewFromHash(hash) {
+  const name = String(hash || "").replace(/^#/, "");
+  return RESTORABLE_VIEWS.includes(name) ? name : "boards";
+}
+
 export default function HomePage() {
   const [language, setLanguage] = useState("en");
   const [view, setView] = useState("boards");
@@ -791,6 +800,27 @@ export default function HomePage() {
       document.removeEventListener("keydown", closeMobileNavEscape);
     };
   }, [mobileNavOpen]);
+  const viewRef = useRef(view);
+  useEffect(() => { viewRef.current = view; }, [view]);
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const initialView = viewFromHash(window.location.hash);
+    if (initialView !== "boards") setView(initialView);
+    else if (window.location.hash && window.location.hash !== "#exams") {
+      window.history.replaceState({ view: "boards" }, "", "#exams");
+    }
+    const onPopState = () => {
+      // Back/forward must never silently abandon a running test.
+      if (viewRef.current === "test") {
+        window.history.pushState({ view: "test" }, "", "#test");
+        return;
+      }
+      setMobileNavOpen(false);
+      setView(viewFromHash(window.location.hash));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
   const [settingsSection, setSettingsSection] = useState("profile");
   const [answers, setAnswers] = useState({});
   const [review, setReview] = useState([]);
@@ -1823,8 +1853,9 @@ export default function HomePage() {
     setMenuOpen(false);
     setView(nextView);
     if (typeof window !== "undefined") {
-      const route = nextView === "boards" ? "#exams" : nextView === "setup" ? "#exam-setup" : nextView === "test" ? "#test" : nextView === "login" ? "#login" : "#" + nextView;
-      window.history.replaceState({ view: nextView }, "", route);
+      const route = routeForView(nextView);
+      if (window.location.hash !== route) window.history.pushState({ view: nextView }, "", route);
+      else window.history.replaceState({ view: nextView }, "", route);
       window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
     }
   }
