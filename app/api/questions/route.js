@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildQuestionCatalog, filterQuestionRows } from "../../../lib/question-categories.mjs";
+import { publicDbError } from "../../../lib/api-errors.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 // Question rows contain answer keys and explanations; all database reads stay on the server.
@@ -83,7 +84,7 @@ export async function GET(request) {
     .eq("slug", exam)
     .eq("is_active", true)
     .maybeSingle();
-  if (examError) return NextResponse.json({ error: examError.message }, { status: 500 });
+  if (examError) return publicDbError("Question bank", examError);
   if (!examRow) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
 
   const limit = Math.min(Math.max(Number(requestedLimit || examRow.total_questions || 10), 1), 100);
@@ -94,7 +95,7 @@ export async function GET(request) {
     .eq("verified", true)
     .eq("exam_id", examRow.id)
     .limit(1000);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return publicDbError("Question bank", error);
 
   const allRows = data || [];
   // Treat capitalization and repeated whitespace as equivalent in user-selected categories.
