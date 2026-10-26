@@ -44,16 +44,27 @@ export async function GET() {
   const predictionCandidates = new Map();
 
   if (examIds.length) {
-    const { data: questions, error: questionError } = await questionClient
-      .from("question_bank")
-      .select("exam_id,source_type,subject,topic,prediction_score,question_hi,question_en")
-      .in("exam_id", examIds)
-      .eq("active", true)
-      .eq("verified", true);
+    // Supabase/PostgREST may cap each response at 500 rows. Paginate the whole
+    // verified bank, otherwise later exams incorrectly appear to have zero questions.
+    const questions = [];
+    const questionPageSize = 500;
+    for (let from = 0; ; from += questionPageSize) {
+      const { data: page, error: questionError } = await questionClient
+        .from("question_bank")
+        .select("exam_id,source_type,subject,topic,prediction_score,question_hi,question_en")
+        .in("exam_id", examIds)
+        .eq("active", true)
+        .eq("verified", true)
+        .order("exam_id", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + questionPageSize - 1);
 
-    if (questionError) return NextResponse.json({ error: questionError.message }, { status: 500 });
+      if (questionError) return NextResponse.json({ error: questionError.message }, { status: 500 });
+      questions.push(...(page || []));
+      if (!page || page.length < questionPageSize) break;
+    }
 
-    for (const question of questions || []) {
+    for (const question of questions) {
       verifiedCounts.set(question.exam_id, (verifiedCounts.get(question.exam_id) || 0) + 1);
       const key = `${question.exam_id}:${question.source_type || "unknown"}`;
       sourceCounts.set(key, (sourceCounts.get(key) || 0) + 1);
