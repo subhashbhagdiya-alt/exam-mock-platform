@@ -6,7 +6,7 @@ import {
   resolvePaperMimeType
 } from "../lib/paper-analysis-upload.mjs";
 
-assert.equal(MAX_PAPER_FILE_BYTES, 3 * 1024 * 1024);
+assert.equal(MAX_PAPER_FILE_BYTES, 4 * 1024 * 1024);
 
 // Browser-reported MIME types work as usual.
 assert.equal(resolvePaperMimeType("exam.pdf", "application/pdf"), "application/pdf");
