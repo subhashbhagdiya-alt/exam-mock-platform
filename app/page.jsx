@@ -6,6 +6,14 @@ import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronR
 import { scorePaperQuiz } from "../lib/paper-analysis-quiz.mjs";
 import { MAX_PAPER_FILE_BYTES, isSupportedPaperFile } from "../lib/paper-analysis-upload.mjs";
 
+function trackCanPractice(track) {
+  return Boolean(
+    track?.exam_slug &&
+    track.question_bank_check_available !== false &&
+    (track.question_bank_ready === true || Number(track.verified_question_count || 0) > 0)
+  );
+}
+
 const supabaseBrowser = (
   typeof window !== "undefined" &&
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -965,9 +973,10 @@ export default function HomePage() {
   const selectedTrackData = jobTracks.find(track => track.slug === selectedJobTrack) || null;
   const dashboardExamTracks = jobTracks.filter(track => Boolean(track.exam_slug));
   const readyDashboardExamCount = dashboardExamTracks.filter(track => track.question_bank_ready === true).length;
+  const practiceDashboardExamCount = dashboardExamTracks.filter(track => !track.question_bank_ready && trackCanPractice(track)).length;
   const questionBankCheckUnavailable = dashboardExamTracks.length > 0 && dashboardExamTracks.every(track => track.question_bank_check_available === false);
   const dashboardQuestionOptions = Array.from(new Set([10, 20, 30, 40, 50, Math.min(100, availableQuestionCount)].filter(n => n > 0 && n <= availableQuestionCount))).sort((a, b) => a - b);
-  const canStartSelectedPractice = Boolean(selectedTrackData?.exam_slug && selectedTrackData?.question_bank_ready && !jobTracksLoading && !questionBankLoading && !questionLoadError && availableQuestionCount > 0 && practiceQuestionCount > 0);
+  const canStartSelectedPractice = Boolean(trackCanPractice(selectedTrackData) && !jobTracksLoading && !questionBankLoading && !questionLoadError && availableQuestionCount > 0 && practiceQuestionCount > 0);
   const hasCurrentQuestionCatalog = questionCatalogMeta.loaded && questionCatalogMeta.examSlug === selectedExam;
   const subjectOptions = Array.from(new Set(
     ((hasCurrentQuestionCatalog ? questionCatalogMeta.subjects : selectedTrackData?.subjects) || [])
@@ -1718,9 +1727,9 @@ export default function HomePage() {
 
   function startTest() {
     setAuthMessage("");
-    const readySelectedExam = selectedTrackData?.exam_slug && selectedTrackData?.question_bank_ready;
+    const readySelectedExam = trackCanPractice(selectedTrackData);
     if (!readySelectedExam || !availableQuestionCount) {
-      setAuthMessage(t("पहले READY परीक्षा चुनें।","Choose a READY exam first."));
+      setAuthMessage(t("पहले READY या PRACTICE परीक्षा चुनें जिसमें verified सवाल उपलब्ध हों।","Choose a READY or PRACTICE exam with verified questions available."));
       return;
     }
     setView("setup");
@@ -1941,7 +1950,7 @@ export default function HomePage() {
                 {jobTracksLoading && <option value={selectedJobTrack}>{t("परीक्षाएँ लोड हो रही हैं…","Loading exams…")}</option>}
                 {!jobTracksLoading && jobTracksLoadError && <option value="">{t("परीक्षा विकल्प लोड नहीं हो सके","Exam options could not be loaded")}</option>}
                 {!jobTracksLoading && !jobTracksLoadError && !dashboardExamTracks.length && <option value="">{t("अभी परीक्षा विकल्प उपलब्ध नहीं","No exam options configured yet")}</option>}
-                {dashboardExamTracks.map(track => <option key={track.slug} value={track.slug}>{(hi ? track.name_hi : track.name_en) || track.slug}{track.question_bank_check_available === false ? " · SETUP" : track.question_bank_ready ? " · READY" : " · SOON"}</option>)}
+                {dashboardExamTracks.map(track => <option key={track.slug} value={track.slug}>{(hi ? track.name_hi : track.name_en) || track.slug}{track.question_bank_check_available === false ? " · SETUP" : track.question_bank_ready ? " · READY" : trackCanPractice(track) ? ` · PRACTICE (${Number(track.verified_question_count || 0)} Q)` : " · SOON"}</option>)}
               </select>
             </label>
             {jobTracksLoadError && <p className="dashboard-exam-error" role="alert">{t("परीक्षा डेटा लोड नहीं हो सका: ","Exam data failed to load: ")}{jobTracksLoadError}</p>}
@@ -1970,7 +1979,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {!jobTracksLoading && selectedTrackData && selectedTrackData.question_bank_check_available !== false && (!selectedTrackData.question_bank_ready || !selectedTrackData.exam_slug) && <p className="dashboard-exam-notice">{t("इस भर्ती का verified question bank अभी तैयार नहीं है। कोई दूसरा READY विकल्प चुनें।","This recruitment's verified question bank is not ready yet. Choose another READY option.")}</p>}
+            {!jobTracksLoading && selectedTrackData && selectedTrackData.question_bank_check_available !== false && !trackCanPractice(selectedTrackData) && <p className="dashboard-exam-notice">{t("इस भर्ती का verified question bank अभी तैयार नहीं है। कोई दूसरा READY विकल्प चुनें।","This recruitment's verified question bank is not ready yet. Choose another READY option.")}</p>}
             {questionLoadError && <p className="dashboard-exam-error" role="alert">{questionLoadError}</p>}
             {authMessage && <p className="dashboard-exam-error" role="status" aria-live="polite">{authMessage}</p>}
 
@@ -1990,14 +1999,14 @@ export default function HomePage() {
         </div>}
 
         {view === "boards" && <div className="content boards-content">
-          <div className="boards-hero"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("परीक्षा खोजें","FIND YOUR EXAM")}</div><h1>{t("परीक्षा बोर्ड","Exam Boards")}</h1><p className="intro">{t("बोर्ड चुनें, भर्ती चुनें और फिर focused mock test शुरू करें।","Choose a board, select a recruitment, then launch a focused mock test.")}</p>{jobTracksLoadError ? <p className="boards-load-error" role="alert">{jobTracksLoadError}</p> : <div className="boards-hero-meta"><span>{jobTracksLoading ? t("लोड हो रहा है","Loading") : questionBankCheckUnavailable ? t("सर्वर सेटअप","SERVER SETUP") : `${readyDashboardExamCount} READY`}</span><span>{jobTracksLoading ? "…" : `${dashboardExamTracks.length} ${t("परीक्षा विकल्प","EXAM OPTIONS")}`}</span></div>}</div><div className="boards-hero-badge"><GraduationCap size={28}/><span>EXAM<br/>HUB</span></div></div>
+          <div className="boards-hero"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("परीक्षा खोजें","FIND YOUR EXAM")}</div><h1>{t("परीक्षा बोर्ड","Exam Boards")}</h1><p className="intro">{t("बोर्ड चुनें, भर्ती चुनें और फिर focused mock test शुरू करें।","Choose a board, select a recruitment, then launch a focused mock test.")}</p>{jobTracksLoadError ? <p className="boards-load-error" role="alert">{jobTracksLoadError}</p> : <div className="boards-hero-meta"><span>{jobTracksLoading ? t("लोड हो रहा है","Loading") : questionBankCheckUnavailable ? t("सर्वर सेटअप","SERVER SETUP") : `${readyDashboardExamCount} READY · ${practiceDashboardExamCount} PRACTICE`}</span><span>{jobTracksLoading ? "…" : `${dashboardExamTracks.length} ${t("परीक्षा विकल्प","EXAM OPTIONS")}`}</span></div>}</div><div className="boards-hero-badge"><GraduationCap size={28}/><span>EXAM<br/>HUB</span></div></div>
 <div className="job-section">
             <div className="section-heading job-heading"><div><h2>{t("परीक्षा बोर्ड चुनें","Choose an exam board")}</h2><p>{t("पहले बोर्ड चुनें, फिर उसी बोर्ड की भर्ती/परीक्षा खोलें।","Choose a board first, then pick a recruitment or exam.")}</p></div><span className="section-count">{String(jobTracks.length).padStart(2,"0")} {t("पोस्ट","POSTS")}</span></div>
             <div className="exam-board-tabs" role="tablist" aria-label={t("परीक्षा बोर्ड","Exam boards")}>
               {examGroups.map(group => {
-                const count = filteredJobTracks.filter(track => getExamGroup(track) === group.key).length;                const ready = filteredJobTracks.filter(track => getExamGroup(track) === group.key && track.question_bank_ready === true && track.exam_slug).length;
+                const count = filteredJobTracks.filter(track => getExamGroup(track) === group.key).length;                const ready = filteredJobTracks.filter(track => getExamGroup(track) === group.key && track.question_bank_ready === true && track.exam_slug).length;                const practice = filteredJobTracks.filter(track => getExamGroup(track) === group.key && !track.question_bank_ready && trackCanPractice(track)).length;
                 return <button key={group.key} type="button" role="tab" aria-selected={openExamGroup === group.key} className={"exam-board-tab " + (openExamGroup === group.key ? "active" : "")} onClick={() => setOpenExamGroup(group.key)}>
-                  <span className="board-tab-icon">{group.icon}</span><span className="board-tab-copy"><b>{hi ? group.labelHi : group.labelEn}</b><small>{count} {t("पोस्ट","posts")}</small></span><em>{ready > 0 ? String(ready) + " READY" : "SOON"}</em>
+                  <span className="board-tab-icon">{group.icon}</span><span className="board-tab-copy"><b>{hi ? group.labelHi : group.labelEn}</b><small>{count} {t("पोस्ट","posts")}</small></span><em>{ready > 0 || practice > 0 ? `${ready} READY · ${practice} PRACTICE` : "SOON"}</em>
                 </button>;
               })}
             </div>
@@ -2012,27 +2021,27 @@ export default function HomePage() {
                 .sort((a, b) => {
                   const aReady = a.question_bank_ready === true && Boolean(a.exam_slug);
                   const bReady = b.question_bank_ready === true && Boolean(b.exam_slug);
-                  return Number(bReady) - Number(aReady);
+                  return Number(bReady) - Number(aReady) || Number(trackCanPractice(b)) - Number(trackCanPractice(a));
                 });
               return <section className="exam-group exam-group-active">
                 <div className="active-board-head"><div><span className="active-board-kicker">{group.icon} {t("चयनित बोर्ड","SELECTED BOARD")}</span><h3>{hi ? group.labelHi : group.labelEn}</h3></div><span>{groupTracks.length} {t("पोस्ट","posts")}</span></div>
-                {groupTracks.length ? <div className="job-grid">{groupTracks.map((track,index) => <article key={track.slug + (expandedJobTrack === track.slug ? "-expanded" : "-collapsed")} onClick={() => setExpandedJobTrack(current => current === track.slug ? null : track.slug)} className={"job-card " + (selectedJobTrack === track.slug ? "selected" : "") + (expandedJobTrack === track.slug ? " revealed" : "") + (!track.question_bank_ready ? "coming" : "")}>
+                {groupTracks.length ? <div className="job-grid">{groupTracks.map((track,index) => <article key={track.slug + (expandedJobTrack === track.slug ? "-expanded" : "-collapsed")} onClick={() => setExpandedJobTrack(current => current === track.slug ? null : track.slug)} className={"job-card " + (selectedJobTrack === track.slug ? "selected" : "") + (expandedJobTrack === track.slug ? " revealed" : "") + (!trackCanPractice(track) ? "coming" : "")}>
                   <span className="job-number">{String(index + 1).padStart(2,"0")}</span><div className="job-3d-icon"><GraduationCap size={17}/></div>
                   <div className="job-copy"><b>{hi ? track.name_hi : track.name_en}</b><span>{hi ? track.description_hi : track.description_en}</span><small>{track.exam_date_text ? "📅 " + track.exam_date_text : ""}{track.form_status_text ? (track.exam_date_text ? " · " : "") + track.form_status_text : ""}</small></div>
-                  <em>{track.question_bank_check_available === false ? t("सेटअप चाहिए","SETUP") : track.question_bank_ready ? t("अभी उपलब्ध","READY") : t("जल्द आएगा","SOON")}</em>
-                  {expandedJobTrack === track.slug && <button type="button" className="job-open-button" disabled={!track.question_bank_ready || !track.exam_slug} onClick={(event) => { event.stopPropagation(); if (!track.question_bank_ready || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedSubject("all"); setSelectedTopic("all"); setSelectedExam(track.exam_slug); setAvailableQuestionCount(Number(track.verified_question_count || 0)); setQuestionLoadError(""); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Math.max(30, Number(exam.duration_minutes || 10)), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); setPracticeQuestionCount(Math.min(30, Number(track.verified_question_count || 10))); setPracticeDuration(Math.max(30, Number(exam.duration_minutes || 10))); } setView("setup"); if (typeof window !== "undefined") window.history.pushState({view:"setup"}, "", "#exam-setup"); }}>{t("Open","Open")}<ArrowRight size={14}/></button>}
+                  <em>{track.question_bank_check_available === false ? t("सेटअप चाहिए","SETUP") : track.question_bank_ready ? t("अभी उपलब्ध","READY") : trackCanPractice(track) ? `PRACTICE · ${Number(track.verified_question_count || 0)} Q` : t("जल्द आएगा","SOON")}</em>
+                  {expandedJobTrack === track.slug && <button type="button" className="job-open-button" disabled={!trackCanPractice(track)} onClick={(event) => { event.stopPropagation(); if (!trackCanPractice(track)) return; setSelectedJobTrack(track.slug); setSelectedSubject("all"); setSelectedTopic("all"); setSelectedExam(track.exam_slug); setAvailableQuestionCount(Number(track.verified_question_count || 0)); setQuestionLoadError(""); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Math.max(30, Number(exam.duration_minutes || 10)), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); setPracticeQuestionCount(Math.min(30, Number(track.verified_question_count || 10))); setPracticeDuration(Math.max(30, Number(exam.duration_minutes || 10))); } setView("setup"); if (typeof window !== "undefined") window.history.pushState({view:"setup"}, "", "#exam-setup"); }}>{t("Open","Open")}<ArrowRight size={14}/></button>}
                   {selectedJobTrack === track.slug && <Check className="job-selected-check" size={15}/>}
                 </article>)}</div> : <div className="exam-empty"><b>{t("इस बोर्ड में अभी कोई मैचिंग परीक्षा नहीं मिली।","No matching exams found for this board.")}</b><span>{t("सर्च हटाकर या दूसरा बोर्ड चुनकर देखें।","Clear the search or choose another board.")}</span></div>}
                 {selectedTrackData && getExamGroup(selectedTrackData) === group.key && <div className="exam-detail-panel">
-                  <div className="exam-detail-head"><div><span className="active-board-kicker">{group.icon} {t("परीक्षा विवरण","EXAM DETAILS")}</span><h3>{hi ? selectedTrackData.name_hi : selectedTrackData.name_en}</h3><p>{hi ? selectedTrackData.description_hi : selectedTrackData.description_en}</p></div><span className={"detail-status " + (selectedTrackData.question_bank_ready ? "ready" : "soon")}>{selectedTrackData.question_bank_check_available === false ? "SETUP" : selectedTrackData.question_bank_ready ? "✓ READY" : "SOON"}</span></div>
+                  <div className="exam-detail-head"><div><span className="active-board-kicker">{group.icon} {t("परीक्षा विवरण","EXAM DETAILS")}</span><h3>{hi ? selectedTrackData.name_hi : selectedTrackData.name_en}</h3><p>{hi ? selectedTrackData.description_hi : selectedTrackData.description_en}</p></div><span className={"detail-status " + (selectedTrackData.question_bank_ready ? "ready" : "soon")}>{selectedTrackData.question_bank_check_available === false ? "SETUP" : selectedTrackData.question_bank_ready ? "✓ READY" : trackCanPractice(selectedTrackData) ? "PRACTICE" : "SOON"}</span></div>
                   {selectedTrackData.official_url && <a className="job-official-link" href={selectedTrackData.official_url} target="_blank" rel="noopener noreferrer"><Globe2 size={15}/>{t("आधिकारिक वेबसाइट खोलें","Open official website")}<ArrowRight size={14}/></a>}
                   <div className="exam-detail-stats"><div><span>{t("सवाल","QUESTIONS")}</span><b>{Number(selectedTrackData.verified_question_count || 0)}</b></div><div><span>{t("टेस्ट समय","TEST TIME")}</span><b>{examConfig.duration_minutes} min</b></div><div><span>{t("मार्किंग","MARKING")}</span><b>{examConfig.marks_per_question} / -{examConfig.negative_marks}</b></div><div><span>{t("सोर्स","SOURCE")}</span><b>{Number(selectedTrackData.pyq_question_count || 0) + Number(selectedTrackData.official_question_count || 0) > 0 ? (Number(selectedTrackData.practice_question_count || 0) > 0 ? "MIXED BANK" : "OFFICIAL / PYQ") : "PRACTICE BANK"}</b></div></div>
-                  <div className="exam-detail-actions"><span>{selectedTrackData.question_bank_ready ? t("Question bank उपलब्ध है।","Question bank is available.") : t("Question bank तैयार होते ही unlock होगा।","Unlocks when the question bank is ready.")}</span>{selectedTrackData.question_bank_ready && Number(selectedTrackData.verified_question_count || 0) > 0 && <button className="primary-button" onClick={startTest}>{t("मॉक टेस्ट शुरू करें","Start mock test")}<ArrowRight size={17}/></button>}</div>
+                  <div className="exam-detail-actions"><span>{selectedTrackData.question_bank_ready ? t("पूरा mock test उपलब्ध है।","Full mock test is ready.") : trackCanPractice(selectedTrackData) ? t("अभी उपलब्ध verified सवालों से practice शुरू करें।","Start practice with the verified questions currently available.") : t("Verified सवाल उपलब्ध होते ही unlock होगा।","Unlocks when verified questions become available.")}</span>{trackCanPractice(selectedTrackData) && Number(selectedTrackData.verified_question_count || 0) > 0 && <button className="primary-button" onClick={startTest}>{t("मॉक टेस्ट शुरू करें","Start mock test")}<ArrowRight size={17}/></button>}</div>
                 </div>}
               </section>;
             })()}</div>
           </div>
-          {selectedTrackData?.question_bank_ready && selectedTrackData?.exam_slug ? <>
+          {trackCanPractice(selectedTrackData) ? <>
 <div className="selected-exam-strip"><div><span>{t("चयनित परीक्षा","SELECTED EXAM")}</span><b>{hi ? selectedTrackData.name_hi : selectedTrackData.name_en}</b></div><em>{availableQuestionCount > 0 ? "✓ " + availableQuestionCount + " " + t("सवाल तैयार","QUESTIONS READY") : t("बैंक जाँच रहे हैं…","CHECKING BANK…")}</em></div>
 <div className="analysis-candidates-panel">
   <div className="section-heading"><div><h2>{t("परीक्षा विश्लेषण","Exam analysis")}</h2><p>{t("High-signal topics को question-bank analysis से ऊपर रखा गया है। ये forecast हैं, guaranteed questions नहीं।","High-signal topics are ranked from question-bank analysis. These are forecasts, not guaranteed exam questions.")}</p></div><span className="section-count">FORECAST</span></div>
@@ -2046,7 +2055,7 @@ export default function HomePage() {
   <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60,120].map(n=><button type="button" key={n} aria-pressed={practiceDuration===n} className={practiceDuration===n?"active":""} onClick={()=>{setPracticeDuration(n);setAuthMessage("")}}>{n}m</button>)}</div><small>{t("चुना गया समय: "+practiceDuration+" मिनट","Selected duration: "+practiceDuration+" minutes")}</small></div>
   <div className="config-block device-security"><b>{t("SIM / डिवाइस सुरक्षा","SIM / Device security")}</b><div className="config-options"><button onClick={requestNativeSimPermission}>{nativeSimStatus === "sim-ready" ? t("SIM चालू ✓","SIM active ✓") : t("SIM अनुमति दें","Allow SIM")}</button>{user && <button onClick={createRecoveryCode}>{t("नए फोन के लिए recovery code","Create recovery code")}</button>}</div><small>{t("Recovery code trusted device से बनता है, 15 मिनट में expire होता है और एक बार इस्तेमाल होता है।","Recovery code is created on the trusted device, expires in 15 minutes, and works once.")}</small></div>
 </div></details>
-</> : <div className="selection-empty">{t("ऊपर से READY परीक्षा चुनें।","Choose a READY exam above.")}<span>{t("SOON वाली परीक्षाएँ उपलब्ध होते ही unlock होंगी।","SOON exams unlock when their verified question bank is ready.")}</span></div>}
+</> : <div className="selection-empty">{t("ऊपर से READY या PRACTICE परीक्षा चुनें।","Choose a READY or PRACTICE exam above.")}<span>{t("SOON वाली परीक्षाएँ verified सवाल आने पर unlock होंगी।","SOON exams unlock when verified questions are available.")}</span></div>}
 {authMessage && <div className={"dashboard-action-message" + (nativeSimStatus === "sim-ready" ? " success" : "")} role="status" aria-live="polite">{authMessage}</div>}<div className="bottom-note"><div className="note-icon"><ShieldCheck size={18}/></div><div><b>{t("आपकी तैयारी, आपकी रफ़्तार","Your preparation, your pace")}</b><p>{t("ExamPrep अभ्यास और तैयारी की प्रगति के लिए बनाया गया है। परीक्षा की तारीख, सिलेबस और आधिकारिक सूचना संबंधित बोर्ड से सत्यापित करें।","ExamPrep helps you practise and track preparation. Verify exam dates, syllabi and official notices with the relevant board.")}</p></div></div>
         </div>}
 
