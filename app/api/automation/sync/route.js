@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { publicDbError } from "../../../../lib/api-errors.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,7 +29,7 @@ export async function GET(request) {
 
   const client = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: sources, error } = await client.from("exam_sources").select("id,url,last_hash,last_checked_at").in("url", SOURCES).eq("active", true);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return publicDbError("Exam source sync", error);
 
   const results = [];
   for (const source of sources || []) {
@@ -62,7 +63,7 @@ export async function GET(request) {
         p_change_summary: "Official source check failed.",
         p_error_message: err?.message || "fetch failed"
       });
-      results.push({ url: source.url, status: "failed", error: err?.message || "fetch failed", recorded: !rpc.error });
+      results.push({ url: source.url, status: "failed", error: "fetch failed", recorded: !rpc.error });
     }
   }
 

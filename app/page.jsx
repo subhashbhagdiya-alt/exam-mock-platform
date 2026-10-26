@@ -6,6 +6,14 @@ import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronR
 import { scorePaperQuiz } from "../lib/paper-analysis-quiz.mjs";
 import { MAX_PAPER_FILE_BYTES, isSupportedPaperFile } from "../lib/paper-analysis-upload.mjs";
 
+function trackCanPractice(track) {
+  return Boolean(
+    track?.exam_slug &&
+    track.question_bank_check_available !== false &&
+    (track.question_bank_ready === true || Number(track.verified_question_count || 0) > 0)
+  );
+}
+
 const supabaseBrowser = (
   typeof window !== "undefined" &&
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -772,6 +780,15 @@ const formatTime = (seconds) => {
   return m + ":" + s;
 };
 
+const VIEW_ROUTES = { boards: "#exams", setup: "#exam-setup", test: "#test", login: "#login" };
+// Only views that do not depend on in-memory exam/test state can be restored from a URL.
+const RESTORABLE_VIEWS = ["about", "history", "home", "login", "paper", "settings", "sources"];
+function routeForView(nextView) { return VIEW_ROUTES[nextView] || "#" + nextView; }
+function viewFromHash(hash) {
+  const name = String(hash || "").replace(/^#/, "");
+  return RESTORABLE_VIEWS.includes(name) ? name : "boards";
+}
+
 export default function HomePage() {
   const [language, setLanguage] = useState("en");
   const [view, setView] = useState("boards");
@@ -791,6 +808,35 @@ export default function HomePage() {
       document.removeEventListener("keydown", closeMobileNavEscape);
     };
   }, [mobileNavOpen]);
+  const viewRef = useRef(view);
+  useEffect(() => { viewRef.current = view; }, [view]);
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const initialView = viewFromHash(window.location.hash);
+    let initialViewFrame = null;
+    if (initialView !== "boards") initialViewFrame = window.requestAnimationFrame(() => setView(initialView));
+    else if (window.location.hash && window.location.hash !== "#exams") {
+      window.history.replaceState({ view: "boards" }, "", "#exams");
+    }
+    const onPopState = (event) => {
+      if (initialViewFrame !== null) {
+        window.cancelAnimationFrame(initialViewFrame);
+        initialViewFrame = null;
+      }
+      // Back/forward must never silently abandon a running test.
+      if (viewRef.current === "test") {
+        window.history.pushState({ view: "test" }, "", "#test");
+        return;
+      }
+      setMobileNavOpen(false);
+      setView(event?.state?.view === "setup" ? "setup" : viewFromHash(window.location.hash));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      if (initialViewFrame !== null) window.cancelAnimationFrame(initialViewFrame);
+    };
+  }, []);
   const [settingsSection, setSettingsSection] = useState("profile");
   const [answers, setAnswers] = useState({});
   const [review, setReview] = useState([]);
@@ -814,6 +860,7 @@ export default function HomePage() {
   const [selectedExam, setSelectedExam] = useState("mpesb");
   const [jobTracks, setJobTracks] = useState([]);
   const [jobTracksLoading, setJobTracksLoading] = useState(true);
+  const [jobTracksLoadError, setJobTracksLoadError] = useState("");
   const [selectedJobTrack, setSelectedJobTrack] = useState("mpesb-common");
   const [expandedJobTrack, setExpandedJobTrack] = useState(null);
   const [openExamGroup, setOpenExamGroup] = useState("MPESB");
@@ -924,6 +971,12 @@ export default function HomePage() {
     return categoryMatch && (!needle || text.includes(needle));
   });
   const selectedTrackData = jobTracks.find(track => track.slug === selectedJobTrack) || null;
+  const dashboardExamTracks = jobTracks.filter(track => Boolean(track.exam_slug));
+  const readyDashboardExamCount = dashboardExamTracks.filter(track => track.question_bank_ready === true).length;
+  const practiceDashboardExamCount = dashboardExamTracks.filter(track => !track.question_bank_ready && trackCanPractice(track)).length;
+  const questionBankCheckUnavailable = dashboardExamTracks.length > 0 && dashboardExamTracks.every(track => track.question_bank_check_available === false);
+  const dashboardQuestionOptions = Array.from(new Set([10, 20, 30, 40, 50, Math.min(100, availableQuestionCount)].filter(n => n > 0 && n <= availableQuestionCount))).sort((a, b) => a - b);
+  const canStartSelectedPractice = Boolean(trackCanPractice(selectedTrackData) && !jobTracksLoading && !questionBankLoading && !questionLoadError && availableQuestionCount > 0 && practiceQuestionCount > 0);
   const hasCurrentQuestionCatalog = questionCatalogMeta.loaded && questionCatalogMeta.examSlug === selectedExam;
   const subjectOptions = Array.from(new Set(
     ((hasCurrentQuestionCatalog ? questionCatalogMeta.subjects : selectedTrackData?.subjects) || [])
@@ -1142,7 +1195,12 @@ export default function HomePage() {
         if (selectedTopic !== "all") params.set("topic", selectedTopic);
         const response = await fetch(`/api/questions?${params.toString()}`, { cache: "no-store" });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload?.error || "Question bank unavailable");
+        if (!response.ok) {
+          const message = payload?.code === "QUESTION_BANK_SERVER_CREDENTIALS_MISSING"
+            ? t("इस preview में सवालों की जाँच के लिए server-only Supabase key चाहिए।", "This preview needs a server-only Supabase key to verify question availability.")
+            : payload?.error || "Question bank unavailable";
+          throw new Error(message);
+        }
         if (!active) return;
         const actual = Number(payload?.meta?.available ?? (Array.isArray(payload.data) ? payload.data.length : 0));
         setAvailableQuestionCount(actual);
@@ -1197,18 +1255,25 @@ export default function HomePage() {
   }, [view]);
 
   useEffect(() => {
-    if (view !== "boards" || jobTracks.length) return undefined;
+    if ((view !== "boards" && view !== "home") || jobTracks.length) return undefined;
     let active = true;
     async function loadJobTracks() {
       setJobTracksLoading(true);
+      setJobTracksLoadError("");
       try {
         const response = await fetch("/api/job-tracks", { cache: "no-store" });        const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error || "Could not load job tracks");
         if (active) {
           setJobTracks(Array.isArray(payload.data) ? payload.data : []);
+          setJobTracksLoadError("");
           setJobTracksLoading(false);
         }
-      } catch { if (active) setJobTracksLoading(false); }
+      } catch (error) {
+        if (active) {
+          setJobTracksLoadError(error?.message || "Could not load job tracks");
+          setJobTracksLoading(false);
+        }
+      }
     }
     loadJobTracks();
     return () => { active = false; };
@@ -1621,15 +1686,54 @@ export default function HomePage() {
       window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
     }
   }
+  function selectDashboardExam(trackSlug) {
+    const track = jobTracks.find(item => item.slug === trackSlug && item.exam_slug);
+    if (!track) return;
+    const nextExamSlug = track.exam_slug;
+    const sameExam = nextExamSlug === selectedExam;
+    const exam = exams.find(item => item.slug === nextExamSlug);
+
+    setSelectedJobTrack(track.slug);
+    setSelectedExam(nextExamSlug);
+    setSelectedSubject("all");
+    setSelectedTopic("all");
+    setAuthMessage("");
+    setQuestionLoadError("");
+
+    if (exam) {
+      const config = {
+        total_questions: Number(exam.total_questions || 10),
+        duration_minutes: Number(exam.duration_minutes || 10),
+        marks_per_question: Number(exam.marks_per_question || 1),
+        negative_marks: Number(exam.negative_marks || 0),
+        passing_percentage: Number(exam.passing_percentage || 33)
+      };
+      setExamConfig(config);
+      setExamId(exam.id);
+      setExamName(exam.name || (hi ? track.name_hi : track.name_en) || "Mock Test");
+      setPracticeDuration(config.duration_minutes);
+    } else {
+      setExamId(null);
+      setExamName((hi ? track.name_hi : track.name_en) || "Mock Test");
+    }
+
+    if (!sameExam) {
+      setQuestionBankLoading(true);
+      setAvailableQuestionCount(0);
+      setPracticeQuestionCount(0);
+      setQuestionCatalogMeta({ loaded: false, examSlug: nextExamSlug, subjects: [], subjectTopics: [] });
+    }
+  }
+
   function startTest() {
     setAuthMessage("");
-    const readySelectedExam = selectedTrackData?.exam_slug && selectedTrackData?.question_bank_ready;
+    const readySelectedExam = trackCanPractice(selectedTrackData);
     if (!readySelectedExam || !availableQuestionCount) {
-      setAuthMessage(t("पहले READY परीक्षा चुनें।","Choose a READY exam first."));
+      setAuthMessage(t("पहले READY या PRACTICE परीक्षा चुनें जिसमें verified सवाल उपलब्ध हों।","Choose a READY or PRACTICE exam with verified questions available."));
       return;
     }
     setView("setup");
-    if (typeof window !== "undefined") window.history.replaceState({ view: "setup" }, "", "#exam-setup");
+    if (typeof window !== "undefined") window.history.pushState({ view: "setup" }, "", "#exam-setup");
   }
 
    async function finishTest() {
@@ -1766,8 +1870,9 @@ export default function HomePage() {
     setMenuOpen(false);
     setView(nextView);
     if (typeof window !== "undefined") {
-      const route = nextView === "boards" ? "#exams" : nextView === "setup" ? "#exam-setup" : nextView === "test" ? "#test" : nextView === "login" ? "#login" : "#" + nextView;
-      window.history.replaceState({ view: nextView }, "", route);
+      const route = routeForView(nextView);
+      if (window.location.hash !== route) window.history.pushState({ view: nextView }, "", route);
+      else window.history.replaceState({ view: nextView }, "", route);
       window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
     }
   }
@@ -1791,63 +1896,117 @@ export default function HomePage() {
             </div>
           </div>}
         </div>
-        {view !== "test" && view !== "instructions" && <button className={"nav-item " + (view === "home" ? "active" : "")} onClick={() => navigateTo("home")}><Home size={18}/>{t("होम","Home")}</button>}
-        <button className={"nav-item " + (view === "boards" ? "active" : "")} onClick={() => navigateTo("boards")}><GraduationCap size={18}/>{t("परीक्षाएँ","Exams")}</button><button className={"nav-item " + (view === "history" ? "active" : "")} onClick={() => navigateTo("history")}><Award size={18}/>{t("मेरे रिज़ल्ट","My results")}</button><button className={"nav-item " + (view === "login" ? "active" : "")} onClick={() => navigateTo("login")}><ShieldCheck size={18}/>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button className={"nav-item " + (view === "settings" ? "active" : "")} onClick={() => navigateTo("settings")}><Settings size={18}/>{t("सेटिंग्स","Settings")}</button>
+        {view !== "test" && view !== "instructions" && <button data-testid="mobile-nav-home" className={"nav-item " + (view === "home" ? "active" : "")} onClick={() => navigateTo("home")}><Home size={18}/>{t("होम","Home")}</button>}
+        <button className={"nav-item " + (view === "boards" ? "active" : "")} onClick={() => navigateTo("boards")}><GraduationCap size={18}/>{t("परीक्षाएँ","Exams")}</button><button className={"nav-item " + (view === "history" ? "active" : "")} onClick={() => navigateTo("history")}><Award size={18}/>{t("मेरे रिज़ल्ट","My results")}</button><button data-testid="mobile-nav-login" className={"nav-item " + (view === "login" ? "active" : "")} onClick={() => navigateTo("login")}><ShieldCheck size={18}/>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button className={"nav-item " + (view === "settings" ? "active" : "")} onClick={() => navigateTo("settings")}><Settings size={18}/>{t("सेटिंग्स","Settings")}</button>
         <button className={"nav-item " + (view === "sources" ? "active" : "")} onClick={() => navigateTo("sources")}><Download size={18}/>{t("Source PDFs","Source PDFs")}</button>
-        <button className={"nav-item " + (view === "paper" ? "active" : "")} onClick={() => navigateTo("paper")}><FileText size={18}/>{t("पेपर विश्लेषण","Paper Analyzer")}</button>
+        <button data-testid="mobile-nav-paper-analyzer" className={"nav-item " + (view === "paper" ? "active" : "")} onClick={() => navigateTo("paper")}><FileText size={18}/>{t("पेपर विश्लेषण","Paper Analyzer")}</button>
         <div className="sidebar-bottom"><div className="daily-card"><div className="daily-icon"><Flame size={17}/></div><b>{t("लगातार अभ्यास करें","Keep your streak")}</b><p>{t("रोज़ थोड़ा अभ्यास, बेहतर रैंक।","Small daily practice. Better ranks.")}</p><div className="streak-dots"><i/><i/><i/><i/><i/><i/><i/></div></div><div className="profile"><div className="avatar">{(getUserDisplayName(user).charAt(0) || "अ").toUpperCase()}</div><div><b>{getUserDisplayName(user)}</b><span>{t("परीक्षा अभ्यर्थी","Exam candidate")}</span></div><ShieldCheck size={17} className="profile-check"/></div></div>
       </aside>
       {mobileNavOpen && <button type="button" className="mobile-menu-backdrop" aria-label={t("मेन्यू बंद करें","Close menu")} onClick={() => setMobileNavOpen(false)} />}
 
       <section className="main">
-        <header className="topbar"><button type="button" className="mobile-menu-toggle" aria-label={mobileNavOpen ? t("मेन्यू बंद करें","Close menu") : t("मेन्यू खोलें","Open menu")} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(open => !open)}><SlidersHorizontal size={19}/><span>{t("मेन्यू","Menu")}</span><ChevronRight size={15} className={mobileNavOpen ? "menu-toggle-chevron open" : "menu-toggle-chevron"}/></button><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : view === "paper" ? t("पेपर विश्लेषण","Paper Analyzer") : view === "sources" ? t("Source PDFs","Source PDFs") : view === "about" ? t("ऐप के बारे में","About") : view === "settings" ? t("प्रोफाइल / सेटिंग्स","Profile / Settings") : view === "boards" ? t("परीक्षा बोर्ड","Exam boards") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="home-quick-button" onClick={() => navigateTo("home")} aria-label={t("होम पर जाएँ","Go to Home")} title={t("होम","Home")}><Home size={17}/><span>{t("होम","Home")}</span></button><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button><button className="theme-toggle" onClick={() => setThemeMode(effectiveTheme === "light" ? "dark" : "light")} title={themeMode === "light" ? "Night mode" : themeMode === "dark" ? "System mode" : "Day mode"}>{themeMode === "light" ? "☀️" : themeMode === "dark" ? "🌙" : "◐"}<span>{themeMode === "light" ? t("दिन","Day") : themeMode === "dark" ? t("रात","Night") : t("सिस्टम","System")}</span></button><button ref={menuButtonRef} className="menu-button" onClick={() => setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label="Menu" data-testid="menu-toggle"><SlidersHorizontal size={18}/></button>{menuOpen && <div ref={menuRef} className="menu-popover"><b>{t("दिखावट","Appearance")}</b><button onClick={() => {setThemeMode("light");setMenuOpen(false)}}>☀️ {t("Day Mode","Day Mode")}</button><button onClick={() => {setThemeMode("dark");setMenuOpen(false)}}>🌙 {t("Night Mode","Night Mode")}</button><button onClick={() => {setThemeMode("system");setMenuOpen(false)}}>◐ {t("System","System")}</button><button onClick={() => {setLanguage(hi ? "en" : "hi");setMenuOpen(false)}}><Languages size={15}/> {hi ? "Switch to English" : "हिंदी भाषा"}</button><button onClick={() => {navigateTo("home");setMenuOpen(false)}}><Home size={15}/> {t("होम","Home")}</button><hr/><button onClick={() => navigateTo("boards")}>{t("परीक्षाएँ","Exams")}</button><button onClick={() => navigateTo("history")}>{t("मेरे रिज़ल्ट","My results")}</button><button data-testid="menu-login" onClick={() => navigateTo("login")}>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button onClick={() => navigateTo("settings")}>{t("सेटिंग्स","Settings")}</button><button onClick={() => navigateTo("sources")}>Source PDFs</button><button data-testid="menu-paper-analyzer" onClick={() => navigateTo("paper")}>{t("पेपर विश्लेषण","Paper Analyzer")}</button><button onClick={() => navigateTo("about")}>{t("ऐप के बारे में","About ExamPrep")}</button></div>}</div></header>
+        <header className="topbar"><button type="button" data-testid="mobile-nav-toggle" className="mobile-menu-toggle" aria-label={mobileNavOpen ? t("मेन्यू बंद करें","Close menu") : t("मेन्यू खोलें","Open menu")} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(open => !open)}><SlidersHorizontal size={19}/><span>{t("मेन्यू","Menu")}</span><ChevronRight size={15} className={mobileNavOpen ? "menu-toggle-chevron open" : "menu-toggle-chevron"}/></button><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : view === "paper" ? t("पेपर विश्लेषण","Paper Analyzer") : view === "sources" ? t("Source PDFs","Source PDFs") : view === "about" ? t("ऐप के बारे में","About") : view === "settings" ? t("प्रोफाइल / सेटिंग्स","Profile / Settings") : view === "boards" ? t("परीक्षा बोर्ड","Exam boards") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="home-quick-button" onClick={() => navigateTo("home")} aria-label={t("होम पर जाएँ","Go to Home")} title={t("होम","Home")}><Home size={17}/><span>{t("होम","Home")}</span></button><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button><button className="theme-toggle" onClick={() => setThemeMode(effectiveTheme === "light" ? "dark" : "light")} title={themeMode === "light" ? "Night mode" : themeMode === "dark" ? "System mode" : "Day mode"}>{themeMode === "light" ? "☀️" : themeMode === "dark" ? "🌙" : "◐"}<span>{themeMode === "light" ? t("दिन","Day") : themeMode === "dark" ? t("रात","Night") : t("सिस्टम","System")}</span></button><button ref={menuButtonRef} className="menu-button" onClick={() => setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label="Menu" data-testid="menu-toggle"><SlidersHorizontal size={18}/></button>{menuOpen && <div ref={menuRef} className="menu-popover"><b>{t("दिखावट","Appearance")}</b><button onClick={() => {setThemeMode("light");setMenuOpen(false)}}>☀️ {t("Day Mode","Day Mode")}</button><button onClick={() => {setThemeMode("dark");setMenuOpen(false)}}>🌙 {t("Night Mode","Night Mode")}</button><button onClick={() => {setThemeMode("system");setMenuOpen(false)}}>◐ {t("System","System")}</button><button onClick={() => {setLanguage(hi ? "en" : "hi");setMenuOpen(false)}}><Languages size={15}/> {hi ? "Switch to English" : "हिंदी भाषा"}</button><button onClick={() => {navigateTo("home");setMenuOpen(false)}}><Home size={15}/> {t("होम","Home")}</button><hr/><button onClick={() => navigateTo("boards")}>{t("परीक्षाएँ","Exams")}</button><button onClick={() => navigateTo("history")}>{t("मेरे रिज़ल्ट","My results")}</button><button data-testid="menu-login" onClick={() => navigateTo("login")}>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button onClick={() => navigateTo("settings")}>{t("सेटिंग्स","Settings")}</button><button onClick={() => navigateTo("sources")}>Source PDFs</button><button data-testid="menu-paper-analyzer" onClick={() => navigateTo("paper")}>{t("पेपर विश्लेषण","Paper Analyzer")}</button><button onClick={() => navigateTo("about")}>{t("ऐप के बारे में","About ExamPrep")}</button></div>}</div></header>
 
-        {view === "home" && <div className="content dashboard-content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
-          <div className="auth-panel" aria-label={t("वैकल्पिक लॉगिन","Optional login")}>
-  <div><b>{user ? t("अकाउंट सक्रिय","Account active") : t("Guest Practice Mode","Guest Practice Mode")}</b><span>{user ? (user.email || user.phone || "") : t("लॉगिन जरूरी नहीं है। मॉक टेस्ट सीधे शुरू करें।","Login is optional. Start the mock test directly.")}</span></div>
-  {user ? <>{needsProfileName ? <div className="auth-actions"><div className="guest-login-note">{t("लॉगिन हो गया है। अपना नाम दर्ज करें, यही नाम आपके डैशबोर्ड पर दिखेगा।","Login successful. Enter your name; this name will appear on your dashboard.")}</div><input value={profileName} onChange={e=>setProfileName(e.target.value.slice(0,60))} autoComplete="name" placeholder={t("आपका नाम","Your name")} /><button onClick={saveProfileName}>{t("नाम सेव करें","Save name")}</button></div> : <button onClick={logout}>{t("लॉगआउट","Sign out")}</button>}</> : <div className="auth-actions">
-    <div className="guest-login-note">{t("Login वैकल्पिक है। SMS उपलब्ध न हो तो email से सुरक्षित login link इस्तेमाल करें।","Login is optional. Use a secure email sign-in link when SMS is unavailable.")}</div>
-    <div className="auth-divider"><span>{t("Cloud sync के लिए login (वैकल्पिक)","OPTIONAL LOGIN FOR CLOUD SYNC")}</span></div>
-    {authStep === "phone" ? <>
-      <div className="auth-method-switch">
-        <button type="button" data-testid="login-method-email" aria-pressed={authMethod === "email"} onClick={() => { setAuthMethod("email"); setAuthMessage(""); }}>{authMethod === "email" ? "✓ " : ""}{t("Email login","Email login")}</button>
-        <button type="button" data-testid="login-method-phone" aria-pressed={authMethod === "phone"} onClick={() => { setAuthMethod("phone"); setAuthMessage(""); }}>{authMethod === "phone" ? "✓ " : ""}{t("Mobile SMS","Mobile SMS")}</button>
-      </div>
-      {authMethod === "email"
-        ? <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address","Your email address")} data-testid="login-email-input"/>
-        : <div className="phone-input"><span>+91</span><input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,"").slice(0,10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर"/></div>}
-      <button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : authMethod === "email" ? t("Login link भेजें","Send login link") : t("OTP भेजें","Send SMS OTP")}</button>
-    </> : authStep === "otp" ? <>
-      <input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit code")}/>
-      <button onClick={verifyOtp}>{t("Code verify करें","Verify code")}</button>
-      <button type="button" onClick={() => { setAuthStep("phone"); setOtp(""); setAuthMessage(""); }}>{t("Login method बदलें","Change login method")}</button>
-    </> : authStep === "email-sent" ? <>
-      <div className="guest-login-note">{t("अपने email के inbox/Spam में आए login link को खोलें। यदि email में 6-digit code है, तो नीचे दर्ज करें।","Open the sign-in link in your email inbox/spam. If the email contains a 6-digit code, enter it below.")}</div>
-      <input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("Email code (यदि दिया हो)","Email code (if provided)")}/>
-      <button onClick={verifyOtp}>{t("Email code verify करें","Verify email code")}</button>
-      <button type="button" onClick={() => { setAuthStep("phone"); setOtp(""); setAuthMessage(""); }}>{t("Email बदलें / वापस जाएँ","Change email / go back")}</button>
-    </> : <>
-      <input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/>
-      <button onClick={recoverTrustedDevice}>{t("Device बदलें","Replace device")}</button>
-    </>}
-  </div>}
-  {authMessage && <small>{authMessage}</small>}
-</div>
-<div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("आपके लक्ष्य, आपकी मेहनत","YOUR GOALS. YOUR GRIT.")}</div><h1>{t("नमस्ते, " + getUserDisplayName(user),"Hello, " + getUserDisplayName(user))} <span className="wave">✦</span><br/><span className="muted-heading">{t("आज कुछ नया सीखें।","Ready to level up today?")}</span></h1><p className="intro">{t("अपनी तैयारी को परखें, कमज़ोर विषय पहचानें और हर टेस्ट के साथ बेहतर बनें।","Test your knowledge, spot weak areas, and get better with every attempt.")}</p></div><div className="hero-emblem"><div className="emblem-ring"><GraduationCap size={47}/><span>EXAM<br/>READY</span></div><div className="orbit-dot dot-one"/><div className="orbit-dot dot-two"/></div></div>
-          <div className="dashboard-options-bar"><div><span className="dashboard-options-kicker">{t("डैशबोर्ड विकल्प","DASHBOARD OPTIONS")}</span><b>{t("अतिरिक्त विकल्प","More tools & shortcuts")}</b></div><button type="button" className={"dashboard-options-toggle " + (showDashboardOptions ? "open" : "")} aria-expanded={showDashboardOptions} onClick={() => setShowDashboardOptions(value => !value)}><Settings size={17}/><span>{showDashboardOptions ? t("विकल्प छुपाएँ","Hide options") : t("विकल्प दिखाएँ","Show options")}</span><ChevronRight size={16}/></button></div>
-          {showDashboardOptions && <div className="feature-grid dashboard-options-panel"><article className="feature-card featured"><div className="feature-top"><div className="feature-icon"><ListChecks size={22}/></div><span className="tag">POPULAR</span></div><h3>{t("चयनित भर्ती का मॉक टेस्ट","Mock test for selected recruitment")}</h3><div className="selected-track"><span>{t("ट्रैक","TRACK")}</span><b>{jobTracks.find(item => item.slug === selectedJobTrack)?.name_hi || examName}</b></div><p>{t(`${examConfig.total_questions} सवाल · ${examConfig.duration_minutes} मिनट · तुरंत रिज़ल्ट`,`${examConfig.total_questions} questions · ${examConfig.duration_minutes} minutes · instant results`)}</p><div className="feature-meta"><span><Clock3 size={14}/> {examConfig.duration_minutes} min</span><span><Target size={14}/> {Number(examConfig.total_questions) * Number(examConfig.marks_per_question)} marks</span></div><button className="primary-button" disabled={questionBankLoading || !availableQuestionCount} onClick={startTest}>{questionBankLoading ? t("सवाल लोड हो रहे हैं…","Loading questions…") : t("टेस्ट शुरू करें","Start mock test")}<ArrowRight size={17}/></button>{!user ? <small className="start-hint">{t("Guest mode चालू है — login optional है।","Guest mode is enabled — login is optional.")}</small> : questionLoadError ? <small className="start-hint error-hint">{questionLoadError}</small> : null}<div className="card-decoration">01</div></article><article className="feature-card"><div className="feature-top"><div className="feature-icon green-icon"><Target size={22}/></div><span className="tag tag-green">PRACTICE</span></div><h3>{t("स्मार्ट रिविज़न","Smart revision")}</h3><p>{t("गलत जवाबों की समीक्षा करें और कॉन्सेप्ट मज़बूत करें।","Review explanations and strengthen concepts.")}</p><div className="mini-progress"><span style={{width: history.length ? "65%" : "8%"}}/></div><div className="feature-meta"><span>{t("आपकी प्रगति","Your progress")}</span><span>{history.length ? "65%" : "0%"}</span></div><button className="secondary-button" onClick={() => setView("history")}>{t("रिज़ल्ट देखें","View results")}<ArrowRight size={16}/></button></article><article className="feature-card"><div className="feature-top"><div className="feature-icon blue-icon"><Globe2 size={22}/></div><span className="tag tag-blue">BILINGUAL</span></div><h3>{t("हिंदी + English","Hindi + English")}</h3><p>{t("अपनी सुविधा के अनुसार भाषा बदलें।","Switch between Hindi and English anytime.")}</p><div className="language-pills"><span>अ आ इ</span><span>ABC</span></div><div className="feature-meta"><span>{t("दोनों भाषाओं में सवाल","Questions in both languages")}</span></div><button className="secondary-button" onClick={() => setLanguage(hi ? "en" : "hi")}>{t("English में बदलें","Switch to हिंदी")}<Languages size={16}/></button></article></div>}<div className="stats-grid"><div className="stat-card"><div className="stat-top"><span>{t("कुल मॉक टेस्ट","MOCK TESTS")}</span><div className="stat-icon purple"><BookOpen size={18}/></div></div><div className="stat-value">{history.length.toString().padStart(2,"0")}<small> / 50</small></div><div className="stat-foot">{t("हर प्रयास मायने रखता है","Every attempt counts")}</div></div><div className="stat-card"><div className="stat-top"><span>{t("सर्वश्रेष्ठ स्कोर","BEST SCORE")}</span><div className="stat-icon gold"><Trophy size={18}/></div></div><div className="stat-value">{history.length ? (() => { const best = history.reduce((a, h) => Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1)) > Number(a.score || 0) / Math.max(1, Number(a.total_questions || 10) * Number(a.marks_per_question || 1)) ? h : a, history[0]); return best.score; })() : "—"}<small> / {history.length ? (() => { const best = history.reduce((a, h) => Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1)) > Number(a.score || 0) / Math.max(1, Number(a.total_questions || 10) * Number(a.marks_per_question || 1)) ? h : a, history[0]); return Number(best.total_questions || 10) * Number(best.marks_per_question || 1); })() : 0}</small></div><div className="stat-foot">{t("अपना रिकॉर्ड तोड़ें","Beat your personal best")}</div></div><div className="stat-card"><div className="stat-top"><span>{t("औसत सटीकता","AVG. ACCURACY")}</span><div className="stat-icon green"><Target size={18}/></div></div><div className="stat-value">{history.length ? Math.round(history.reduce((a,h)=>a+h.accuracy,0)/history.length) : 0}<small>%</small></div><div className="stat-foot">{t("सही जवाबों का प्रतिशत","Correct answer rate")}</div></div></div>
+        {view === "home" && <div className="content dashboard-content">
+          {storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
 
+          <div className="dashboard-account-note">
+            <div className="dashboard-account-copy">
+              <span className="dashboard-account-icon"><ShieldCheck size={17}/></span>
+              <div>
+                <b>{user ? t("अकाउंट सक्रिय है","Cloud account connected") : t("Guest Practice Mode","Guest Practice Mode")}</b>
+                <p>{user ? (user.email || user.phone || t("रिज़ल्ट cloud sync के लिए तैयार हैं।","Results can sync to your account.")) : t("बिना login के टेस्ट दें; login केवल cloud sync के लिए ज़रूरी है।","Take tests without signing in. Login is only needed for cloud sync.")}</p>
+              </div>
+            </div>
+            <button type="button" className="secondary-button dashboard-account-action" onClick={() => navigateTo(user ? "settings" : "login")}>
+              {user ? t("अकाउंट सेटिंग्स","Account settings") : t("वैकल्पिक login","Optional login")}<ArrowRight size={14}/>
+            </button>
+          </div>
+
+          <div className="welcome-row">
+            <div>
+              <div className="eyebrow"><span className="eyebrow-line"/> {t("आपके लक्ष्य, आपकी मेहनत","YOUR GOALS. YOUR GRIT.")}</div>
+              <h1>{t("नमस्ते, " + getUserDisplayName(user),"Hello, " + getUserDisplayName(user))} <span className="wave">✦</span><br/><span className="muted-heading">{t("आज कुछ नया सीखें।","Ready to level up today?")}</span></h1>
+              <p className="intro">{t("अपनी तैयारी को परखें, कमज़ोर विषय पहचानें और हर टेस्ट के साथ बेहतर बनें।","Test your knowledge, spot weak areas, and get better with every attempt.")}</p>
+            </div>
+            <div className="hero-emblem"><div className="emblem-ring"><GraduationCap size={47}/><span>EXAM<br/>READY</span></div><div className="orbit-dot dot-one"/><div className="orbit-dot dot-two"/></div>
+          </div>
+
+          <section className="dashboard-exam-launcher" aria-labelledby="dashboard-exam-title">
+            <div className="dashboard-exam-header">
+              <div>
+                <div className="eyebrow"><span className="eyebrow-line"/> {t("मॉक टेस्ट चुनें","CHOOSE YOUR MOCK TEST")}</div>
+                <h2 id="dashboard-exam-title" data-testid="dashboard-exam-title">{t("अपनी परीक्षा चुनें","Pick your exam")}</h2>
+                <p>{t("भर्ती चुनें, उपलब्ध सवाल देखें और टेस्ट का समय तय करें।","Choose a recruitment, see available questions, and set your time limit.")}</p>
+              </div>
+              <span className={"dashboard-exam-status " + (canStartSelectedPractice ? "ready" : "soon")}>
+                {jobTracksLoading ? t("लोड हो रहा है","LOADING") : questionBankLoading ? t("सवाल जाँच रहे हैं","CHECKING BANK") : selectedTrackData?.question_bank_check_available === false ? t("सर्वर सेटअप चाहिए","SERVER SETUP") : canStartSelectedPractice ? t("तैयार","READY") : t("जल्द / उपलब्ध नहीं","NOT READY")}
+              </span>
+            </div>
+
+            <label className="dashboard-exam-field">
+              <span>{t("परीक्षा / भर्ती","Exam / recruitment")}</span>
+              <select data-testid="dashboard-exam-picker" className="dashboard-exam-select" value={selectedJobTrack} disabled={jobTracksLoading || !dashboardExamTracks.length} onChange={event => selectDashboardExam(event.target.value)}>
+                {jobTracksLoading && <option value={selectedJobTrack}>{t("परीक्षाएँ लोड हो रही हैं…","Loading exams…")}</option>}
+                {!jobTracksLoading && jobTracksLoadError && <option value="">{t("परीक्षा विकल्प लोड नहीं हो सके","Exam options could not be loaded")}</option>}
+                {!jobTracksLoading && !jobTracksLoadError && !dashboardExamTracks.length && <option value="">{t("अभी परीक्षा विकल्प उपलब्ध नहीं","No exam options configured yet")}</option>}
+                {dashboardExamTracks.map(track => <option key={track.slug} value={track.slug}>{(hi ? track.name_hi : track.name_en) || track.slug}{track.question_bank_check_available === false ? " · SETUP" : track.question_bank_ready ? " · READY" : trackCanPractice(track) ? ` · PRACTICE (${Number(track.verified_question_count || 0)} Q)` : " · SOON"}</option>)}
+              </select>
+            </label>
+            {jobTracksLoadError && <p className="dashboard-exam-error" role="alert">{t("परीक्षा डेटा लोड नहीं हो सका: ","Exam data failed to load: ")}{jobTracksLoadError}</p>}
+
+            {selectedTrackData && <p className="dashboard-exam-description">{hi ? selectedTrackData.description_hi : selectedTrackData.description_en}</p>}
+
+            <div className="dashboard-launch-metrics">
+              <div><span>{t("उपलब्ध सवाल","AVAILABLE QUESTIONS")}</span><b>{questionBankLoading ? "…" : selectedTrackData?.question_bank_check_available === false ? "—" : availableQuestionCount}</b></div>
+              <div><span>{t("इस टेस्ट में","QUESTIONS IN TEST")}</span><b>{practiceQuestionCount > 0 ? practiceQuestionCount : "—"}</b></div>
+              <div><span>{t("समय सीमा","TIME LIMIT")}</span><b>{practiceDuration} {t("मिनट","min")}</b></div>
+              <div><span>{t("मार्किंग","MARKING")}</span><b>+{examConfig.marks_per_question} / -{examConfig.negative_marks}</b></div>
+            </div>
+
+            <div className="dashboard-launch-settings">
+              <div className="dashboard-config-block">
+                <div className="dashboard-config-heading"><b>{t("सवालों की संख्या","Question count")}</b><small>{t("बैंक में उपलब्ध सवालों के अनुसार","Limited by the available bank")}</small></div>
+                <div className="config-options">
+                  {dashboardQuestionOptions.length ? dashboardQuestionOptions.map(count => <button type="button" key={count} aria-pressed={practiceQuestionCount === count} className={practiceQuestionCount === count ? "active" : ""} onClick={() => { setPracticeQuestionCount(count); setAuthMessage(""); }}>{count}</button>) : <span className="dashboard-config-empty">{questionBankLoading ? t("सवाल गिने जा रहे हैं…","Checking question count…") : selectedTrackData?.question_bank_check_available === false ? t("सवाल गिनने के लिए server setup चाहिए।","Server setup is required to verify the question count.") : t("अभी कोई verified सवाल उपलब्ध नहीं।","No verified questions available yet.")}</span>}
+                </div>
+              </div>
+              <div className="dashboard-config-block">
+                <div className="dashboard-config-heading"><b>{t("टेस्ट का समय","Test duration")}</b><small>{t("अपनी तैयारी के अनुसार चुनें","Choose a suitable practice time")}</small></div>
+                <div className="config-options">
+                  {[10, 20, 30, 45, 60, 120].map(minutes => <button type="button" key={minutes} aria-pressed={practiceDuration === minutes} className={practiceDuration === minutes ? "active" : ""} onClick={() => { setPracticeDuration(minutes); setAuthMessage(""); }}>{minutes}m</button>)}
+                </div>
+              </div>
+            </div>
+
+            {!jobTracksLoading && selectedTrackData && selectedTrackData.question_bank_check_available !== false && !trackCanPractice(selectedTrackData) && <p className="dashboard-exam-notice">{t("इस भर्ती का verified question bank अभी तैयार नहीं है। कोई दूसरा READY विकल्प चुनें।","This recruitment's verified question bank is not ready yet. Choose another READY option.")}</p>}
+            {questionLoadError && <p className="dashboard-exam-error" role="alert">{questionLoadError}</p>}
+            {authMessage && <p className="dashboard-exam-error" role="status" aria-live="polite">{authMessage}</p>}
+
+            <div className="dashboard-launch-footer">
+              <small>{t("Guest mode में भी टेस्ट और रिज़ल्ट इस device पर काम करते हैं।","Tests and results also work locally in guest mode.")}</small>
+              <button type="button" data-testid="configure-mock-test" className="primary-button" onClick={startTest} disabled={!canStartSelectedPractice}>
+                {t("टेस्ट सेट करें","Configure test")}<ArrowRight size={17}/>
+              </button>
+            </div>
+          </section>
+
+          <div className="stats-grid">
+            <div className="stat-card"><div className="stat-top"><span>{t("कुल मॉक टेस्ट","MOCK TESTS")}</span><div className="stat-icon purple"><BookOpen size={18}/></div></div><div className="stat-value">{history.length}<small> {t("कुल प्रयास","attempts")}</small></div><div className="stat-foot">{t("आपके पूरे किए गए टेस्ट","Your completed tests")}</div></div>
+            <div className="stat-card"><div className="stat-top"><span>{t("सर्वश्रेष्ठ स्कोर","BEST SCORE")}</span><div className="stat-icon gold"><Trophy size={18}/></div></div><div className="stat-value">{history.length ? (() => { const best = history.reduce((a, h) => Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1)) > Number(a.score || 0) / Math.max(1, Number(a.total_questions || 10) * Number(a.marks_per_question || 1)) ? h : a, history[0]); return best.score; })() : "—"}<small> / {history.length ? (() => { const best = history.reduce((a, h) => Number(h.score || 0) / Math.max(1, Number(h.total_questions || 10) * Number(h.marks_per_question || 1)) > Number(a.score || 0) / Math.max(1, Number(a.total_questions || 10) * Number(a.marks_per_question || 1)) ? h : a, history[0]); return Number(best.total_questions || 10) * Number(best.marks_per_question || 1); })() : 0}</small></div><div className="stat-foot">{t("अपना रिकॉर्ड तोड़ें","Beat your personal best")}</div></div>
+            <div className="stat-card"><div className="stat-top"><span>{t("औसत सटीकता","AVG. ACCURACY")}</span><div className="stat-icon green"><Target size={18}/></div></div><div className="stat-value">{history.length ? Math.round(history.reduce((a, h) => a + Number(h.accuracy || 0), 0) / history.length) : "—"}<small>{history.length ? "%" : ""}</small></div><div className="stat-foot">{t("आपके पूरे किए गए टेस्टों का औसत","Average across completed tests")}</div></div>
+          </div>
         </div>}
 
         {view === "boards" && <div className="content boards-content">
-          <div className="boards-hero"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("परीक्षा खोजें","FIND YOUR EXAM")}</div><h1>{t("परीक्षा बोर्ड","Exam Boards")}</h1><p className="intro">{t("बोर्ड चुनें, भर्ती चुनें और फिर focused mock test शुरू करें।","Choose a board, select a recruitment, then launch a focused mock test.")}</p></div><div className="boards-hero-badge"><GraduationCap size={28}/><span>EXAM<br/>HUB</span></div></div>
+          <div className="boards-hero"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("परीक्षा खोजें","FIND YOUR EXAM")}</div><h1>{t("परीक्षा बोर्ड","Exam Boards")}</h1><p className="intro">{t("बोर्ड चुनें, भर्ती चुनें और फिर focused mock test शुरू करें।","Choose a board, select a recruitment, then launch a focused mock test.")}</p>{jobTracksLoadError ? <p className="boards-load-error" role="alert">{jobTracksLoadError}</p> : <div className="boards-hero-meta"><span>{jobTracksLoading ? t("लोड हो रहा है","Loading") : questionBankCheckUnavailable ? t("सर्वर सेटअप","SERVER SETUP") : `${readyDashboardExamCount} READY · ${practiceDashboardExamCount} PRACTICE`}</span><span>{jobTracksLoading ? "…" : `${dashboardExamTracks.length} ${t("परीक्षा विकल्प","EXAM OPTIONS")}`}</span></div>}</div><div className="boards-hero-badge"><GraduationCap size={28}/><span>EXAM<br/>HUB</span></div></div>
 <div className="job-section">
             <div className="section-heading job-heading"><div><h2>{t("परीक्षा बोर्ड चुनें","Choose an exam board")}</h2><p>{t("पहले बोर्ड चुनें, फिर उसी बोर्ड की भर्ती/परीक्षा खोलें।","Choose a board first, then pick a recruitment or exam.")}</p></div><span className="section-count">{String(jobTracks.length).padStart(2,"0")} {t("पोस्ट","POSTS")}</span></div>
             <div className="exam-board-tabs" role="tablist" aria-label={t("परीक्षा बोर्ड","Exam boards")}>
               {examGroups.map(group => {
-                const count = filteredJobTracks.filter(track => getExamGroup(track) === group.key).length;                const ready = filteredJobTracks.filter(track => getExamGroup(track) === group.key && track.question_bank_ready === true && track.exam_slug).length;
+                const count = filteredJobTracks.filter(track => getExamGroup(track) === group.key).length;                const ready = filteredJobTracks.filter(track => getExamGroup(track) === group.key && track.question_bank_ready === true && track.exam_slug).length;                const practice = filteredJobTracks.filter(track => getExamGroup(track) === group.key && !track.question_bank_ready && trackCanPractice(track)).length;
                 return <button key={group.key} type="button" role="tab" aria-selected={openExamGroup === group.key} className={"exam-board-tab " + (openExamGroup === group.key ? "active" : "")} onClick={() => setOpenExamGroup(group.key)}>
-                  <span className="board-tab-icon">{group.icon}</span><span className="board-tab-copy"><b>{hi ? group.labelHi : group.labelEn}</b><small>{count} {t("पोस्ट","posts")}</small></span><em>{ready > 0 ? String(ready) + " READY" : "SOON"}</em>
+                  <span className="board-tab-icon">{group.icon}</span><span className="board-tab-copy"><b>{hi ? group.labelHi : group.labelEn}</b><small>{count} {t("पोस्ट","posts")}</small></span><em>{ready > 0 || practice > 0 ? `${ready} READY · ${practice} PRACTICE` : "SOON"}</em>
                 </button>;
               })}
             </div>
@@ -1862,27 +2021,27 @@ export default function HomePage() {
                 .sort((a, b) => {
                   const aReady = a.question_bank_ready === true && Boolean(a.exam_slug);
                   const bReady = b.question_bank_ready === true && Boolean(b.exam_slug);
-                  return Number(bReady) - Number(aReady);
+                  return Number(bReady) - Number(aReady) || Number(trackCanPractice(b)) - Number(trackCanPractice(a));
                 });
               return <section className="exam-group exam-group-active">
                 <div className="active-board-head"><div><span className="active-board-kicker">{group.icon} {t("चयनित बोर्ड","SELECTED BOARD")}</span><h3>{hi ? group.labelHi : group.labelEn}</h3></div><span>{groupTracks.length} {t("पोस्ट","posts")}</span></div>
-                {groupTracks.length ? <div className="job-grid">{groupTracks.map((track,index) => <article key={track.slug + (expandedJobTrack === track.slug ? "-expanded" : "-collapsed")} onClick={() => setExpandedJobTrack(current => current === track.slug ? null : track.slug)} className={"job-card " + (selectedJobTrack === track.slug ? "selected" : "") + (expandedJobTrack === track.slug ? " revealed" : "") + (!track.question_bank_ready ? "coming" : "")}>
+                {groupTracks.length ? <div className="job-grid">{groupTracks.map((track,index) => <article key={track.slug + (expandedJobTrack === track.slug ? "-expanded" : "-collapsed")} onClick={() => setExpandedJobTrack(current => current === track.slug ? null : track.slug)} className={"job-card " + (selectedJobTrack === track.slug ? "selected" : "") + (expandedJobTrack === track.slug ? " revealed" : "") + (!trackCanPractice(track) ? "coming" : "")}>
                   <span className="job-number">{String(index + 1).padStart(2,"0")}</span><div className="job-3d-icon"><GraduationCap size={17}/></div>
                   <div className="job-copy"><b>{hi ? track.name_hi : track.name_en}</b><span>{hi ? track.description_hi : track.description_en}</span><small>{track.exam_date_text ? "📅 " + track.exam_date_text : ""}{track.form_status_text ? (track.exam_date_text ? " · " : "") + track.form_status_text : ""}</small></div>
-                  <em>{track.question_bank_ready ? t("अभी उपलब्ध","READY") : t("जल्द आएगा","SOON")}</em>
-                  {expandedJobTrack === track.slug && <button type="button" className="job-open-button" disabled={!track.question_bank_ready || !track.exam_slug} onClick={(event) => { event.stopPropagation(); if (!track.question_bank_ready || !track.exam_slug) return; setSelectedJobTrack(track.slug); setSelectedSubject("all"); setSelectedTopic("all"); setSelectedExam(track.exam_slug); setAvailableQuestionCount(Number(track.verified_question_count || 0)); setQuestionLoadError(""); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Math.max(30, Number(exam.duration_minutes || 10)), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); setPracticeQuestionCount(Math.min(30, Number(track.verified_question_count || 10))); setPracticeDuration(Math.max(30, Number(exam.duration_minutes || 10))); } setView("setup"); if (typeof window !== "undefined") window.history.replaceState({view:"setup"}, "", "#exam-setup"); }}>{t("Open","Open")}<ArrowRight size={14}/></button>}
+                  <em>{track.question_bank_check_available === false ? t("सेटअप चाहिए","SETUP") : track.question_bank_ready ? t("अभी उपलब्ध","READY") : trackCanPractice(track) ? `PRACTICE · ${Number(track.verified_question_count || 0)} Q` : t("जल्द आएगा","SOON")}</em>
+                  {expandedJobTrack === track.slug && <button type="button" className="job-open-button" disabled={!trackCanPractice(track)} onClick={(event) => { event.stopPropagation(); if (!trackCanPractice(track)) return; setSelectedJobTrack(track.slug); setSelectedSubject("all"); setSelectedTopic("all"); setSelectedExam(track.exam_slug); setAvailableQuestionCount(Number(track.verified_question_count || 0)); setQuestionLoadError(""); const exam=exams.find(item => item.slug === track.exam_slug); if (exam) { setExamConfig({ total_questions:Number(exam.total_questions || 10), duration_minutes:Math.max(30, Number(exam.duration_minutes || 10)), marks_per_question:Number(exam.marks_per_question || 1), negative_marks:Number(exam.negative_marks || 0), passing_percentage:Number(exam.passing_percentage || 33) }); setExamId(exam.id); setExamName(exam.name || "Mock Test"); setPracticeQuestionCount(Math.min(30, Number(track.verified_question_count || 10))); setPracticeDuration(Math.max(30, Number(exam.duration_minutes || 10))); } setView("setup"); if (typeof window !== "undefined") window.history.pushState({view:"setup"}, "", "#exam-setup"); }}>{t("Open","Open")}<ArrowRight size={14}/></button>}
                   {selectedJobTrack === track.slug && <Check className="job-selected-check" size={15}/>}
                 </article>)}</div> : <div className="exam-empty"><b>{t("इस बोर्ड में अभी कोई मैचिंग परीक्षा नहीं मिली।","No matching exams found for this board.")}</b><span>{t("सर्च हटाकर या दूसरा बोर्ड चुनकर देखें।","Clear the search or choose another board.")}</span></div>}
                 {selectedTrackData && getExamGroup(selectedTrackData) === group.key && <div className="exam-detail-panel">
-                  <div className="exam-detail-head"><div><span className="active-board-kicker">{group.icon} {t("परीक्षा विवरण","EXAM DETAILS")}</span><h3>{hi ? selectedTrackData.name_hi : selectedTrackData.name_en}</h3><p>{hi ? selectedTrackData.description_hi : selectedTrackData.description_en}</p></div><span className={"detail-status " + (selectedTrackData.question_bank_ready ? "ready" : "soon")}>{selectedTrackData.question_bank_ready ? "✓ READY" : "SOON"}</span></div>
+                  <div className="exam-detail-head"><div><span className="active-board-kicker">{group.icon} {t("परीक्षा विवरण","EXAM DETAILS")}</span><h3>{hi ? selectedTrackData.name_hi : selectedTrackData.name_en}</h3><p>{hi ? selectedTrackData.description_hi : selectedTrackData.description_en}</p></div><span className={"detail-status " + (selectedTrackData.question_bank_ready ? "ready" : "soon")}>{selectedTrackData.question_bank_check_available === false ? "SETUP" : selectedTrackData.question_bank_ready ? "✓ READY" : trackCanPractice(selectedTrackData) ? "PRACTICE" : "SOON"}</span></div>
                   {selectedTrackData.official_url && <a className="job-official-link" href={selectedTrackData.official_url} target="_blank" rel="noopener noreferrer"><Globe2 size={15}/>{t("आधिकारिक वेबसाइट खोलें","Open official website")}<ArrowRight size={14}/></a>}
                   <div className="exam-detail-stats"><div><span>{t("सवाल","QUESTIONS")}</span><b>{Number(selectedTrackData.verified_question_count || 0)}</b></div><div><span>{t("टेस्ट समय","TEST TIME")}</span><b>{examConfig.duration_minutes} min</b></div><div><span>{t("मार्किंग","MARKING")}</span><b>{examConfig.marks_per_question} / -{examConfig.negative_marks}</b></div><div><span>{t("सोर्स","SOURCE")}</span><b>{Number(selectedTrackData.pyq_question_count || 0) + Number(selectedTrackData.official_question_count || 0) > 0 ? (Number(selectedTrackData.practice_question_count || 0) > 0 ? "MIXED BANK" : "OFFICIAL / PYQ") : "PRACTICE BANK"}</b></div></div>
-                  <div className="exam-detail-actions"><span>{selectedTrackData.question_bank_ready ? t("Question bank उपलब्ध है।","Question bank is available.") : t("Question bank तैयार होते ही unlock होगा।","Unlocks when the question bank is ready.")}</span>{selectedTrackData.question_bank_ready && Number(selectedTrackData.verified_question_count || 0) > 0 && <button className="primary-button" onClick={startTest}>{t("मॉक टेस्ट शुरू करें","Start mock test")}<ArrowRight size={17}/></button>}</div>
+                  <div className="exam-detail-actions"><span>{selectedTrackData.question_bank_ready ? t("पूरा mock test उपलब्ध है।","Full mock test is ready.") : trackCanPractice(selectedTrackData) ? t("अभी उपलब्ध verified सवालों से practice शुरू करें।","Start practice with the verified questions currently available.") : t("Verified सवाल उपलब्ध होते ही unlock होगा।","Unlocks when verified questions become available.")}</span>{trackCanPractice(selectedTrackData) && Number(selectedTrackData.verified_question_count || 0) > 0 && <button className="primary-button" onClick={startTest}>{t("मॉक टेस्ट शुरू करें","Start mock test")}<ArrowRight size={17}/></button>}</div>
                 </div>}
               </section>;
             })()}</div>
           </div>
-          {selectedTrackData?.question_bank_ready && selectedTrackData?.exam_slug ? <>
+          {trackCanPractice(selectedTrackData) ? <>
 <div className="selected-exam-strip"><div><span>{t("चयनित परीक्षा","SELECTED EXAM")}</span><b>{hi ? selectedTrackData.name_hi : selectedTrackData.name_en}</b></div><em>{availableQuestionCount > 0 ? "✓ " + availableQuestionCount + " " + t("सवाल तैयार","QUESTIONS READY") : t("बैंक जाँच रहे हैं…","CHECKING BANK…")}</em></div>
 <div className="analysis-candidates-panel">
   <div className="section-heading"><div><h2>{t("परीक्षा विश्लेषण","Exam analysis")}</h2><p>{t("High-signal topics को question-bank analysis से ऊपर रखा गया है। ये forecast हैं, guaranteed questions नहीं।","High-signal topics are ranked from question-bank analysis. These are forecasts, not guaranteed exam questions.")}</p></div><span className="section-count">FORECAST</span></div>
@@ -1896,7 +2055,7 @@ export default function HomePage() {
   <div className="config-block"><b>{t("समय कितना?","Time")}</b><div className="config-options">{[10,20,30,45,60,120].map(n=><button type="button" key={n} aria-pressed={practiceDuration===n} className={practiceDuration===n?"active":""} onClick={()=>{setPracticeDuration(n);setAuthMessage("")}}>{n}m</button>)}</div><small>{t("चुना गया समय: "+practiceDuration+" मिनट","Selected duration: "+practiceDuration+" minutes")}</small></div>
   <div className="config-block device-security"><b>{t("SIM / डिवाइस सुरक्षा","SIM / Device security")}</b><div className="config-options"><button onClick={requestNativeSimPermission}>{nativeSimStatus === "sim-ready" ? t("SIM चालू ✓","SIM active ✓") : t("SIM अनुमति दें","Allow SIM")}</button>{user && <button onClick={createRecoveryCode}>{t("नए फोन के लिए recovery code","Create recovery code")}</button>}</div><small>{t("Recovery code trusted device से बनता है, 15 मिनट में expire होता है और एक बार इस्तेमाल होता है।","Recovery code is created on the trusted device, expires in 15 minutes, and works once.")}</small></div>
 </div></details>
-</> : <div className="selection-empty">{t("ऊपर से READY परीक्षा चुनें।","Choose a READY exam above.")}<span>{t("SOON वाली परीक्षाएँ उपलब्ध होते ही unlock होंगी।","SOON exams unlock when their verified question bank is ready.")}</span></div>}
+</> : <div className="selection-empty">{t("ऊपर से READY या PRACTICE परीक्षा चुनें।","Choose a READY or PRACTICE exam above.")}<span>{t("SOON वाली परीक्षाएँ verified सवाल आने पर unlock होंगी।","SOON exams unlock when verified questions are available.")}</span></div>}
 {authMessage && <div className={"dashboard-action-message" + (nativeSimStatus === "sim-ready" ? " success" : "")} role="status" aria-live="polite">{authMessage}</div>}<div className="bottom-note"><div className="note-icon"><ShieldCheck size={18}/></div><div><b>{t("आपकी तैयारी, आपकी रफ़्तार","Your preparation, your pace")}</b><p>{t("ExamPrep अभ्यास और तैयारी की प्रगति के लिए बनाया गया है। परीक्षा की तारीख, सिलेबस और आधिकारिक सूचना संबंधित बोर्ड से सत्यापित करें।","ExamPrep helps you practise and track preparation. Verify exam dates, syllabi and official notices with the relevant board.")}</p></div></div>
         </div>}
 

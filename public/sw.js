@@ -1,4 +1,4 @@
-const CACHE_NAME = "examprep-v3";
+const CACHE_NAME = "examprep-v4";
 const STATIC_ASSETS = ["/", "/manifest.json"];
 
 async function matchQuestionCache(request) {
@@ -45,9 +45,15 @@ self.addEventListener("fetch", event => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Only public exam/question catalog APIs are cacheable. Never cache user-specific
-  // result/history responses in the service worker.
-  if (url.pathname === "/api/questions" || url.pathname === "/api/job-tracks" || url.pathname === "/api/exams") {
+  // A generated test session includes a session ID/key and must never be cached.
+  // Only explicit availability/catalog lookups are safe to cache for offline browsing.
+  const isQuestionAvailability = url.pathname === "/api/questions" &&
+    url.searchParams.get("mode") === "availability";
+  if (url.pathname === "/api/questions" && !isQuestionAvailability) return;
+
+  // Cache only public catalog metadata; never cache generated test sessions or
+  // user-specific result/history responses in the service worker.
+  if (isQuestionAvailability || url.pathname === "/api/job-tracks" || url.pathname === "/api/exams") {
     event.respondWith(
       fetch(request)
         .then(response => {
@@ -58,7 +64,7 @@ self.addEventListener("fetch", event => {
           return response;
         })
         .catch(async () => {
-          if (url.pathname === "/api/questions") {
+          if (isQuestionAvailability) {
             const cached = await matchQuestionCache(request);
             return cached || new Response(
               JSON.stringify({ data: [], meta: { available: 0, offline: true } }),

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { publicDbError } from "../../../lib/api-errors.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -12,6 +13,6 @@ export async function GET() {
     .select("id,name,slug,description,total_questions,duration_minutes,marks_per_question,negative_marks,passing_percentage")
     .eq("is_active", true)
     .order("name");
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return publicDbError("Exam list", error);
   return NextResponse.json({ data: data || [] });
 }
