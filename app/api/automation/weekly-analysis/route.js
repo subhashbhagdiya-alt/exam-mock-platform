@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { publicDbError } from "../../../../lib/api-errors.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -28,7 +29,7 @@ export async function GET(request) {
   ]);
 
   const dbError = examsError || analysisError || questionsError || taskError;
-  if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
+  if (dbError) return publicDbError("Weekly analysis", dbError);
   if (!exams?.length) return NextResponse.json({ ok: true, queued: false, reason: "No active exams found." });
 
   const recentExamIds = new Set((recentTasks || []).map((task) => task.payload?.exam_id).filter(Boolean));
@@ -80,6 +81,6 @@ export async function GET(request) {
     payload
   }).select("id,task_type,status,priority").single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return publicDbError("Weekly analysis", error);
   return NextResponse.json({ ok: true, queued: true, task: inserted, selected_exam: selected.name, selection_reason: payload.selection_reason, target_new_questions: 50 });
 }

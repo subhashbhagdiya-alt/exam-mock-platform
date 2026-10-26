@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { publicDbError } from "../../../../lib/api-errors.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -84,8 +85,9 @@ export async function GET(request) {
     ? await db.from("background_manager_tasks").insert(dedupedTasks).select("id,task_type,priority,status")
     : { data: [], error: null };
 
+  if (error) return publicDbError("Background manager queue", error);
   return NextResponse.json({
-    ok: !error,
+    ok: true,
     manager: "ExamPrep Background Manager",
     checked_at: now,
     metrics: {
@@ -101,6 +103,6 @@ export async function GET(request) {
     tasks_considered: tasks.length,
     deduped_recent: tasks.length - dedupedTasks.length,
     tasks: inserted || [],
-    error: error?.message || null
+    error: null
   });
 }

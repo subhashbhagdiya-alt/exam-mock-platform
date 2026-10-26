@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   MAX_PAPER_FILE_BYTES,
   detectPaperMimeType,
@@ -6,7 +7,14 @@ import {
   resolvePaperMimeType
 } from "../lib/paper-analysis-upload.mjs";
 
-assert.equal(MAX_PAPER_FILE_BYTES, 3 * 1024 * 1024);
+assert.equal(MAX_PAPER_FILE_BYTES, 4 * 1024 * 1024);
+
+// Guard the multipart-to-Gemini handoff: a previous refactor left an undefined base64 variable.
+const paperAnalysisRoute = await readFile(new URL("../app/api/paper-analysis/route.js", import.meta.url), "utf8");
+assert.match(paperAnalysisRoute, /request\.formData\(\)/);
+assert.match(paperAnalysisRoute, /form\.get\("file"\)/);
+assert.match(paperAnalysisRoute, /data: buffer\.toString\("base64"\)/);
+assert.doesNotMatch(paperAnalysisRoute, /data:\s*encoded\b/);
 
 // Browser-reported MIME types work as usual.
 assert.equal(resolvePaperMimeType("exam.pdf", "application/pdf"), "application/pdf");

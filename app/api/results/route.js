@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateResultQuestionMapping } from "../../../lib/result-validation.mjs";
 import { checkMfaAssurance } from "../../../lib/mfa-assurance.mjs";
+import { DataAccessError, publicDbError } from "../../../lib/api-errors.mjs";
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -28,6 +29,21 @@ function mfaBlockedResponse(check) {
 
 const fields = "id, exam_id, test_name, score, gross_score, negative_score, marks_per_question, negative_marks_per_question, passing_percentage, total_questions, correct, wrong, unanswered, accuracy, answers, review_ids, language, created_at";
 
+const SAFE_RESULT_ERRORS = new Map([
+  ["Invalid result payload", 400],
+  ["Invalid exam id", 400],
+  ["Invalid question mapping", 400],
+  ["Duplicate question ids are not allowed", 400],
+  ["Question count does not match result payload", 400],
+  ["Invalid answers", 400],
+  ["Exam not found", 404],
+  ["Question set is no longer valid", 409],
+  ["Invalid answer", 400],
+  ["Invalid question counts", 400],
+  ["Question count does not match exam rules", 400],
+  ["Practice tests are limited to 50 questions unless this is the full configured exam.", 400]
+]);
+
 function validSessionKey(value) {
   return typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value);
 }
@@ -46,7 +62,7 @@ async function cleanResult(body, dataClient, authUserId = null) {
   const { data: exam, error: examError } = await dataClient.from("exams")
     .select("id,name,total_questions,marks_per_question,negative_marks,passing_percentage")
     .eq("id", body.exam_id).eq("is_active", true).maybeSingle();
-  if (examError) throw new Error(examError.message);
+  if (examError) throw new DataAccessError("Result exam lookup", examError);
   if (!exam) throw new Error("Exam not found");
 
   const sourceIds = validateResultQuestionMapping(body.question_ids, body.total_questions);
@@ -54,7 +70,7 @@ async function cleanResult(body, dataClient, authUserId = null) {
   const { data: questions, error: qError } = await dataClient.from("question_bank")
     .select("id,answer_index,exam_id,active,verified")
     .in("id", sourceIds).eq("exam_id", body.exam_id).eq("active", true).eq("verified", true);
-  if (qError) throw new Error(qError.message);
+  if (qError) throw new DataAccessError("Result question lookup", qError);
 
   const byId = new Map((questions || []).map(q => [q.id, q]));
   const localIds = Object.keys(body.question_ids);
@@ -124,12 +140,12 @@ export async function GET(request) {
   const deviceKey = request.headers.get("x-device-key") || "";
   if (!validDeviceKey(deviceKey)) return NextResponse.json({ error: "Trusted device required" }, { status: 403 });
   const { data: isTrusted, error: deviceError } = await client.rpc("verify_trusted_device", { p_device_key: deviceKey });
-  if (deviceError) return NextResponse.json({ error: deviceError.message }, { status: 500 });
+  if (deviceError) return publicDbError("Trusted device verification", deviceError);
   if (isTrusted !== true) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
 
   const query = client.from("test_results").select(fields).eq("user_id", authUserId).order("created_at", { ascending: false }).limit(50);
   const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return publicDbError("Saved results lookup", error);
   return NextResponse.json({ data: data || [] });
 }
 
@@ -160,16 +176,20 @@ export async function POST(request) {
     const deviceKey = body.device_key;
     if (!validDeviceKey(deviceKey)) return NextResponse.json({ error: "Trusted device required" }, { status: 403 });
     const { data: isTrusted, error: deviceError } = await client.rpc("verify_trusted_device", { p_device_key: deviceKey });
-    if (deviceError) return NextResponse.json({ error: deviceError.message }, { status: 500 });
+    if (deviceError) return publicDbError("Trusted device verification", deviceError);
     if (isTrusted !== true) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
 
     const dataClient = getPrivilegedReadClient();
     if (!dataClient) return NextResponse.json({ error: "Result validation service is not configured" }, { status: 503 });
     const cleaned = await cleanResult(body, dataClient, authUserId);
     const { data, error } = await client.from("test_results").insert(cleaned).select(fields).single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) return publicDbError("Save result", error);
     return NextResponse.json({ data }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error?.message || "Could not save result" }, { status: 400 });
+    if (error instanceof DataAccessError) return publicDbError(error.label, error.cause);
+    if (error instanceof SyntaxError) return NextResponse.json({ error: "Invalid JSON request body." }, { status: 400 });
+    const safeMessage = Array.from(SAFE_RESULT_ERRORS.keys()).find(message => message === error?.message);
+    if (safeMessage) return NextResponse.json({ error: safeMessage }, { status: SAFE_RESULT_ERRORS.get(safeMessage) });
+    return publicDbError("Save result", error);
   }
 }

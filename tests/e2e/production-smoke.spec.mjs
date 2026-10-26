@@ -6,7 +6,9 @@ const baseURL = (process.env.E2E_BASE_URL || "https://exam-prep-direct-box.verce
 test.use({
   viewport: { width: 390, height: 844 },
   isMobile: true,
-  hasTouch: true
+  hasTouch: true,
+  // Page.route API fixtures must not be bypassed by the app's service worker.
+  serviceWorkers: "block"
 });
 
 test("production homepage renders in a mobile viewport", async ({ page }) => {
@@ -26,6 +28,65 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
     }
   });
 
+  if (process.env.E2E_LOCAL_FIXTURE_MODE === "true") {
+    // Local UI smoke is isolated from Supabase: fixture data keeps the mobile flows deterministic
+    // and simulates the safe, missing-server-credential response without touching any database.
+    await page.route("**/api/exams", route => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ data: [{
+        id: "00000000-0000-4000-8000-000000000101",
+        name: "MPESB Mock Test",
+        slug: "mpesb",
+        total_questions: 40,
+        duration_minutes: 120,
+        marks_per_question: 1,
+        negative_marks: 0.25,
+        passing_percentage: 33
+      }] })
+    }));
+    await page.route("**/api/job-tracks", route => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ data: [{
+        id: "00000000-0000-4000-8000-000000000102",
+        exam_board: "MPESB",
+        slug: "mpesb-common",
+        name_hi: "MPESB सामान्य तैयारी",
+        name_en: "MPESB Common Preparation",
+        description_hi: "सभी MPESB भर्तियों के common sections के लिए आधार अभ्यास।",
+        description_en: "Foundation practice for MPESB recruitment.",
+        status: "practice",
+        exam_slug: "mpesb",
+        exam_category: "recruitment",
+        official_url: null,
+        exam_date_text: null,
+        form_status_text: null,
+        last_verified_at: null,
+        verified_question_count: null,
+        required_question_count: 40,
+        question_bank_ready: false,
+        question_bank_check_available: false,
+        question_bank_status: "server_credentials_required",
+        pyq_question_count: null,
+        official_question_count: null,
+        practice_question_count: null,
+        subjects: [],
+        topics: [],
+        analysis_candidates: [],
+        effective_status: "practice"
+      }] })
+    }));
+    await page.route("**/api/questions**", route => route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: "Question bank server credentials are missing.",
+        code: "QUESTION_BANK_SERVER_CREDENTIALS_MISSING"
+      })
+    }));
+  }
+
   const response = await page.goto(baseURL, {
     waitUntil: "domcontentloaded",
     timeout: 60_000
@@ -44,9 +105,32 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.screenshot({ path: "test-results/examprep-mobile-home-viewport.png" });
   await page.screenshot({ path: "test-results/examprep-mobile-home.png", fullPage: true });
 
-  // Navigate through the real mobile menu into Account, then verify both login methods.
-  await page.getByTestId("menu-toggle").click();
-  await page.getByTestId("menu-login").click();
+  // Exercise the visible mobile drawer, its quick settings, Escape dismissal, and Account navigation.
+  const mobileMenuToggle = page.getByTestId("mobile-nav-toggle");
+  await mobileMenuToggle.click();
+  await expect(mobileMenuToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator(".sidebar.mobile-menu-open")).toBeVisible();
+  await page.locator(".sidebar.mobile-menu-open").getByRole("button", { name: /Language & appearance/i }).click();
+  await expect(page.locator(".mobile-menu-utilities-panel")).toBeVisible();
+  await expect(page.locator(".mobile-menu-theme-row button")).toHaveCount(3);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".sidebar.mobile-menu-open")).toHaveCount(0);
+  await expect(mobileMenuToggle).toHaveAttribute("aria-expanded", "false");
+
+  // Verify the mobile Home picker and its safe unavailable-credentials state in Preview.
+  await mobileMenuToggle.click();
+  await page.locator(".sidebar.mobile-menu-open").getByTestId("mobile-nav-home").click();
+  await expect(page.getByTestId("dashboard-exam-title")).toBeVisible();
+  await expect(page.getByTestId("dashboard-exam-picker")).toBeVisible();
+  await expect(page.getByTestId("configure-mock-test")).toBeVisible();
+  if (process.env.E2E_SKIP_PRIVILEGED_API_TESTS === "true") {
+    await expect(page.locator(".dashboard-exam-error[role=alert]").first()).toContainText(/server-only Supabase key/i);
+    await expect(page.locator(".dashboard-exam-status")).toContainText("SERVER SETUP");
+    await expect(page.getByTestId("configure-mock-test")).toBeDisabled();
+  }
+
+  await mobileMenuToggle.click();
+  await page.locator(".sidebar.mobile-menu-open").getByTestId("mobile-nav-login").click();
   await expect(page.getByTestId("login-email-input")).toBeVisible();
   await page.getByTestId("login-method-phone").click();
   await expect(page.getByPlaceholder("10 अंकों का मोबाइल नंबर")).toBeVisible();
@@ -66,8 +150,9 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.screenshot({ path: "test-results/examprep-mobile-login-viewport.png" });
 
   // The paper analyzer should be discoverable on mobile and gated behind account login.
-  await page.getByTestId("menu-toggle").click();
-  await page.getByTestId("menu-paper-analyzer").click();
+  await mobileMenuToggle.click();
+  await expect(mobileMenuToggle).toHaveAttribute("aria-expanded", "true");
+  await page.locator(".sidebar.mobile-menu-open").getByTestId("mobile-nav-paper-analyzer").click();
   await expect(page.getByTestId("paper-analyzer-title")).toBeVisible();
   const analyzerIcon = page.locator(".paper-analyzer-content .paper-analyzer-icon");
   const uploadIcon = page.locator(".paper-analyzer-content .paper-upload-icon");
@@ -86,6 +171,14 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.screenshot({ path: "test-results/examprep-mobile-paper-analyzer-viewport.png" });
   await expect(page.locator('input[type="file"][accept*=".pdf"]')).toBeAttached();
   await expect(page.getByRole("button", { name: /Analyze & Generate MCQs/i })).toBeDisabled();
+
+  // Browser Back/Forward restores the navigable view instead of leaving the app.
+  await page.goBack();
+  await expect(page).toHaveURL(/#login$/);
+  await expect(page.getByTestId("login-email-input")).toBeVisible();
+  await page.goForward();
+  await expect(page).toHaveURL(/#paper$/);
+  await expect(page.getByTestId("paper-analyzer-title")).toBeVisible();
 
   const dimensions = await page.evaluate(() => ({
     viewportWidth: window.innerWidth,
@@ -114,9 +207,129 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
     pageErrors,
     `The page should not emit uncaught JavaScript errors: ${pageErrors.map(error => error.message).join(" | ")}`
   ).toEqual([]);
+
+  // Run the overflow and mobile-menu check at all requested phone widths.
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    const viewportCheck = await page.evaluate(() => ({
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth
+    }));
+    expect(viewportCheck.documentWidth, `No horizontal overflow at ${width}px`).toBeLessThanOrEqual(width + 2);
+    await expect(page.getByTestId("mobile-nav-toggle")).toBeVisible();
+  }
+});
+
+test("direct links restore login and paper analyzer views", async ({ page }) => {
+  test.skip(process.env.E2E_LOCAL_FIXTURE_MODE !== "true", "Runs only against the isolated local build.");
+  await page.route("**/api/exams", route => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ data: [] })
+  }));
+  await page.route("**/api/job-tracks", route => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ data: [] })
+  }));
+  await page.route("**/api/questions**", route => route.fulfill({
+    status: 503, contentType: "application/json",
+    body: JSON.stringify({ error: "Question bank server credentials are missing.", code: "QUESTION_BANK_SERVER_CREDENTIALS_MISSING" })
+  }));
+
+  const loginResponse = await page.goto(baseURL + "/#login", { waitUntil: "domcontentloaded", timeout: 60_000 });
+  expect(loginResponse, "Direct login URL should return a response").not.toBeNull();
+  expect(loginResponse.status()).toBeLessThan(400);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("login-email-input")).toBeVisible({ timeout: 15_000 });
+  await expect(page).toHaveURL(/#login$/);
+
+  await page.goto(baseURL + "/#paper", { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("paper-analyzer-title")).toBeVisible({ timeout: 15_000 });
+  await expect(page).toHaveURL(/#paper$/);
+});
+test("setup navigation preserves browser back and forward history", async ({ page }) => {
+  test.skip(process.env.E2E_LOCAL_FIXTURE_MODE !== "true", "Runs only against the isolated local build.");
+
+  const exam = {
+    id: "00000000-0000-4000-8000-000000000101",
+    name: "MPESB Mock Test",
+    slug: "mpesb",
+    total_questions: 40,
+    duration_minutes: 50,
+    marks_per_question: 1,
+    negative_marks: 0.25,
+    passing_percentage: 33
+  };
+  await page.route("**/api/exams", route => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ data: [exam] })
+  }));
+  await page.route("**/api/job-tracks", route => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ data: [{
+      id: "00000000-0000-4000-8000-000000000102",
+      exam_board: "MPESB",
+      slug: "mpesb-common",
+      name_hi: "MPESB सामान्य तैयारी",
+      name_en: "MPESB Common Preparation",
+      description_hi: "MPESB भर्ती अभ्यास",
+      description_en: "MPESB recruitment practice",
+      status: "question_bank_ready",
+      exam_slug: "mpesb",
+      exam_category: "recruitment",
+      official_url: null,
+      exam_date_text: null,
+      form_status_text: null,
+      last_verified_at: null,
+      verified_question_count: 40,
+      required_question_count: 40,
+      question_bank_ready: true,
+      question_bank_check_available: true,
+      question_bank_status: "ready",
+      pyq_question_count: 0,
+      official_question_count: 0,
+      practice_question_count: 40,
+      subjects: ["General Knowledge"],
+      topics: ["History"],
+      analysis_candidates: [],
+      effective_status: "question_bank_ready"
+    }] })
+  }));
+  await page.route("**/api/questions**", route => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      exam,
+      data: [],
+      meta: {
+        requested: 100,
+        available: 40,
+        subjects: ["General Knowledge"],
+        subject_topics: [{ subject: "General Knowledge", topic: "History" }]
+      }
+    })
+  }));
+
+  const response = await page.goto(baseURL + "/#home", { waitUntil: "domcontentloaded", timeout: 60_000 });
+  expect(response).not.toBeNull();
+  expect(response.status()).toBeLessThan(400);
+  const setupButton = page.getByTestId("configure-mock-test");
+  await expect(setupButton).toBeEnabled({ timeout: 15_000 });
+  await setupButton.click();
+  await expect(page).toHaveURL(/#exam-setup$/);
+  await expect(page.locator(".exam-setup-content .setup-hero")).toBeVisible();
+
+  await page.goBack();
+  await expect(page).toHaveURL(/#home$/);
+  await expect(page.getByTestId("dashboard-exam-picker")).toBeVisible();
+
+  await page.goForward();
+  await expect(page).toHaveURL(/#exam-setup$/);
+  await expect(page.locator(".exam-setup-content .setup-hero")).toBeVisible();
 });
 
 test("mock test API grades an attempt and keeps repeated submission idempotent", async ({ request }) => {
+  test.skip(process.env.E2E_SKIP_PRIVILEGED_API_TESTS === "true", "Preview does not have a dedicated non-production question-bank credential.");
   const sessionResponse = await request.get(`${baseURL}/api/questions?exam=mpesb-police-constable-2026&limit=10`, { timeout: 30_000 });
   const sessionText = await sessionResponse.text();
   expect(sessionResponse.status(), `Question session API response: ${sessionText}`).toBe(200);
@@ -150,6 +363,7 @@ test("mock test API grades an attempt and keeps repeated submission idempotent",
 });
 
 test("question catalog supports normalized subject and topic filters", async ({ request }) => {
+  test.skip(process.env.E2E_SKIP_PRIVILEGED_API_TESTS === "true", "Preview does not have a dedicated non-production question-bank credential.");
   const catalogResponse = await request.get(
     `${baseURL}/api/questions?exam=mpesb-police-constable-2026&limit=100&mode=availability`,
     { timeout: 30_000 }
@@ -185,6 +399,7 @@ test("question catalog supports normalized subject and topic filters", async ({ 
 
 
 test("grading API rejects a session that does not exist", async ({ request }) => {
+  test.skip(process.env.E2E_SKIP_PRIVILEGED_API_TESTS === "true", "Preview does not have a dedicated non-production question-bank credential.");
   // A valid-format but nonexistent session makes the RPC return before any database write.
   const response = await request.post(`${baseURL}/api/grade`, {
     data: {
