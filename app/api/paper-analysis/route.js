@@ -151,7 +151,7 @@ Do not include personal details found in the document in the response.`;
       body: JSON.stringify({
         contents: [{ role: "user", parts: [
           { text: prompt },
-          { inline_data: { mime_type: mimeType, data: encoded } }
+          { inline_data: { mime_type: mimeType, data: buffer.toString("base64") } }
         ] }],
         generationConfig: { responseMimeType: "application/json", temperature: 0.2, maxOutputTokens: 16384 }
       }),
