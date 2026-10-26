@@ -6,8 +6,8 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const MAX_FILE_BYTES = MAX_PAPER_FILE_BYTES;
-const MAX_ENCODED_FILE_CHARS = Math.ceil(MAX_FILE_BYTES / 3) * 4;
-const MAX_REQUEST_BODY_BYTES = MAX_ENCODED_FILE_CHARS + 32 * 1024;
+// Multipart uploads avoid base64's ~33% expansion and stay below Vercel's 4.5 MB request limit.
+const MAX_REQUEST_BODY_BYTES = MAX_FILE_BYTES + 64 * 1024;
 const MODEL = process.env.GEMINI_PAPER_MODEL || "gemini-3.6-flash";
 
 // Best-effort per-instance throttle to avoid accidental repeated free-tier calls.
@@ -82,19 +82,17 @@ export async function POST(request) {
     if (!apiKey) return jsonError("Paper analysis is not configured yet. The server-side GEMINI_API_KEY is missing; no paid fallback is enabled.", 503);
 
     const contentLength = Number(request.headers.get("content-length") || 0);
-    // Keep base64 JSON under Vercel Functions' 4.5 MB request body ceiling.
-    if (contentLength > MAX_REQUEST_BODY_BYTES) return jsonError("Request is larger than the 3 MB file limit.", 413);
+    // Leave multipart boundary/header room while staying below Vercel's 4.5 MB request body ceiling.
+    if (contentLength > MAX_REQUEST_BODY_BYTES) return jsonError("Request is larger than the 4 MB file limit.", 413);
 
-
-
-    const body = await request.json();
-    const encoded = body?.fileBase64;
-    if (typeof encoded !== "string" || !encoded.length || encoded.length > MAX_ENCODED_FILE_CHARS + 16) {
-      return jsonError("File is empty or larger than the 3 MB limit.", 413);
+    const form = await request.formData();
+    const uploadedFile = form.get("file");
+    if (!uploadedFile || typeof uploadedFile.arrayBuffer !== "function" || !uploadedFile.size) {
+      return jsonError("Choose a non-empty PDF, JPG, PNG, or WEBP file.", 400);
     }
-    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) return jsonError("The file encoding is invalid. Please choose the file again.", 400);
-    const buffer = Buffer.from(encoded, "base64");
-    if (!buffer.length || buffer.length > MAX_FILE_BYTES) return jsonError("File must be 3 MB or smaller.", 413);
+    if (uploadedFile.size > MAX_FILE_BYTES) return jsonError("File must be 4 MB or smaller.", 413);
+    const buffer = Buffer.from(await uploadedFile.arrayBuffer());
+    if (!buffer.length || buffer.length > MAX_FILE_BYTES) return jsonError("File must be 4 MB or smaller.", 413);
     // Detect the actual content, instead of trusting MIME metadata from a mobile file picker.
     const mimeType = detectPaperMimeType(buffer);
     if (!SUPPORTED_PAPER_MIME_TYPES.includes(mimeType)) {
