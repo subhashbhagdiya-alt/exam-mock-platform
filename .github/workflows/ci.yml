@@ -24,6 +24,7 @@ jobs:
       - run: npm run lint
       - run: node scripts/test-api-error-leaks.mjs
       - run: node scripts/test-job-tracks-pagination.mjs
+      - run: node scripts/test-missing-exam-practice-tracks.mjs
       - run: npm run test:result-validation
       - run: npm run test:mfa-assurance
       - run: npm run test:background-task-retry
