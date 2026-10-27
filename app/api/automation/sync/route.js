@@ -1,16 +1,11 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { publicDbError } from "../../../../lib/api-errors.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const SOURCES = [
-  "https://esb.mp.gov.in/student_dashboard.htm",
-  "https://esb.mp.gov.in/rulebooks/rule_books.htm",
-  "https://esb.mp.gov.in/Exams_Schedule/exams_schedule_ESB26.htm",
-  "https://esb.mp.gov.in/Question%20Paper%20and%20Candidate%20Responses/Question_Objection.asp"
-];
 
 function authorized(request) {
   const secret = process.env.CRON_SECRET;
@@ -23,12 +18,12 @@ export async function GET(request) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return NextResponse.json({ error: "Server database credentials are not configured" }, { status: 503 });
 
   const client = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-  const { data: sources, error } = await client.from("exam_sources").select("id,url,last_hash,last_checked_at").in("url", SOURCES).eq("active", true);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { data: sources, error } = await client.from("exam_sources").select("id,url,last_hash,last_checked_at").eq("active", true).not("url", "is", null).limit(20);
+  if (error) return publicDbError("Exam source sync", error);
 
   const results = [];
   for (const source of sources || []) {
@@ -62,7 +57,7 @@ export async function GET(request) {
         p_change_summary: "Official source check failed.",
         p_error_message: err?.message || "fetch failed"
       });
-      results.push({ url: source.url, status: "failed", error: err?.message || "fetch failed", recorded: !rpc.error });
+      results.push({ url: source.url, status: "failed", error: "fetch failed", recorded: !rpc.error });
     }
   }
 

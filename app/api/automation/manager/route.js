@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { publicDbError } from "../../../../lib/api-errors.mjs";
+import { isTaskTypeHandledRecently, selectExpansionCandidate } from "../../../../lib/autopilot-question-queue.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -13,44 +15,115 @@ export async function GET(request) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return NextResponse.json({ error: "Server database credentials are not configured" }, { status: 503 });
 
   const db = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
   const now = new Date().toISOString();
-  const tasks = [];
   const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { data: recentTasks } = await db
-    .from("background_manager_tasks")
-    .select("task_type,status,created_at")
-    .gte("created_at", recentCutoff)
-    .in("status", ["queued", "running"]);
-
+  const historyCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
   const staleCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
   const [
-    { count: questions },
-    { count: stagedAiQuestions },
-    { count: exams },
-    { count: tracks },
-    { count: sources },
-    { data: failedTasks },
-    { data: staleTasks }
+    { data: expansionExams, error: expansionExamError },
+    { count: questions, error: questionsError },
+    { count: stagedAiQuestions, error: stagedError },
+    { count: tracks, error: tracksError },
+    { count: sources, error: sourcesError },
+    { data: failedTasks, error: failedError },
+    { data: staleTasks, error: staleError },
+    { data: activeQueue, error: activeQueueError },
+    { data: recentCompleted, error: recentCompletedError },
+    { data: expansionHistory, error: expansionHistoryError },
+    { data: changedSources, error: changedSourcesError }
   ] = await Promise.all([
-    db.from("question_bank").select("*", { count: "exact", head: true }).eq("active", true).eq("verified", true),
-    db.from("question_bank").select("*", { count: "exact", head: true }).eq("active", false).eq("verified", false).like("source_name", "ExamPrep weekly AI pattern batch%"),
-    db.from("exams").select("*", { count: "exact", head: true }).eq("is_active", true),
-    db.from("job_tracks").select("*", { count: "exact", head: true }).eq("active", true),
-    db.from("exam_sources").select("*", { count: "exact", head: true }).eq("active", true),
+    db.from("exams").select("id,name,description,slug").eq("is_active", true).order("name").limit(500),
+    db.from("question_bank").select("id", { count: "exact", head: true }).eq("active", true).eq("verified", true),
+    db.from("question_bank").select("id", { count: "exact", head: true }).eq("active", false).eq("verified", false)
+      .or("source_name.like.ExamPrep weekly AI pattern batch%,source_name.like.ExamPrep AI daily expansion%"),
+    db.from("job_tracks").select("id", { count: "exact", head: true }).eq("active", true),
+    db.from("exam_sources").select("id", { count: "exact", head: true }).eq("active", true),
     db.from("background_manager_tasks").select("id,task_type,status,created_at").eq("status", "failed").gte("created_at", recentCutoff).order("created_at", { ascending: false }).limit(10),
-    db.from("background_manager_tasks").select("id,task_type,status,started_at").eq("status", "running").lt("started_at", staleCutoff).limit(10)
+    db.from("background_manager_tasks").select("id,task_type,status,started_at").eq("status", "running").lt("started_at", staleCutoff).limit(10),
+    db.from("background_manager_tasks").select("id,task_type,status,created_at,payload").in("status", ["queued", "running"]).order("created_at", { ascending: false }).limit(500),
+    db.from("background_manager_tasks").select("task_type,status,created_at,payload").gte("created_at", recentCutoff).in("status", ["done", "blocked"]).order("created_at", { ascending: false }).limit(500),
+    db.from("background_manager_tasks").select("task_type,created_at,payload").eq("task_type", "question_bank_expansion").gte("created_at", historyCutoff).order("created_at", { ascending: false }).limit(500),
+    db.from("exam_sync_runs").select("source_id,status,change_summary,finished_at").in("status", ["changed", "failed"]).order("finished_at", { ascending: false }).limit(20)
   ]);
 
-  const pendingQuestions = (questions || 0) + (stagedAiQuestions || 0);
-  if (pendingQuestions < 500) {
-    tasks.push({ task_type: "question_bank_expansion", priority: 90, payload: { verified_active: questions || 0, awaiting_review: stagedAiQuestions || 0, target: 500 } });
+  const queryError = expansionExamError || questionsError || stagedError || tracksError || sourcesError ||
+    failedError || staleError || activeQueueError || recentCompletedError || expansionHistoryError || changedSourcesError;
+  if (queryError) return publicDbError("Background manager checks", queryError);
+
+  // Serverless invocations cannot legitimately remain running for 30 minutes.
+  // Requeue stale claims while retaining payload/result checkpoints, so a task
+  // abandoned by a timed-out process does not block the AutoPilot forever.
+  const recoveredStaleTasks = [];
+  for (const staleTask of staleTasks || []) {
+    const { data: recovered, error: recoveryError } = await db.from("background_manager_tasks").update({
+      status: "queued",
+      started_at: null,
+      completed_at: null,
+      error_message: "Auto-recovered stale running task; saved task result/checkpoints were retained."
+    }).eq("id", staleTask.id).eq("status", "running").lt("started_at", staleCutoff).select("id");
+    if (recoveryError) return publicDbError("Stale task recovery", recoveryError);
+    if (recovered?.length) recoveredStaleTasks.push(staleTask.id);
   }
 
-  if ((failedTasks || []).length || (staleTasks || []).length) {
+  const activeTasks = activeQueue || [];
+  const completedRecently = recentCompleted || [];
+  const recentTasks = [...activeTasks, ...completedRecently];
+  const hasRecentType = (taskType) => isTaskTypeHandledRecently(taskType, activeTasks, completedRecently);
+  const tasks = [];
+
+  // Select the least-covered active exam, not alphabetically the first exam.
+  // Count only live verified items plus AI-generated review candidates for that exam.
+  const coverage = [];
+  for (let offset = 0; offset < (expansionExams || []).length; offset += 5) {
+    const batch = expansionExams.slice(offset, offset + 5);
+    const results = await Promise.all(batch.map(async (exam) => {
+      const [{ count: activeVerified, error: activeError }, { count: awaitingReview, error: stagedExamError }] = await Promise.all([
+        db.from("question_bank").select("id", { count: "exact", head: true }).eq("exam_id", exam.id).eq("active", true).eq("verified", true),
+        db.from("question_bank").select("id", { count: "exact", head: true }).eq("exam_id", exam.id).eq("active", false).eq("verified", false)
+          .or("source_name.like.ExamPrep weekly AI pattern batch%,source_name.like.ExamPrep AI daily expansion%")
+      ]);
+      return { exam, activeVerified: activeVerified || 0, awaitingReview: awaitingReview || 0, error: activeError || stagedExamError };
+    }));
+    const failedCoverageQuery = results.find((item) => item.error);
+    if (failedCoverageQuery) return publicDbError("Question expansion exam coverage", failedCoverageQuery.error);
+    coverage.push(...results);
+  }
+
+  const lastExpansionByExam = new Map();
+  for (const task of expansionHistory || []) {
+    const examId = task.payload?.exam_id;
+    if (examId && !lastExpansionByExam.has(examId)) lastExpansionByExam.set(examId, task.created_at);
+  }
+
+  const selectedCoverage = selectExpansionCandidate(coverage, lastExpansionByExam, 500);
+  const expansionCandidates = selectedCoverage ? [selectedCoverage] : [];
+
+  if (!hasRecentType("question_bank_expansion") && expansionCandidates.length) {
+    const selected = expansionCandidates[0];
+    tasks.push({
+      task_type: "question_bank_expansion",
+      priority: 90,
+      payload: {
+        exam_id: selected.exam.id,
+        exam_name: selected.exam.name,
+        verified_active: selected.activeVerified,
+        awaiting_review: selected.awaitingReview,
+        exam_total_toward_target: selected.total,
+        target: 500,
+        daily_target: 10,
+        selection_reason: "Choose the active exam with the smallest verified bank plus staged AI review pool; ties rotate toward exams expanded least recently.",
+        note: "Generate up to 10 unique bilingual practice questions, save them for the configured quality gate, and never label generated questions as official/PYQ."
+      }
+    });
+  }
+
+  const unhealthyTasks = (failedTasks || []).length || (staleTasks || []).length;
+  if (unhealthyTasks && !hasRecentType("security_review")) {
     tasks.push({
       task_type: "security_review",
       priority: 100,
@@ -65,42 +138,48 @@ export async function GET(request) {
     });
   }
 
-  const { data: changedSources } = await db
-    .from("exam_sync_runs")
-    .select("source_id,status,change_summary,finished_at")
-    .in("status", ["changed", "failed"])
-    .order("finished_at", { ascending: false })
-    .limit(20);
-
-  if ((changedSources || []).some(item => item.status === "changed")) {
-    tasks.push({ task_type: "source_review", priority: 100, payload: { reason: "Official source changed.", runs: changedSources.filter(item => item.status === "changed").slice(0, 5) } });
+  if ((changedSources || []).some((item) => item.status === "changed") && !hasRecentType("source_review")) {
+    tasks.push({
+      task_type: "source_review",
+      priority: 100,
+      payload: { reason: "Official source changed.", runs: changedSources.filter((item) => item.status === "changed").slice(0, 5) }
+    });
   }
-  if ((changedSources || []).some(item => item.status === "failed")) {
-    tasks.push({ task_type: "source_health", priority: 95, payload: { reason: "Official source check failed.", runs: changedSources.filter(item => item.status === "failed").slice(0, 5) } });
+  if ((changedSources || []).some((item) => item.status === "failed") && !hasRecentType("source_health")) {
+    tasks.push({
+      task_type: "source_health",
+      priority: 95,
+      payload: { reason: "Official source check failed.", runs: changedSources.filter((item) => item.status === "failed").slice(0, 5) }
+    });
   }
 
-  const dedupedTasks = tasks.filter(task => !(recentTasks || []).some(item => item.task_type === task.task_type));
-  const { data: inserted, error } = dedupedTasks.length
-    ? await db.from("background_manager_tasks").insert(dedupedTasks).select("id,task_type,priority,status")
+  const { data: inserted, error: insertError } = tasks.length
+    ? await db.from("background_manager_tasks").insert(tasks).select("id,task_type,priority,status")
     : { data: [], error: null };
 
+  if (insertError) return publicDbError("Background manager queue", insertError);
   return NextResponse.json({
-    ok: !error,
+    ok: true,
     manager: "ExamPrep Background Manager",
     checked_at: now,
     metrics: {
       verified_active_questions: questions || 0,
       ai_questions_awaiting_review: stagedAiQuestions || 0,
-      active_exams: exams || 0,
+      active_exams: (expansionExams || []).length,
       active_tracks: tracks || 0,
       active_sources: sources || 0,
       failed_tasks_last_24h: (failedTasks || []).length,
-      stale_running_tasks_over_30m: (staleTasks || []).length
+      stale_running_tasks_over_30m: (staleTasks || []).length,
+      stale_tasks_recovered: recoveredStaleTasks.length,
+      selected_exam: selectedCoverage?.exam?.name || null,
+      selected_exam_verified_questions: selectedCoverage?.activeVerified || 0,
+      selected_exam_staged_questions: selectedCoverage?.awaitingReview || 0,
+      selected_exam_total_toward_target: selectedCoverage?.total ?? null
     },
     tasks_created: inserted?.length || 0,
     tasks_considered: tasks.length,
-    deduped_recent: tasks.length - dedupedTasks.length,
+    skipped_because_queue_or_recent_completion: recentTasks.map((item) => item.task_type),
     tasks: inserted || [],
-    error: error?.message || null
+    error: null
   });
 }

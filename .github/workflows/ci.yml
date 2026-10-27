@@ -9,7 +9,7 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,11 +22,55 @@ jobs:
             npm install
           fi
       - run: npm run lint
+      - run: node scripts/test-api-error-leaks.mjs
+      - run: node scripts/test-job-tracks-pagination.mjs
+      - run: node scripts/test-missing-exam-practice-tracks.mjs
+      - run: node scripts/test-manual-task-recovery.mjs
       - run: npm run test:result-validation
       - run: npm run test:mfa-assurance
       - run: npm run test:background-task-retry
+      - run: npm run test:autopilot-question-queue
+      - run: npm run test:ai-text-provider
+      - run: npm run test:service-worker-cache-policy
       - run: npm run test:weekly-exam-analysis
       - run: npm run test:paper-analysis-quiz
       - run: npm run test:paper-analysis-upload
       - run: npm run check:localizations
       - run: npm run build
+      - name: Install temporary Playwright runner for isolated mobile smoke
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: npm install --no-save --package-lock=false @playwright/test
+      - name: Install Chromium for isolated mobile smoke
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: npx playwright install --with-deps chromium
+      - name: Start the built app locally for mobile smoke
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          set -euo pipefail
+          npm run start -- --hostname 127.0.0.1 --port 3000 > /tmp/examprep-mobile-smoke.log 2>&1 &
+          echo $! > /tmp/examprep-mobile-smoke.pid
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/ >/dev/null; then
+              echo "The local production build is ready for mobile testing."
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/examprep-mobile-smoke.log
+          echo "The local production server failed to start."
+          exit 1
+      - name: Run real mobile browser smoke tests against local build
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+          E2E_LOCAL_FIXTURE_MODE: "true"
+          E2E_SKIP_PRIVILEGED_API_TESTS: "true"
+        run: npx playwright test tests/e2e/production-smoke.spec.mjs --grep "production homepage renders in a mobile viewport|direct links restore login and paper analyzer views|setup navigation preserves browser back and forward history" --reporter=list
+      - name: Upload mobile browser screenshots and diagnostics
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: examprep-pr-mobile-smoke-${{ github.run_id }}
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
