@@ -84,7 +84,11 @@ export async function POST(request) {
     const { data: updated, error: updateError } = await db.from("background_manager_tasks")
       .update(plan.update)
       .eq("id", task.id)
+      .eq("task_type", "weekly_exam_analysis")
       .eq("status", "failed")
+      // Optimistic guards: if the checkpoint identity changed since selection, do not requeue stale work.
+      .eq("result->>phase", task.result?.phase)
+      .eq("payload->>exam_id", task.payload?.exam_id)
       .select("id")
       .maybeSingle();
     if (updateError) return publicDbError("Manual recovery update", updateError);
