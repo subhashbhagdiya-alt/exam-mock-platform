@@ -3,13 +3,13 @@ import { isTaskTypeHandledRecently, selectExpansionCandidate } from "../lib/auto
 
 const exams = [
   { exam: { id: "ssc", name: "SSC" }, activeVerified: 300, awaitingReview: 10 },
-  { exam: { id: "rrb", name: "RRB" }, activeVerified: 120, awaitingReview: 20 },
+  { exam: { id: "rrb", name: "RRB" }, activeVerified: 110, awaitingReview: 20 },
   { exam: { id: "mpesb", name: "MPESB" }, activeVerified: 140, awaitingReview: 0 }
 ];
 
 const leastCovered = selectExpansionCandidate(exams, new Map([["rrb", "2026-10-20T00:00:00.000Z"]]));
 assert.equal(leastCovered.exam.id, "rrb", "Select the exam with the smallest verified plus staged bank.");
-assert.equal(leastCovered.total, 140);
+assert.equal(leastCovered.total, 130);
 
 const tie = selectExpansionCandidate([
   { exam: { id: "recent", name: "A" }, activeVerified: 100, awaitingReview: 10 },
