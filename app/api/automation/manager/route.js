@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { publicDbError } from "../../../../lib/api-errors.mjs";
+import { isTaskTypeHandledRecently, selectExpansionCandidate } from "../../../../lib/autopilot-question-queue.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -57,7 +58,7 @@ export async function GET(request) {
   const activeTasks = activeQueue || [];
   const completedRecently = recentCompleted || [];
   const recentTasks = [...activeTasks, ...completedRecently];
-  const hasRecentType = (taskType) => recentTasks.some((item) => item.task_type === taskType);
+  const hasRecentType = (taskType) => isTaskTypeHandledRecently(taskType, activeTasks, completedRecently);
   const tasks = [];
 
   // Select the least-covered active exam, not alphabetically the first exam.
@@ -84,12 +85,8 @@ export async function GET(request) {
     if (examId && !lastExpansionByExam.has(examId)) lastExpansionByExam.set(examId, task.created_at);
   }
 
-  const expansionCandidates = coverage
-    .map((item) => ({ ...item, total: item.activeVerified + item.awaitingReview, lastExpansion: lastExpansionByExam.get(item.exam.id) || "" }))
-    .filter((item) => item.total < 500)
-    .sort((a, b) => a.total - b.total ||
-      (a.lastExpansion ? Date.parse(a.lastExpansion) : 0) - (b.lastExpansion ? Date.parse(b.lastExpansion) : 0) ||
-      a.exam.name.localeCompare(b.exam.name));
+  const selectedCoverage = selectExpansionCandidate(coverage, lastExpansionByExam, 500);
+  const expansionCandidates = selectedCoverage ? [selectedCoverage] : [];
 
   if (!hasRecentType("question_bank_expansion") && expansionCandidates.length) {
     const selected = expansionCandidates[0];
@@ -146,8 +143,6 @@ export async function GET(request) {
     : { data: [], error: null };
 
   if (insertError) return publicDbError("Background manager queue", insertError);
-  const selectedCoverage = expansionCandidates[0] || null;
-
   return NextResponse.json({
     ok: true,
     manager: "ExamPrep Background Manager",
