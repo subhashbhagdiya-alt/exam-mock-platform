@@ -6,12 +6,6 @@ import { publicDbError } from "../../../../lib/api-errors.mjs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const SOURCES = [
-  "https://esb.mp.gov.in/student_dashboard.htm",
-  "https://esb.mp.gov.in/rulebooks/rule_books.htm",
-  "https://esb.mp.gov.in/Exams_Schedule/exams_schedule_ESB26.htm",
-  "https://esb.mp.gov.in/Question%20Paper%20and%20Candidate%20Responses/Question_Objection.asp"
-];
 
 function authorized(request) {
   const secret = process.env.CRON_SECRET;
@@ -28,7 +22,7 @@ export async function GET(request) {
   if (!url || !key) return NextResponse.json({ error: "Server database credentials are not configured" }, { status: 503 });
 
   const client = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-  const { data: sources, error } = await client.from("exam_sources").select("id,url,last_hash,last_checked_at").in("url", SOURCES).eq("active", true);
+  const { data: sources, error } = await client.from("exam_sources").select("id,url,last_hash,last_checked_at").eq("active", true).not("url", "is", null).limit(20);
   if (error) return publicDbError("Exam source sync", error);
 
   const results = [];
