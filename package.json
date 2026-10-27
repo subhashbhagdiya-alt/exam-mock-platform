@@ -16,7 +16,8 @@
     "test:paper-analysis-upload": "node scripts/test-paper-analysis-upload.mjs",
     "test:ai-text-provider": "node scripts/test-ai-text-provider.mjs",
     "test:service-worker-cache-policy": "node scripts/test-service-worker-cache-policy.mjs",
-    "test:missing-exam-practice-tracks": "node scripts/test-missing-exam-practice-tracks.mjs"
+    "test:missing-exam-practice-tracks": "node scripts/test-missing-exam-practice-tracks.mjs",
+    "test:autopilot-question-queue": "node scripts/test-autopilot-question-queue.mjs"
   },
   "dependencies": {
     "next": "16.3.8",
