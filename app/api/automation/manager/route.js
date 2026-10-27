@@ -55,6 +55,21 @@ export async function GET(request) {
     failedError || staleError || activeQueueError || recentCompletedError || expansionHistoryError || changedSourcesError;
   if (queryError) return publicDbError("Background manager checks", queryError);
 
+  // Serverless invocations cannot legitimately remain running for 30 minutes.
+  // Requeue stale claims while retaining payload/result checkpoints, so a task
+  // abandoned by a timed-out process does not block the AutoPilot forever.
+  const recoveredStaleTasks = [];
+  for (const staleTask of staleTasks || []) {
+    const { data: recovered, error: recoveryError } = await db.from("background_manager_tasks").update({
+      status: "queued",
+      started_at: null,
+      completed_at: null,
+      error_message: "Auto-recovered stale running task; saved task result/checkpoints were retained."
+    }).eq("id", staleTask.id).eq("status", "running").lt("started_at", staleCutoff).select("id");
+    if (recoveryError) return publicDbError("Stale task recovery", recoveryError);
+    if (recovered?.length) recoveredStaleTasks.push(staleTask.id);
+  }
+
   const activeTasks = activeQueue || [];
   const completedRecently = recentCompleted || [];
   const recentTasks = [...activeTasks, ...completedRecently];
@@ -155,6 +170,7 @@ export async function GET(request) {
       active_sources: sources || 0,
       failed_tasks_last_24h: (failedTasks || []).length,
       stale_running_tasks_over_30m: (staleTasks || []).length,
+      stale_tasks_recovered: recoveredStaleTasks.length,
       selected_exam: selectedCoverage?.exam?.name || null,
       selected_exam_verified_questions: selectedCoverage?.activeVerified || 0,
       selected_exam_staged_questions: selectedCoverage?.awaitingReview || 0,
