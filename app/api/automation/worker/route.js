@@ -78,12 +78,56 @@ async function callModel(prompt, maxOutputTokens = 16000) {
 async function generateCandidates(task, db) {
   const apiKey = process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY;
   if (!apiKey) return { blocked: true, reason: "Configure GROQ_API_KEY or GEMINI_API_KEY. No AI-generated question was created." };
-  const { data: exams, error } = await db.from("exams").select("id,name,description").eq("is_active", true).order("name").limit(8);
-  if (error) throw error;
-  const prompt = `Create 5 high-quality Indian competitive-exam practice MCQs for ExamPrep. Return JSON only: {"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}. Do not label questions PYQ or official. Exams: ${JSON.stringify(exams)}. Task: ${JSON.stringify(task.payload)}.`;
-  const parsed = await callModel(prompt, 5000);
-  const valid = (Array.isArray(parsed.questions) ? parsed.questions : []).filter(validateGeneratedQuestion);
-  return { blocked: false, candidates: valid, generated: valid.length, note: "Legacy small-batch candidates." };
+  const examId = task.payload?.exam_id;
+  if (!examId) throw new Error("Question expansion task is missing exam_id.");
+  const { data: exam, error: examError } = await db.from("exams").select("id,name,description,slug").eq("id", examId).eq("is_active", true).single();
+  if (examError) throw examError;
+  const { data: existing, error: existingError } = await db.from("question_bank")
+    .select("question_hi,question_en").eq("exam_id", examId).limit(1000);
+  if (existingError) throw existingError;
+  const target = Math.max(1, Math.min(10, Number(task.payload?.daily_target) || 10));
+  const prompt = `Create up to ${target} original bilingual practice MCQs for this exact Indian competitive exam. Return JSON only: {"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}. Exam: ${JSON.stringify(exam)}. Use the supplied syllabus/description and avoid the existing questions. Do not copy or label generated questions as PYQ or official. All four options must be distinct; answer_index is zero-based. Task context: ${JSON.stringify(task.payload)}.`;
+  const parsed = await callModel(prompt, 7000);
+  const unique = dedupeGeneratedQuestions(
+    (Array.isArray(parsed.questions) ? parsed.questions : []).filter(validateGeneratedQuestion),
+    (existing || []).map((q) => q.question_en),
+    (existing || []).map((q) => q.question_hi)
+  ).slice(0, target);
+  if (!unique.length) return { blocked: false, generated: 0, inserted: 0, exam: exam.name, note: "No valid, non-duplicate questions were produced; nothing was inserted." };
+  const year = new Date().getUTCFullYear();
+  const records = unique.map((q) => ({
+    exam_id: exam.id,
+    subject: q.subject.trim(),
+    topic: q.topic.trim(),
+    question_hi: q.question_hi.trim(),
+    question_en: q.question_en.trim(),
+    options: q.options.map((option) => option.trim()),
+    answer_index: q.answer_index,
+    explanation_hi: q.explanation_hi.trim(),
+    explanation_en: q.explanation_en.trim(),
+    difficulty: q.difficulty,
+    source_type: "curated",
+    source_year: year,
+    frequency_score: 0.5,
+    recency_score: 0.5,
+    topic_score: 0.5,
+    prediction_score: 0.5,
+    verified: false,
+    active: false,
+    source_name: "ExamPrep AI daily expansion (awaiting human approval)",
+    source_url: null,
+    fingerprint: createHash("sha256").update(normalizeQuestionText(q.question_en)).digest("hex")
+  }));
+  const { data: inserted, error: insertError } = await db.from("question_bank").insert(records).select("id");
+  if (insertError) throw insertError;
+  return {
+    blocked: false,
+    exam: exam.name,
+    generated: unique.length,
+    inserted: inserted?.length || 0,
+    daily_target: target,
+    note: "New unique questions saved as inactive and unverified review candidates. They are not automatically published."
+  };
 }
 
 async function loadWeeklyContext(db, examId) {
