@@ -38,7 +38,7 @@ export async function GET(request) {
     { data: staleTasks }
   ] = await Promise.all([
     db.from("question_bank").select("*", { count: "exact", head: true }).eq("active", true).eq("verified", true),
-    db.from("question_bank").select("*", { count: "exact", head: true }).eq("active", false).eq("verified", false).like("source_name", "ExamPrep weekly AI pattern batch%"),
+    db.from("question_bank").select("*", { count: "exact", head: true }).eq("active", false).eq("verified", false).or("source_name.like.ExamPrep weekly AI pattern batch%,source_name.like.ExamPrep AI daily expansion%"),
     db.from("exams").select("*", { count: "exact", head: true }).eq("is_active", true),
     db.from("job_tracks").select("*", { count: "exact", head: true }).eq("active", true),
     db.from("exam_sources").select("*", { count: "exact", head: true }).eq("active", true),
@@ -46,9 +46,13 @@ export async function GET(request) {
     db.from("background_manager_tasks").select("id,task_type,status,started_at").eq("status", "running").lt("started_at", staleCutoff).limit(10)
   ]);
 
+  const { data: expansionExams, error: expansionExamError } = await db.from("exams")
+    .select("id,name,description").eq("is_active", true).order("name").limit(1);
+  if (expansionExamError) return publicDbError("Question expansion exam selection", expansionExamError);
+
   const pendingQuestions = (questions || 0) + (stagedAiQuestions || 0);
   if (pendingQuestions < 500) {
-    tasks.push({ task_type: "question_bank_expansion", priority: 90, payload: { verified_active: questions || 0, awaiting_review: stagedAiQuestions || 0, target: 500 } });
+    tasks.push({ task_type: "question_bank_expansion", priority: 90, payload: { exam_id: expansionExams?.[0]?.id || null, exam_name: expansionExams?.[0]?.name || null, verified_active: questions || 0, awaiting_review: stagedAiQuestions || 0, target: 500, daily_target: 10, note: "Generate up to 10 unique bilingual practice questions per daily run, save inactive/unverified for human review, and never claim they are official/PYQ." } });
   }
 
   if ((failedTasks || []).length || (staleTasks || []).length) {
