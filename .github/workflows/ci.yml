@@ -29,6 +29,7 @@ jobs:
       - run: npm run test:result-validation
       - run: npm run test:mfa-assurance
       - run: npm run test:background-task-retry
+      - run: npm run test:autopilot-question-queue
       - run: npm run test:ai-text-provider
       - run: npm run test:service-worker-cache-policy
       - run: npm run test:weekly-exam-analysis
