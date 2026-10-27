@@ -75,8 +75,8 @@ async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
 }
 
 async function generateCandidates(task, db) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return { blocked: true, reason: "GEMINI_API_KEY is not configured. No AI-generated question was created." };
+  const apiKey = (process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY);
+  if (!apiKey) return { blocked: true, reason: "Neither GEMINI_API_KEY_2 nor GEMINI_API_KEY is configured. No AI-generated question was created." };
   const { data: exams, error } = await db.from("exams").select("id,name,description").eq("is_active", true).order("name").limit(8);
   if (error) throw error;
   const prompt = `Create 5 high-quality Indian competitive-exam practice MCQs for ExamPrep. Return JSON only: {"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}. Do not label questions PYQ or official. Exams: ${JSON.stringify(exams)}. Task: ${JSON.stringify(task.payload)}.`;
@@ -147,8 +147,8 @@ Do not claim to browse or open websites in this free-tier workflow. Use stored P
 }
 
 async function runWeeklyExamAnalysis(task, db) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return { blocked: true, reason: "GEMINI_API_KEY is not configured; weekly analysis and question generation did not run." };
+  const apiKey = (process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY);
+  if (!apiKey) return { blocked: true, reason: "Neither GEMINI_API_KEY_2 nor GEMINI_API_KEY is configured; weekly analysis and question generation did not run." };
   const examId = task.payload?.exam_id;
   if (!examId) throw new Error("Weekly task is missing exam_id.");
   const target = Math.max(50, Math.min(100, Number(task.payload?.target_new_questions) || 50));
@@ -315,7 +315,7 @@ export async function GET(request) {
         automated_changes_made: false,
         note: "This review monitors background task health only. It does not inspect Supabase Auth sign-in logs, prove that an account was hacked, rotate secrets, disable accounts, or change production data."
       };
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = (process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY);
       if (apiKey) {
         try {
           const assessment = await callModel(apiKey,
@@ -333,7 +333,7 @@ export async function GET(request) {
         }
       } else {
         deterministic.ai_assessment = null;
-        deterministic.ai_note = "GEMINI_API_KEY is not configured; deterministic task-health findings were retained.";
+        deterministic.ai_note = "Neither GEMINI_API_KEY_2 nor GEMINI_API_KEY is configured; deterministic task-health findings were retained.";
       }
       result = deterministic;
     }
