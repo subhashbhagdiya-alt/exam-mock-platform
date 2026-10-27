@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { publicDbError } from "../../../lib/api-errors.mjs";
 import { fetchAllRowsInPages } from "../../../lib/fetch-all-rows-in-pages.mjs";
+import { addMissingExamPracticeTracks } from "../../../lib/add-missing-exam-practice-tracks.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -29,19 +30,13 @@ export async function GET() {
   if (error) return publicDbError("Exam list", error);
 
   const tracks = data || [];
-  const examSlugs = tracks.map((track) => track.exam_slug).filter(Boolean);
-  let examsBySlug = new Map();
+  const { data: activeExams, error: examError } = await client
+    .from("exams")
+    .select("id,slug,total_questions")
+    .eq("is_active", true);
 
-  if (examSlugs.length) {
-    const { data: exams, error: examError } = await client
-      .from("exams")
-      .select("id,slug,total_questions")
-      .in("slug", examSlugs)
-      .eq("is_active", true);
-
-    if (examError) return publicDbError("Exam list", examError);
-    examsBySlug = new Map((exams || []).map((exam) => [exam.slug, exam]));
-  }
+  if (examError) return publicDbError("Exam list", examError);
+  const examsBySlug = new Map((activeExams || []).map((exam) => [exam.slug, exam]));
 
   const examIds = [...examsBySlug.values()].map((exam) => exam.id);
   const verifiedCounts = new Map();
@@ -104,5 +99,30 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({ data: enriched });
+  const withMissingExamFallbacks = addMissingExamPracticeTracks(enriched, activeExams || []).map((track) => {
+    if (!track.metadata_fallback) return track;
+    const exam = examsBySlug.get(track.exam_slug);
+    const verifiedQuestionCount = questionClient && exam ? (verifiedCounts.get(exam.id) || 0) : null;
+    const requiredQuestionCount = Number(exam?.total_questions || 0);
+    const questionBankReady = Boolean(questionClient && exam && verifiedQuestionCount >= requiredQuestionCount && requiredQuestionCount > 0);
+    return {
+      ...track,
+      verified_question_count: verifiedQuestionCount,
+      question_bank_check_available: Boolean(questionClient),
+      question_bank_ready: questionBankReady,
+      question_bank_status: questionClient ? (questionBankReady ? "ready" : "incomplete") : "server_credentials_required",
+      pyq_question_count: questionClient ? (sourceCounts.get(`${exam?.id}:pyq`) || 0) : null,
+      official_question_count: questionClient ? (sourceCounts.get(`${exam?.id}:official`) || 0) : null,
+      practice_question_count: questionClient ? (sourceCounts.get(`${exam?.id}:curated`) || 0) : null,
+      subjects: questionClient && exam ? [...(subjectSets.get(exam.id) || new Set())].sort() : [],
+      topics: questionClient && exam ? [...(topicSets.get(exam.id) || new Set())].sort() : [],
+      analysis_candidates: exam ? [...(predictionCandidates.get(exam.id) || [])]
+        .sort((a,b) => Number(b.prediction_score || 0) - Number(a.prediction_score || 0))
+        .slice(0,5)
+        .map(q => ({ subject:q.subject, topic:q.topic, prediction_score:Number(q.prediction_score || 0), source_type:q.source_type })) : [],
+      effective_status: questionBankReady ? "question_bank_ready" : "practice",
+    };
+  });
+
+  return NextResponse.json({ data: withMissingExamFallbacks });
 }
