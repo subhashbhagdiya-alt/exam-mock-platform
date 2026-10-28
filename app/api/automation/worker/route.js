@@ -22,10 +22,10 @@ function extractGeminiText(body) {
   return (body.candidates?.[0]?.content?.parts || []).map((part) => part.text || "").join("");
 }
 
-async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
-  // Free-tier provider only: never fall back to a paid provider or a paid model.
+async function callGeminiModel(apiKey, prompt, maxOutputTokens = 16000) {
   const model = "gemini-3.6-flash";
-  const maxAttempts = 3;
+  const maxAttempts = 2;
+  let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -35,48 +35,87 @@ async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: { responseMimeType: "application/json", maxOutputTokens }
         }),
-        // Keep all attempts inside Vercel's 60-second function budget.
-        signal: AbortSignal.timeout(15000)
+        signal: AbortSignal.timeout(12000)
       });
       if (!response.ok) {
-        const failure = new Error(`Gemini API returned HTTP ${response.status}; no paid-provider fallback was attempted.`);
+        const failure = new Error(`Gemini API returned HTTP ${response.status}.`);
         failure.status = response.status;
         if (response.status === 429) failure.code = "FREE_QUOTA_EXHAUSTED";
-        // Retry transient service errors only. Rate/quota limits are deferred to the
-        // next scheduled worker run instead of consuming the entire function budget.
         if ([500, 502, 503, 504].includes(response.status) && attempt < maxAttempts) {
-          const delay = (500 * (2 ** (attempt - 1))) + Math.floor(Math.random() * 300);
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
           continue;
         }
         throw failure;
       }
       const body = await response.json();
       const text = extractGeminiText(body).replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
-      try { return JSON.parse(text); } catch { throw new Error("Gemini response was not valid JSON; no questions were published."); }
+      try { return JSON.parse(text); } catch { throw new Error("Gemini response was not valid JSON."); }
     } catch (error) {
+      lastError = error;
       const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
       const retryableStatus = [500, 502, 503, 504].includes(error?.status);
       if (attempt < maxAttempts && (timedOut || retryableStatus)) {
-        const delay = (500 * (2 ** (attempt - 1))) + Math.floor(Math.random() * 300);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
         continue;
       }
-      if (timedOut) {
-        const timeoutError = new Error(`Gemini request timed out after ${maxAttempts} bounded attempts; no paid-provider fallback was attempted.`);
-        timeoutError.status = 504;
-        timeoutError.code = "GEMINI_TRANSIENT_FAILURE";
-        throw timeoutError;
-      }
-      throw error;
+      break;
     }
   }
-  throw new Error("Gemini request failed after bounded retries; no paid-provider fallback was attempted.");
+  throw lastError || new Error("Gemini request failed.");
+}
+
+async function callGroqModel(apiKey, prompt, maxOutputTokens = 16000) {
+  const model = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: maxOutputTokens,
+      temperature: 0.2
+    }),
+    signal: AbortSignal.timeout(18000)
+  });
+  if (!response.ok) {
+    const failure = new Error(`Groq API returned HTTP ${response.status}.`);
+    failure.status = response.status;
+    if (response.status === 429) failure.code = "GROQ_FREE_QUOTA_EXHAUSTED";
+    throw failure;
+  }
+  const body = await response.json();
+  const text = body.choices?.[0]?.message?.content || "";
+  try { return JSON.parse(text); } catch { throw new Error("Groq response was not valid JSON."); }
+}
+
+async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
+  const groqKey = process.env.GROQ_API_KEY;
+  let geminiError;
+  if (apiKey) {
+    try {
+      return await callGeminiModel(apiKey, prompt, maxOutputTokens);
+    } catch (error) {
+      geminiError = error;
+      if (!groqKey) throw error;
+    }
+  }
+  if (groqKey) {
+    try {
+      return await callGroqModel(groqKey, prompt, maxOutputTokens);
+    } catch (groqError) {
+      if (geminiError) {
+        throw new Error(`Gemini failed (${geminiError.message}); Groq fallback failed (${groqError.message}).`);
+      }
+      throw groqError;
+    }
+  }
+  throw geminiError || new Error("No AI provider configured. Add a Gemini key or GROQ_API_KEY.");
 }
 
 async function generateCandidates(task, db) {
-  const apiKey = (process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY);
-  if (!apiKey) return { blocked: true, reason: "Neither GEMINI_API_KEY_2 nor GEMINI_API_KEY is configured. No AI-generated question was created." };
+  const apiKey = process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY || null;
+  if (!apiKey && !process.env.GROQ_API_KEY) return { blocked: true, reason: "No AI provider configured. Add a Gemini key or GROQ_API_KEY. No AI-generated question was created." };
   const { data: exams, error } = await db.from("exams").select("id,name,description").eq("is_active", true).order("name").limit(8);
   if (error) throw error;
   const prompt = `Create 5 high-quality Indian competitive-exam practice MCQs for ExamPrep. Return JSON only: {"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}. Do not label questions PYQ or official. Exams: ${JSON.stringify(exams)}. Task: ${JSON.stringify(task.payload)}.`;
@@ -147,8 +186,8 @@ Do not claim to browse or open websites in this free-tier workflow. Use stored P
 }
 
 async function runWeeklyExamAnalysis(task, db) {
-  const apiKey = (process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY);
-  if (!apiKey) return { blocked: true, reason: "Neither GEMINI_API_KEY_2 nor GEMINI_API_KEY is configured; weekly analysis and question generation did not run." };
+  const apiKey = process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY || null;
+  if (!apiKey && !process.env.GROQ_API_KEY) return { blocked: true, reason: "No AI provider configured. Add a Gemini key or GROQ_API_KEY; weekly analysis and question generation did not run." };
   const examId = task.payload?.exam_id;
   if (!examId) throw new Error("Weekly task is missing exam_id.");
   const target = Math.max(50, Math.min(100, Number(task.payload?.target_new_questions) || 50));
@@ -315,8 +354,8 @@ export async function GET(request) {
         automated_changes_made: false,
         note: "This review monitors background task health only. It does not inspect Supabase Auth sign-in logs, prove that an account was hacked, rotate secrets, disable accounts, or change production data."
       };
-      const apiKey = (process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY);
-      if (apiKey) {
+      const apiKey = process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY || null;
+      if (apiKey || process.env.GROQ_API_KEY) {
         try {
           const assessment = await callModel(apiKey,
             `Summarize this operational task-health snapshot as JSON only: {"severity":"low|medium|high","summary":"...","recommended_checks":["..."]}. Do not claim an account compromise; do not recommend automatic destructive actions. No changes are authorized. Snapshot: ${JSON.stringify(deterministic)}`,
@@ -333,7 +372,7 @@ export async function GET(request) {
         }
       } else {
         deterministic.ai_assessment = null;
-        deterministic.ai_note = "Neither GEMINI_API_KEY_2 nor GEMINI_API_KEY is configured; deterministic task-health findings were retained.";
+        deterministic.ai_note = "No Gemini or GROQ_API_KEY is configured; deterministic task-health findings were retained.";
       }
       result = deterministic;
     }
