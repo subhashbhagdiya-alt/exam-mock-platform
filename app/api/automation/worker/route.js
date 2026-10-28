@@ -65,7 +65,7 @@ async function callGeminiModel(apiKey, prompt, maxOutputTokens = 16000) {
 }
 
 async function callGroqModel(apiKey, prompt, maxOutputTokens = 16000) {
-  const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+  const model = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
@@ -73,7 +73,7 @@ async function callGroqModel(apiKey, prompt, maxOutputTokens = 16000) {
       model,
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
-      max_tokens: maxOutputTokens,
+      max_completion_tokens: maxOutputTokens,
       temperature: 0.2
     }),
     signal: AbortSignal.timeout(18000)
