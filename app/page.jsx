@@ -814,6 +814,8 @@ export default function HomePage() {
   const [selectedExam, setSelectedExam] = useState("mpesb");
   const [jobTracks, setJobTracks] = useState([]);
   const [jobTracksLoading, setJobTracksLoading] = useState(true);
+  const [jobTracksError, setJobTracksError] = useState("");
+  const [jobTracksReloadKey, setJobTracksReloadKey] = useState(0);
   const [selectedJobTrack, setSelectedJobTrack] = useState("mpesb-common");
   const [expandedJobTrack, setExpandedJobTrack] = useState(null);
   const [openExamGroup, setOpenExamGroup] = useState("MPESB");
@@ -1201,18 +1203,25 @@ export default function HomePage() {
     let active = true;
     async function loadJobTracks() {
       setJobTracksLoading(true);
+      setJobTracksError("");
       try {
-        const response = await fetch("/api/job-tracks", { cache: "no-store" });        const payload = await response.json();
+        const response = await fetch("/api/job-tracks", { cache: "no-store" });
+        const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error || "Could not load job tracks");
         if (active) {
           setJobTracks(Array.isArray(payload.data) ? payload.data : []);
           setJobTracksLoading(false);
         }
-      } catch { if (active) setJobTracksLoading(false); }
+      } catch (error) {
+        if (active) {
+          setJobTracksError(error instanceof Error ? error.message : "परीक्षा सूची लोड नहीं हो सकी।");
+          setJobTracksLoading(false);
+        }
+      }
     }
     loadJobTracks();
     return () => { active = false; };
-  }, [view, jobTracks.length]);
+  }, [view, jobTracks.length, jobTracksReloadKey]);
 
   useEffect(() => {
     let active = true;
@@ -1855,7 +1864,7 @@ export default function HomePage() {
               <div className="exam-search"><Search size={15}/><input value={examQuery} onChange={e => setExamQuery(e.target.value)} placeholder={t("इस बोर्ड में परीक्षा खोजें…","Search this board…")} /></div>
               <div className="exam-filters"><button type="button" aria-pressed={examFilter==="all"} className={examFilter==="all" ? "active" : ""} onClick={() => setExamFilter("all")}><SlidersHorizontal size={13}/>{t("सभी","All")}</button><button type="button" aria-pressed={examFilter==="recruitment"} className={examFilter==="recruitment" ? "active" : ""} onClick={() => setExamFilter("recruitment")}>{t("भर्ती","Recruitment")}</button><button type="button" aria-pressed={examFilter==="entrance"} className={examFilter==="entrance" ? "active" : ""} onClick={() => setExamFilter("entrance")}>{t("प्रवेश","Entrance")}</button><button type="button" aria-pressed={examFilter==="eligibility"} className={examFilter==="eligibility" ? "active" : ""} onClick={() => setExamFilter("eligibility")}>{t("पात्रता","Eligibility")}</button></div>
             </div>
-            <div className="exam-groups">{jobTracksLoading ? <div className="exam-loading">{t("परीक्षा बोर्ड लोड हो रहे हैं…","Loading exam boards…")}</div> : (() => {
+            <div className="exam-groups">{jobTracksLoading ? <div className="exam-loading">{t("परीक्षा बोर्ड लोड हो रहे हैं…","Loading exam boards…")}</div> : jobTracksError ? <div className="exam-empty" role="alert"><b>{t("परीक्षा सूची लोड नहीं हो सकी","Could not load exam boards")}</b><span>{jobTracksError}</span><button type="button" className="primary-button" onClick={() => { setJobTracksError(""); setJobTracksLoading(true); setJobTracksReloadKey(key => key + 1); }}>{t("दोबारा कोशिश करें","Try again")}<RotateCcw size={15}/></button></div> : (() => {
               const group = examGroups.find(item => item.key === openExamGroup) || examGroups[0];
               const groupTracks = filteredJobTracks
                 .filter(track => getExamGroup(track) === group.key)
