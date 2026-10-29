@@ -99,7 +99,21 @@ export async function GET(request) {
 
   const allRows = data || [];
   // Treat capitalization and repeated whitespace as equivalent in user-selected categories.
-  const rows = filterQuestionRows(allRows, subject, topic);
+  const filteredRows = filterQuestionRows(allRows, subject, topic);
+
+  // Prevent repeated question text from appearing twice in one test when the bank
+  // contains duplicate records with different IDs. Keep the first verified record.
+  const rows = [];
+  const seenQuestionText = new Set();
+  for (const row of filteredRows) {
+    const textKeys = [row.question_hi, row.question_en]
+      .filter((value) => typeof value === "string" && value.trim())
+      .map((value) => value.normalize("NFKC").toLocaleLowerCase().replace(/[\\s\\p{P}\\p{S}]+/gu, " ").trim())
+      .filter(Boolean);
+    if (textKeys.some((key) => seenQuestionText.has(key))) continue;
+    textKeys.forEach((key) => seenQuestionText.add(key));
+    rows.push(row);
+  }
 
   if (searchParams.get("mode") === "availability") {
     const { subjects, subject_topics: subjectTopics } = buildQuestionCatalog(allRows);
