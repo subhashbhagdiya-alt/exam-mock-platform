@@ -35,7 +35,7 @@ function isAllowedOfficialUrl(value) {
   try {
     const parsed = new URL(value);
     return parsed.protocol === "https:" &&
-      OFFICIAL_HOSTS.some((host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}));
+      OFFICIAL_HOSTS.some((host) => parsed.hostname === host || parsed.hostname.endsWith("." + host));
   } catch {
     return false;
   }
