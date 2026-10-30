@@ -4852,3 +4852,20 @@ button{cursor:pointer}
     touch-action:manipulation!important;
   }
 }
+
+
+/* Google sign-in action in the optional account panel */
+.google-login-button {
+  width: 100%;
+  min-height: 46px;
+  margin: 0 0 12px;
+  border: 1px solid rgba(255,255,255,.2) !important;
+  border-radius: 12px !important;
+  background: rgba(255,255,255,.07) !important;
+  color: var(--text, #f5f5f7) !important;
+  font-weight: 700 !important;
+}
+.google-login-button:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 3px;
+}
