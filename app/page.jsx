@@ -1807,18 +1807,12 @@ export default function HomePage() {
           <div className="auth-panel" aria-label={t("वैकल्पिक लॉगिन","Optional login")}>
   <div><b>{user ? t("अकाउंट सक्रिय","Account active") : t("Guest Practice Mode","Guest Practice Mode")}</b><span>{user ? (user.email || user.phone || "") : t("लॉगिन जरूरी नहीं है। मॉक टेस्ट सीधे शुरू करें।","Login is optional. Start the mock test directly.")}</span></div>
   {user ? <>{needsProfileName ? <div className="auth-actions"><div className="guest-login-note">{t("लॉगिन हो गया है। अपना नाम दर्ज करें, यही नाम आपके डैशबोर्ड पर दिखेगा।","Login successful. Enter your name; this name will appear on your dashboard.")}</div><input value={profileName} onChange={e=>setProfileName(e.target.value.slice(0,60))} autoComplete="name" placeholder={t("आपका नाम","Your name")} /><button onClick={saveProfileName}>{t("नाम सेव करें","Save name")}</button></div> : <button onClick={logout}>{t("लॉगआउट","Sign out")}</button>}</> : <div className="auth-actions">
-    <div className="guest-login-note">{t("Login वैकल्पिक है। SMS उपलब्ध न हो तो email से सुरक्षित login link इस्तेमाल करें।","Login is optional. Use a secure email sign-in link when SMS is unavailable.")}</div>
+    <div className="guest-login-note">{t("लॉगिन वैकल्पिक है। Cloud sync के लिए Google या Email से login करें।","Login is optional. Use Google or Email to enable cloud sync.")}</div>
     <div className="auth-divider"><span>{t("Cloud sync के लिए login (वैकल्पिक)","OPTIONAL LOGIN FOR CLOUD SYNC")}</span></div>
     {authStep === "phone" ? <>
       <button type="button" className="google-login-button" onClick={signInWithGoogle}>{t("Google से जारी रखें","Continue with Google")}</button>
-      <div className="auth-method-switch">
-        <button type="button" data-testid="login-method-email" aria-pressed={authMethod === "email"} onClick={() => { setAuthMethod("email"); setAuthMessage(""); }}>{authMethod === "email" ? "✓ " : ""}{t("Email login","Email login")}</button>
-        <button type="button" data-testid="login-method-phone" aria-pressed={authMethod === "phone"} onClick={() => { setAuthMethod("phone"); setAuthMessage(""); }}>{authMethod === "phone" ? "✓ " : ""}{t("Mobile SMS","Mobile SMS")}</button>
-      </div>
-      {authMethod === "email"
-        ? <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address","Your email address")} data-testid="login-email-input"/>
-        : <div className="phone-input"><span>+91</span><input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,"").slice(0,10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर"/></div>}
-      <button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : authMethod === "email" ? t("Login link भेजें","Send login link") : t("OTP भेजें","Send SMS OTP")}</button>
+      <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address","Your email address")} data-testid="login-email-input"/>
+      <button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : t("Login link भेजें","Send login link")}</button>
     </> : authStep === "otp" ? <>
       <input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit code")}/>
       <button onClick={verifyOtp}>{t("Code verify करें","Verify code")}</button>
