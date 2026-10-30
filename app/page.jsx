@@ -998,7 +998,7 @@ export default function HomePage() {
       }
       if (isTrusted !== true) {
         setAuthStep("recovery");
-        setAuthMessage(t("यह अकाउंट दूसरे trusted device से जुड़ा है। पुराने device से recovery code लेकर यहाँ दर्ज करें।","This account is bound to another trusted device. Enter a recovery code generated on the old trusted device."));
+        setAuthMessage(t("यह अकाउंट दूसरे trusted device से जुड़ा है। पुराने फोन में Settings → Device security → नए फोन के लिए recovery code खोलें और 15 मिनट के अंदर वह code यहाँ दर्ज करें।","This account is linked to another trusted device. On the old phone, open Settings → Device security → Create recovery code, then enter it here within 15 minutes."));
         return;
       }
       setTrustedDeviceVerified(true);
