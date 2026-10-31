@@ -88,7 +88,7 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
 
   // The paper analyzer should be discoverable on mobile and gated behind account login.
   await page.getByTestId("mobile-menu-toggle").click();
-  await page.getByTestId("menu-paper-analyzer").click();
+  await page.getByTestId("sidebar-paper-analyzer").click();
   await expect(page.getByTestId("paper-analyzer-title")).toBeVisible();
   const analyzerIcon = page.locator(".paper-analyzer-content .paper-analyzer-icon");
   const uploadIcon = page.locator(".paper-analyzer-content .paper-upload-icon");
