@@ -137,6 +137,39 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   ).toEqual([]);
 });
 
+test.describe("desktop theme picker", () => {
+  test.use({
+    viewport: { width: 1365, height: 900 },
+    isMobile: false,
+    hasTouch: false
+  });
+
+  test("theme popover remains readable and usable in night mode", async ({ page }) => {
+    await page.goto(baseURL, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
+    await expect(page.getByTestId("theme-toggle")).toBeVisible();
+
+    await page.getByTestId("theme-toggle").click();
+    const popover = page.locator(".menu-popover");
+    await expect(popover).toBeVisible();
+    await page.getByText("Night Mode", { exact: false }).click();
+    await expect(page.locator(".shell.theme-dark")).toBeVisible();
+
+    await page.getByTestId("theme-toggle").click();
+    await expect(popover).toBeVisible();
+    const darkStyles = await popover.evaluate(element => ({
+      color: getComputedStyle(element).color,
+      backgroundImage: getComputedStyle(element).backgroundImage,
+      buttonColor: getComputedStyle(element.querySelector("button")).color
+    }));
+    expect(darkStyles.color).toBe("rgb(245, 243, 255)");
+    expect(darkStyles.backgroundImage).toContain("linear-gradient");
+    expect(darkStyles.buttonColor).toBe("rgb(236, 233, 255)");
+    await page.getByText("System", { exact: true }).click();
+    await expect(popover).toBeHidden();
+  });
+});
+
 test("mock test API grades an attempt and keeps repeated submission idempotent", async ({ request }) => {
   const sessionResponse = await request.get(`${baseURL}/api/questions?exam=mpesb-police-constable-2026&limit=10`, { timeout: 30_000 });
   const sessionText = await sessionResponse.text();
