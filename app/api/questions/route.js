@@ -60,18 +60,21 @@ function selectBalancedQuestions(rows, limit) {
   return selected;
 }
 
-export async function GET(request) {
+async function handleQuestionRequest(request, body = null) {
   if (!url || !serverKeys.length) return NextResponse.json({ error: "Question bank server credentials are not configured" }, { status: 503 });
   const { searchParams } = new URL(request.url);
-  const exam = searchParams.get("exam") || "mpesb";
-  const requestedLimit = searchParams.get("limit");
-  const subject = searchParams.get("subject") || "";
-  const topic = searchParams.get("topic") || "";
+  const exam = String(body?.exam || searchParams.get("exam") || "mpesb");
+  const requestedLimit = body?.limit ?? searchParams.get("limit");
+  const subject = String(body?.subject || searchParams.get("subject") || "");
+  const topic = String(body?.topic || searchParams.get("topic") || "");
+  const excludedSource = Array.isArray(body?.exclude)
+    ? body.exclude
+    : (searchParams.get("exclude") || "").split(",");
   const excludedIds = new Set(
-    (searchParams.get("exclude") || "")
-      .split(",")
-      .filter((id) => /^[0-9a-f-]{36}$/i.test(id))
-      .slice(0, 250)
+    excludedSource
+      .filter((id) => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id))
+      .slice(0, 1000)
+      .map((id) => id.toLowerCase())
   );
   const client = createClient(url, serverKeys[0], { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: examRow, error: examError } = await client
@@ -171,7 +174,23 @@ export async function GET(request) {
       requested: limit,
       available: rows.length,
       unseen_available: unseen.length,
-      selection: "randomized, subject/topic-diverse, recent-repeat avoidance"
+      selection: "randomized, subject/topic-diverse, mastered-question avoidance"
     }
   });
+}
+
+export async function GET(request) {
+  return handleQuestionRequest(request);
+}
+
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid question request" }, { status: 400 });
+    }
+    return handleQuestionRequest(request, body);
+  } catch {
+    return NextResponse.json({ error: "Invalid question request" }, { status: 400 });
+  }
 }
