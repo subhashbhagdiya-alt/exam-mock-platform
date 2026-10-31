@@ -10,6 +10,10 @@ test.use({
 });
 
 test("production homepage renders in a mobile viewport", async ({ page }) => {
+  // This end-to-end path checks several mobile menus and screenshots against the
+  // live deployment, so give the complete interaction sequence more than the
+  // Playwright 30-second default.
+  test.setTimeout(60_000);
   const pageErrors = [];
   const consoleMessages = [];
   page.on("pageerror", error => pageErrors.push({
