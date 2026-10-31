@@ -801,7 +801,6 @@ function CountdownTimer({ initialSeconds, onExpire, label }) {
     const duration = Math.max(0, Number(initialSeconds) || 0);
     const deadline = Date.now() + duration * 1000;
     expiredRef.current = false;
-    setRemaining(duration);
 
     const timer = window.setInterval(() => {
       const next = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
