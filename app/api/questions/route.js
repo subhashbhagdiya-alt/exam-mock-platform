@@ -113,11 +113,17 @@ export async function GET(request) {
   }
 
   const unseen = rows.filter((row) => !excludedIds.has(row.id));
-  // Prefer questions not used in recent attempts; reuse only when the unseen pool is too small.
-  const preferredPool = unseen.length >= limit
-    ? unseen
-    : [...unseen, ...shuffle(rows.filter((row) => excludedIds.has(row.id)))];
-  const selected = selectBalancedQuestions(preferredPool, Math.min(limit, preferredPool.length));
+  // Correctly answered questions stay out of the practice queue until every
+  // verified question in this exact exam/subject/topic pool has been mastered.
+  // Never re-introduce mastered items merely because the requested batch is larger.
+  if (excludedIds.size > 0 && unseen.length === 0 && rows.length > 0) {
+    return NextResponse.json({
+      error: "You have answered every verified question in this practice pool correctly.",
+      code: "QUESTION_POOL_COMPLETED",
+      meta: { available: rows.length, mastered: Math.min(excludedIds.size, rows.length) }
+    }, { status: 409 });
+  }
+  const selected = selectBalancedQuestions(unseen, Math.min(limit, unseen.length));
 
   if (!selected.length) return NextResponse.json({ error: "No verified questions available for this selection" }, { status: 404 });
   if (!serverKeys.length) {
