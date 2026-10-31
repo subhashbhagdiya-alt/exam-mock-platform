@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isValidGradeSubmission } from "../../../lib/grade-submission-validation.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -9,16 +10,11 @@ const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUP
   .filter(value => typeof value === "string" && value.trim())
   .map(value => value.trim()))];
 
-function isUuid(value) {
-  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
 export async function POST(request) {
   if (!url || !serverKeys.length) return NextResponse.json({ error: "Grading service is not configured" }, { status: 503 });
   try {
     const body = await request.json();
-    if (!isUuid(body?.test_session_id) || !isUuid(body?.test_session_key) ||
-        !body?.answers || typeof body.answers !== "object" || Array.isArray(body.answers)) {
+    if (!isValidGradeSubmission(body)) {
       return NextResponse.json({ error: "Invalid test submission" }, { status: 400 });
     }
 
