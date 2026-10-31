@@ -1628,20 +1628,29 @@ export default function HomePage() {
       let masteredQuestionIds = [];
       try {
         const stored = JSON.parse(localStorage.getItem(masteryKey) || "[]");
-        if (Array.isArray(stored)) masteredQuestionIds = stored.filter(id => typeof id === "string").slice(-250);
+        if (Array.isArray(stored)) masteredQuestionIds = stored.filter(id => typeof id === "string").slice(-1000);
       } catch {}
-      const buildQuestionUrl = excludedIds => {
-        const excludeParam = excludedIds.length ? `&exclude=${encodeURIComponent(excludedIds.join(","))}` : "";
-        return `/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${requestedCount}${selectedSubject !== "all" ? `&subject=${encodeURIComponent(selectedSubject)}` : ""}${selectedTopic !== "all" ? `&topic=${encodeURIComponent(selectedTopic)}` : ""}${excludeParam}`;
-      };
-      let response = await fetch(buildQuestionUrl(masteredQuestionIds), { cache: "no-store" });
+      const buildQuestionRequest = excludedIds => ({
+        exam: selectedExam,
+        limit: requestedCount,
+        subject: selectedSubject === "all" ? "" : selectedSubject,
+        topic: selectedTopic === "all" ? "" : selectedTopic,
+        exclude: excludedIds
+      });
+      const fetchPracticeQuestions = excludedIds => fetch("/api/questions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(buildQuestionRequest(excludedIds)),
+        cache: "no-store"
+      });
+      let response = await fetchPracticeQuestions(masteredQuestionIds);
       let payload = await response.json();
       let startedNewMasteryCycle = false;
       if (response.status === 409 && payload?.code === "QUESTION_POOL_COMPLETED" && masteredQuestionIds.length) {
         localStorage.removeItem(masteryKey);
         masteredQuestionIds = [];
         startedNewMasteryCycle = true;
-        response = await fetch(buildQuestionUrl([]), { cache: "no-store" });
+        response = await fetchPracticeQuestions([]);
         payload = await response.json();
       }
       if (!response.ok) throw new Error(payload?.error || t("सवाल लोड नहीं हो सके।", "Could not load questions."));
@@ -1745,7 +1754,7 @@ export default function HomePage() {
           const masteryKey = getQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
           const previous = JSON.parse(localStorage.getItem(masteryKey) || "[]");
           const savedIds = Array.isArray(previous) ? previous.filter(id => typeof id === "string") : [];
-          const nextIds = [...new Set([...savedIds, ...newlyMasteredIds])].slice(-250);
+          const nextIds = [...new Set([...savedIds, ...newlyMasteredIds])].slice(-1000);
           localStorage.setItem(masteryKey, JSON.stringify(nextIds));
         } catch {}
       }
