@@ -60,18 +60,21 @@ function selectBalancedQuestions(rows, limit) {
   return selected;
 }
 
-export async function GET(request) {
+async function handleQuestionRequest(request, body = null) {
   if (!url || !serverKeys.length) return NextResponse.json({ error: "Question bank server credentials are not configured" }, { status: 503 });
   const { searchParams } = new URL(request.url);
-  const exam = searchParams.get("exam") || "mpesb";
-  const requestedLimit = searchParams.get("limit");
-  const subject = searchParams.get("subject") || "";
-  const topic = searchParams.get("topic") || "";
+  const exam = String(body?.exam || searchParams.get("exam") || "mpesb");
+  const requestedLimit = body?.limit ?? searchParams.get("limit");
+  const subject = String(body?.subject || searchParams.get("subject") || "");
+  const topic = String(body?.topic || searchParams.get("topic") || "");
+  const excludedSource = Array.isArray(body?.exclude)
+    ? body.exclude
+    : (searchParams.get("exclude") || "").split(",");
   const excludedIds = new Set(
-    (searchParams.get("exclude") || "")
-      .split(",")
-      .filter((id) => /^[0-9a-f-]{36}$/i.test(id))
-      .slice(0, 250)
+    excludedSource
+      .filter((id) => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id))
+      .slice(0, 1000)
+      .map((id) => id.toLowerCase())
   );
   const client = createClient(url, serverKeys[0], { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: examRow, error: examError } = await client
@@ -113,11 +116,17 @@ export async function GET(request) {
   }
 
   const unseen = rows.filter((row) => !excludedIds.has(row.id));
-  // Prefer questions not used in recent attempts; reuse only when the unseen pool is too small.
-  const preferredPool = unseen.length >= limit
-    ? unseen
-    : [...unseen, ...shuffle(rows.filter((row) => excludedIds.has(row.id)))];
-  const selected = selectBalancedQuestions(preferredPool, Math.min(limit, preferredPool.length));
+  // Correctly answered questions stay out of the practice queue until every
+  // verified question in this exact exam/subject/topic pool has been mastered.
+  // Never re-introduce mastered items merely because the requested batch is larger.
+  if (excludedIds.size > 0 && unseen.length === 0 && rows.length > 0) {
+    return NextResponse.json({
+      error: "You have answered every verified question in this practice pool correctly.",
+      code: "QUESTION_POOL_COMPLETED",
+      meta: { available: rows.length, mastered: Math.min(excludedIds.size, rows.length) }
+    }, { status: 409 });
+  }
+  const selected = selectBalancedQuestions(unseen, Math.min(limit, unseen.length));
 
   if (!selected.length) return NextResponse.json({ error: "No verified questions available for this selection" }, { status: 404 });
   if (!serverKeys.length) {
@@ -165,7 +174,23 @@ export async function GET(request) {
       requested: limit,
       available: rows.length,
       unseen_available: unseen.length,
-      selection: "randomized, subject/topic-diverse, recent-repeat avoidance"
+      selection: "randomized, subject/topic-diverse, mastered-question avoidance"
     }
   });
+}
+
+export async function GET(request) {
+  return handleQuestionRequest(request);
+}
+
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid question request" }, { status: 400 });
+    }
+    return handleQuestionRequest(request, body);
+  } catch {
+    return NextResponse.json({ error: "Invalid question request" }, { status: 400 });
+  }
 }

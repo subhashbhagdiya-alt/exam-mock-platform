@@ -40,6 +40,20 @@ async function ensureSessionKey() {
   }
   return key;
 }
+
+function getQuestionMasteryStorageKey(userId, exam, subject, topic) {
+  return ["exam_prep_mastered_questions", userId || "guest", exam || "all", subject || "all", topic || "all"].join("_");
+}
+
+function getProfileAvatarUrl(authUser, selectedSeed = "") {
+  const metadata = authUser?.user_metadata || {};
+  const seed = String(selectedSeed || metadata.avatar_seed || "").trim();
+  if (seed) return `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(seed)}`;
+  const providerPhoto = metadata.avatar_url || metadata.picture || "";
+  if (providerPhoto) return String(providerPhoto);
+  const fallback = authUser?.id || authUser?.email || "ExamPrep";
+  return `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(String(fallback))}`;
+}
 const QUESTION_LOCALIZATIONS = {
   "00276434-e4a5-4bfd-95d4-fbca1d811567": { hi: "भारतीय संविधान का कौन-सा अनुच्छेद मौलिक अधिकारों से संबंधित है?", optionsHi: ["अनुच्छेद 12–35", "अनुच्छेद 36–51", "अनुच्छेद 52–78", "अनुच्छेद 79–122"] },
   "248f4ea3-a93a-421f-ab19-432da695461f": { hi: "यदि A की आयु B की आयु से दोगुनी है और B की आयु 10 वर्ष है, तो A की आयु कितनी है?", en: "If A’s age is twice B’s age and B is 10 years old, A’s age is –", optionsHi: ["15", "20", "25", "30"], optionsEn: ["15", "20", "25", "30"] },
@@ -802,6 +816,7 @@ export default function HomePage() {
   const [testSessionKey, setTestSessionKey] = useState("");
   const [grading, setGrading] = useState(false);
   const autoSubmitAttempted = useRef(false);
+  const submissionInProgress = useRef(false);
   const [history, setHistory] = useState([]);
   const [storageMessage, setStorageMessage] = useState("");
   const [showSubmit, setShowSubmit] = useState(false);
@@ -824,6 +839,11 @@ export default function HomePage() {
   const [isOnline, setIsOnline] = useState(true);
   const [user, setUser] = useState(null);
   const [profileName, setProfileName] = useState("");
+  const [profileAvatarSeed, setProfileAvatarSeed] = useState("");
+  const [profileEducation, setProfileEducation] = useState("");
+  const [profileTargetExam, setProfileTargetExam] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
   const [needsProfileName, setNeedsProfileName] = useState(false);
   const [phone] = useState("");
   const [email, setEmail] = useState("");
@@ -854,16 +874,31 @@ export default function HomePage() {
   const [nativeSimStatus, setNativeSimStatus] = useState("web");
   const [trustedDeviceVerified, setTrustedDeviceVerified] = useState(false);
   const [themeMode, setThemeMode] = useState("dark");
+  const [systemPrefersDark, setSystemPrefersDark] = useState(true);
   const [splashVisible, setSplashVisible] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const menuButtonRef = useRef(null);
+  const themeButtonRef = useRef(null);
   const [showDashboardOptions, setShowDashboardOptions] = useState(false);
   const [testFocusWarning, setTestFocusWarning] = useState(false);
+
+  function hydrateAccountProfile(nextUser) {
+    const metadata = nextUser?.user_metadata || {};
+    const nextName = getUserDisplayName(nextUser);
+    setProfileName(nextName === "अभ्यर्थी" ? "" : nextName);
+    setNeedsProfileName(Boolean(nextUser) && nextName === "अभ्यर्थी");
+    setProfileAvatarSeed(String(metadata.avatar_seed || ""));
+    setProfileEducation(String(metadata.education || ""));
+    setProfileTargetExam(String(metadata.target_exam || ""));
+    setProfileBio(String(metadata.bio || ""));
+    if (["light", "dark", "system"].includes(metadata.theme_mode)) setThemeMode(metadata.theme_mode);
+  }
+
   useEffect(() => {
     if (!menuOpen || typeof document === "undefined") return undefined;
     const closeOnOutsideTap = (event) => {
-      if (menuRef.current?.contains(event.target) || menuButtonRef.current?.contains(event.target)) return;
+      if (menuRef.current?.contains(event.target) || menuButtonRef.current?.contains(event.target) || themeButtonRef.current?.contains(event.target)) return;
       setMenuOpen(false);
     };
     const closeOnEscape = (event) => { if (event.key === "Escape") setMenuOpen(false); };
@@ -885,8 +920,17 @@ export default function HomePage() {
     localStorage.setItem("exam_prep_theme", themeMode);
   }, [themeMode]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return undefined;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncSystemTheme = () => setSystemPrefersDark(media.matches);
+    syncSystemTheme();
+    media.addEventListener?.("change", syncSystemTheme);
+    return () => media.removeEventListener?.("change", syncSystemTheme);
+  }, []);
+
   const effectiveTheme = themeMode === "system"
-    ? (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+    ? (systemPrefersDark ? "dark" : "light")
     : themeMode;
 
   const hi = language === "hi";
@@ -917,6 +961,7 @@ export default function HomePage() {
     return labels[value] ? (hi ? labels[value][0] : labels[value][1]) : value;
   };
   const q = testQuestions[current];
+  const profileAvatarUrl = user ? getProfileAvatarUrl(user, profileAvatarSeed) : "";
   const displayQuestion = q ? (hi ? (q.hi || q.en) : (q.en || q.hi)) : "";
   const displayOptions = q ? (hi && q.optionsHi ? q.optionsHi : !hi && q.optionsEn ? q.optionsEn : q.options) : [];
   const answered = Object.keys(answers).length;
@@ -967,18 +1012,14 @@ export default function HomePage() {
       if (mounted) {
         const nextUser = data.session?.user || null;
         setUser(nextUser);
-        const nextName = getUserDisplayName(nextUser);
-        setProfileName(nextName === "अभ्यर्थी" ? "" : nextName);
-        setNeedsProfileName(Boolean(nextUser) && nextName === "अभ्यर्थी");
+        hydrateAccountProfile(nextUser);
       }
     });
     const { data: listener } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
       if (mounted) {
         const nextUser = session?.user || null;
         setUser(nextUser);
-        const nextName = getUserDisplayName(nextUser);
-        setProfileName(nextName === "अभ्यर्थी" ? "" : nextName);
-        setNeedsProfileName(Boolean(nextUser) && nextName === "अभ्यर्थी");
+        hydrateAccountProfile(nextUser);
       }
     });
     return () => { mounted = false; listener?.subscription?.unsubscribe(); };
@@ -1029,18 +1070,10 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (view !== "test" || seconds <= 0) return undefined;
+    if (view !== "test") return undefined;
     const timer = setInterval(() => setSeconds(value => Math.max(0, value - 1)), 1000);
     return () => clearInterval(timer);
-  }, [view, seconds]);
-
-  // Automatically submit once the countdown expires, so a test cannot remain
-  // open indefinitely at 00:00. finishTest guards against duplicate submissions.
-  useEffect(() => {
-    if (view === "test" && seconds === 0 && !result && !grading) {
-      finishTest();
-    }
-  }, [view, seconds, result, grading]);
+  }, [view]);
 
    useEffect(() => {
     if (otpCooldown <= 0) return undefined;
@@ -1410,7 +1443,7 @@ export default function HomePage() {
       setOtp("");
       setAuthStep("email-sent");
       setOtpCooldown(60);
-      setAuthMessage(t("Email भेज दिया गया है। Inbox/Spam देखें और login link खोलें। अगर 6-digit code आया है, तो यहाँ दर्ज कर सकते हैं।","Email sent. Check your inbox/spam and open the sign-in link. If you received a 6-digit code, you can enter it here."));
+      setAuthMessage(t("Email भेज दिया गया है। Inbox/Spam में login link खोलें। OTP दर्ज करने की जरूरत नहीं है।","Email sent. Open the login link in your inbox or spam folder. No OTP entry is needed."));
       return;
     }
 
@@ -1467,15 +1500,36 @@ export default function HomePage() {
       setAuthMessage(t("अपना नाम दर्ज करें।","Enter your name."));
       return;
     }
-    const { data, error } = await supabaseBrowser.auth.updateUser({ data: { full_name: name, display_name: name } });
-    if (error) {
-      setAuthMessage(error.message);
-      return;
+    setProfileSaving(true);
+    const profileMetadata = {
+      ...(user.user_metadata || {}),
+      full_name: name,
+      display_name: name,
+      education: profileEducation.trim().slice(0, 80),
+      target_exam: profileTargetExam.trim().slice(0, 100),
+      bio: profileBio.trim().slice(0, 240),
+      avatar_seed: profileAvatarSeed || user.id,
+      theme_mode: themeMode
+    };
+    try {
+      const { data, error } = await supabaseBrowser.auth.updateUser({ data: profileMetadata });
+      if (error) {
+        setAuthMessage(error.message);
+        return;
+      }
+      setUser(data.user);
+      setProfileName(name);
+      setNeedsProfileName(false);
+      setAuthMessage(t("आपकी प्रोफाइल और थीम सेव हो गई।","Your profile and theme have been saved."));
+    } finally {
+      setProfileSaving(false);
     }
-    setUser(data.user);
-    setProfileName(name);
-    setNeedsProfileName(false);
-    setAuthMessage(t("नाम सेव हो गया।","Your name has been saved."));
+  }
+
+  function randomizeProfileAvatar() {
+    const seed = `ExamPrep-${Math.random().toString(36).slice(2, 12)}`;
+    setProfileAvatarSeed(seed);
+    setAuthMessage(t("नई प्रोफाइल फोटो चुन ली गई है। सेव करें।","A new profile photo is selected. Save your profile to keep it."));
   }
 
   async function createRecoveryCode() {
@@ -1570,15 +1624,36 @@ export default function HomePage() {
     const requestedCount = Math.min(Number(practiceQuestionCount || 10), readyCount);
     setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setReviewAnswers({}); setTestSessionId(""); setTestSessionKey(""); setShowSubmit(false); setTestQuestions([]);
     try {
-      const historyKey = `exam_prep_seen_questions_${selectedExam}_${selectedSubject}_${selectedTopic}`;
-      let seenQuestionIds = [];
+      const masteryKey = getQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+      let masteredQuestionIds = [];
       try {
-        const stored = JSON.parse(localStorage.getItem(historyKey) || "[]");
-        if (Array.isArray(stored)) seenQuestionIds = stored.filter(id => typeof id === "string").slice(-250);
+        const stored = JSON.parse(localStorage.getItem(masteryKey) || "[]");
+        if (Array.isArray(stored)) masteredQuestionIds = stored.filter(id => typeof id === "string").slice(-1000);
       } catch {}
-      const excludeParam = seenQuestionIds.length ? `&exclude=${encodeURIComponent(seenQuestionIds.join(","))}` : "";
-      const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${requestedCount}${selectedSubject !== "all" ? `&subject=${encodeURIComponent(selectedSubject)}` : ""}${selectedTopic !== "all" ? `&topic=${encodeURIComponent(selectedTopic)}` : ""}${excludeParam}`, { cache: "no-store" });
-      const payload = await response.json();
+      const buildQuestionRequest = excludedIds => ({
+        exam: selectedExam,
+        limit: requestedCount,
+        subject: selectedSubject === "all" ? "" : selectedSubject,
+        topic: selectedTopic === "all" ? "" : selectedTopic,
+        exclude: excludedIds
+      });
+      const fetchPracticeQuestions = excludedIds => fetch("/api/questions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(buildQuestionRequest(excludedIds)),
+        cache: "no-store"
+      });
+      let response = await fetchPracticeQuestions(masteredQuestionIds);
+      let payload = await response.json();
+      let startedNewMasteryCycle = false;
+      if (response.status === 409 && payload?.code === "QUESTION_POOL_COMPLETED" && masteredQuestionIds.length) {
+        localStorage.removeItem(masteryKey);
+        masteredQuestionIds = [];
+        startedNewMasteryCycle = true;
+        response = await fetchPracticeQuestions([]);
+        payload = await response.json();
+      }
+      if (!response.ok) throw new Error(payload?.error || t("सवाल लोड नहीं हो सके।", "Could not load questions."));
       if (response.ok && payload.exam && payload.test_session_id && payload.test_session_key) { setTestSessionId(payload.test_session_id); setTestSessionKey(payload.test_session_key); const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(Number(practiceDuration || config.duration_minutes || 10) * 60); } else { setSeconds(Number(practiceDuration || examConfig.duration_minutes || 10) * 60); }
       if (response.ok && payload.test_session_id && payload.test_session_key && Array.isArray(payload.data) && payload.data.length) {
         const mapped = payload.data.map((item, index) => {
@@ -1599,14 +1674,15 @@ export default function HomePage() {
           };
         }).filter(item => item.options.length === 4);
         if (mapped.length) {
-          try {
-            const stored = JSON.parse(localStorage.getItem(historyKey) || "[]");
-            const previous = Array.isArray(stored) ? stored.filter(id => typeof id === "string") : [];
-            const seen = [...new Set([...previous, ...mapped.map(item => item.sourceId).filter(Boolean)])].slice(-250);
-            localStorage.setItem(historyKey, JSON.stringify(seen));
-          } catch {}
+          setPracticeQuestionCount(mapped.length);
           setTestQuestions(mapped);
           setView("test");
+          if (startedNewMasteryCycle) {
+            setAuthMessage(t(
+              "इस अभ्यास सेट के सभी सवाल सही हो चुके हैं। नया अभ्यास चक्र शुरू कर दिया गया है।",
+              "You have answered every question in this practice pool correctly. A fresh practice cycle has started."
+            ));
+          }
         }
         else {
           setTestQuestions([]);
@@ -1643,12 +1719,14 @@ export default function HomePage() {
   }
 
    async function finishTest() {
-    if (result || grading) return;
+    if (result || grading || submissionInProgress.current) return;
     if (!testSessionId || !testSessionKey) {
       setSubmitError(t("इस टेस्ट का सुरक्षित session नहीं मिला। नया टेस्ट शुरू करें।", "Secure test session missing. Please start a new test."));
       setShowSubmit(true);
       return;
     }
+    submissionInProgress.current = true;
+    autoSubmitAttempted.current = true;
     setGrading(true);
     setSubmitError("");
     try {
@@ -1661,6 +1739,25 @@ export default function HomePage() {
       if (!gradeResponse.ok || !gradePayload?.data) throw new Error(gradePayload?.error || "Could not grade this test. Please retry.");
 
       const graded = gradePayload.data;
+      const gradeReviewByLocalId = new Map((graded.review || []).map(item => [String(item.id), item]));
+      const newlyMasteredIds = testQuestions
+        .filter(item => {
+          const correctAnswer = gradeReviewByLocalId.get(String(item.id))?.answer;
+          return Boolean(item.sourceId) &&
+            answers[item.id] !== undefined &&
+            Number.isInteger(Number(correctAnswer)) &&
+            Number(answers[item.id]) === Number(correctAnswer);
+        })
+        .map(item => item.sourceId);
+      if (newlyMasteredIds.length && typeof window !== "undefined") {
+        try {
+          const masteryKey = getQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+          const previous = JSON.parse(localStorage.getItem(masteryKey) || "[]");
+          const savedIds = Array.isArray(previous) ? previous.filter(id => typeof id === "string") : [];
+          const nextIds = [...new Set([...savedIds, ...newlyMasteredIds])].slice(-1000);
+          localStorage.setItem(masteryKey, JSON.stringify(nextIds));
+        } catch {}
+      }
       setReviewAnswers(Object.fromEntries((graded.review || []).map(item => [String(item.id), item])));
       const summary = {
         practice_mode: true,
@@ -1762,16 +1859,20 @@ export default function HomePage() {
       setSubmitError(error?.message || t("टेस्ट जाँच नहीं हो सकी। इंटरनेट जाँचकर फिर सबमिट करें।", "Could not grade the test. Check your connection and retry submission."));
       setShowSubmit(true);
     } finally {
+      submissionInProgress.current = false;
       setGrading(false);
     }
   }
   useEffect(() => {
-    if (view !== "test" || seconds !== 0 || !testQuestions.length || result || grading || autoSubmitAttempted.current) return;
+    if (view !== "test" || seconds !== 0 || !testQuestions.length || result || grading || autoSubmitAttempted.current || submissionInProgress.current) return;
     autoSubmitAttempted.current = true;
     void finishTest();
   }, [view, seconds, testQuestions.length, result, grading]);
 
-  function chooseAnswer(index) { setAnswers(old => ({ ...old, [q.id]: index })); }
+  function chooseAnswer(index) {
+    if (!q || view !== "test") return;
+    setAnswers(old => ({ ...old, [q.id]: index }));
+  }
   function toggleReview() { setReview(old => old.includes(q.id) ? old.filter(n => n !== q.id) : [...old, q.id]); }
   function navigateTo(nextView) {
     setMenuOpen(false);
@@ -1806,12 +1907,12 @@ export default function HomePage() {
         <button className={"nav-item " + (view === "boards" ? "active" : "")} onClick={() => navigateTo("boards")}><GraduationCap size={18}/>{t("परीक्षाएँ","Exams")}</button><button className={"nav-item " + (view === "history" ? "active" : "")} onClick={() => navigateTo("history")}><Award size={18}/>{t("मेरे रिज़ल्ट","My results")}</button><button className={"nav-item " + (view === "login" ? "active" : "")} onClick={() => navigateTo("login")}><ShieldCheck size={18}/>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button className={"nav-item " + (view === "settings" ? "active" : "")} onClick={() => navigateTo("settings")}><Settings size={18}/>{t("सेटिंग्स","Settings")}</button>
         <button className={"nav-item " + (view === "sources" ? "active" : "")} onClick={() => navigateTo("sources")}><Download size={18}/>{t("Source PDFs","Source PDFs")}</button>
         <button className={"nav-item " + (view === "paper" ? "active" : "")} onClick={() => navigateTo("paper")}><FileText size={18}/>{t("पेपर विश्लेषण","Paper Analyzer")}</button>
-        <div className="sidebar-bottom"><div className="daily-card"><div className="daily-icon"><Flame size={17}/></div><b>{t("लगातार अभ्यास करें","Keep your streak")}</b><p>{t("रोज़ थोड़ा अभ्यास, बेहतर रैंक।","Small daily practice. Better ranks.")}</p><div className="streak-dots"><i/><i/><i/><i/><i/><i/><i/></div></div><div className="profile"><div className="avatar">{(getUserDisplayName(user).charAt(0) || "अ").toUpperCase()}</div><div><b>{getUserDisplayName(user)}</b><span>{t("परीक्षा अभ्यर्थी","Exam candidate")}</span></div><ShieldCheck size={17} className="profile-check"/></div></div>
+        <div className="sidebar-bottom"><div className="daily-card"><div className="daily-icon"><Flame size={17}/></div><b>{t("लगातार अभ्यास करें","Keep your streak")}</b><p>{t("रोज़ थोड़ा अभ्यास, बेहतर रैंक।","Small daily practice. Better ranks.")}</p><div className="streak-dots"><i/><i/><i/><i/><i/><i/><i/></div></div><div className="profile"><div className="avatar">{profileAvatarUrl ? <img src={profileAvatarUrl} alt={t("प्रोफाइल फोटो","Profile photo")} /> : (getUserDisplayName(user).charAt(0) || "अ").toUpperCase()}</div><div><b>{getUserDisplayName(user)}</b><span>{t("परीक्षा अभ्यर्थी","Exam candidate")}</span></div><ShieldCheck size={17} className="profile-check"/></div></div>
       </aside>
       {mobileNavOpen && <button type="button" className="mobile-menu-backdrop" aria-label={t("मेन्यू बंद करें","Close menu")} onClick={() => setMobileNavOpen(false)} />}
 
       <section className="main">
-        <header className="topbar"><button type="button" className="mobile-menu-toggle" aria-label={mobileNavOpen ? t("मेन्यू बंद करें","Close menu") : t("मेन्यू खोलें","Open menu")} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(open => !open)}><SlidersHorizontal size={19}/><span>{t("मेन्यू","Menu")}</span><ChevronRight size={15} className={mobileNavOpen ? "menu-toggle-chevron open" : "menu-toggle-chevron"}/></button><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : view === "paper" ? t("पेपर विश्लेषण","Paper Analyzer") : view === "sources" ? t("Source PDFs","Source PDFs") : view === "about" ? t("ऐप के बारे में","About") : view === "settings" ? t("प्रोफाइल / सेटिंग्स","Profile / Settings") : view === "boards" ? t("परीक्षा बोर्ड","Exam boards") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="home-quick-button" onClick={() => navigateTo("home")} aria-label={t("होम पर जाएँ","Go to Home")} title={t("होम","Home")}><Home size={17}/><span>{t("होम","Home")}</span></button><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button><button className="theme-toggle" onClick={() => setThemeMode(effectiveTheme === "light" ? "dark" : "light")} title={themeMode === "light" ? "Night mode" : themeMode === "dark" ? "System mode" : "Day mode"}>{themeMode === "light" ? "☀️" : themeMode === "dark" ? "🌙" : "◐"}<span>{themeMode === "light" ? t("दिन","Day") : themeMode === "dark" ? t("रात","Night") : t("सिस्टम","System")}</span></button><button ref={menuButtonRef} className="menu-button" onClick={() => setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label="Menu" data-testid="menu-toggle"><SlidersHorizontal size={18}/></button>{menuOpen && <div ref={menuRef} className="menu-popover"><b>{t("दिखावट","Appearance")}</b><button onClick={() => {setThemeMode("light");setMenuOpen(false)}}>☀️ {t("Day Mode","Day Mode")}</button><button onClick={() => {setThemeMode("dark");setMenuOpen(false)}}>🌙 {t("Night Mode","Night Mode")}</button><button onClick={() => {setThemeMode("system");setMenuOpen(false)}}>◐ {t("System","System")}</button><button onClick={() => {setLanguage(hi ? "en" : "hi");setMenuOpen(false)}}><Languages size={15}/> {hi ? "Switch to English" : "हिंदी भाषा"}</button><button onClick={() => {navigateTo("home");setMenuOpen(false)}}><Home size={15}/> {t("होम","Home")}</button><hr/><button onClick={() => navigateTo("boards")}>{t("परीक्षाएँ","Exams")}</button><button onClick={() => navigateTo("history")}>{t("मेरे रिज़ल्ट","My results")}</button><button data-testid="menu-login" onClick={() => navigateTo("login")}>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button onClick={() => navigateTo("settings")}>{t("सेटिंग्स","Settings")}</button><button onClick={() => navigateTo("sources")}>Source PDFs</button><button data-testid="menu-paper-analyzer" onClick={() => navigateTo("paper")}>{t("पेपर विश्लेषण","Paper Analyzer")}</button><button onClick={() => navigateTo("about")}>{t("ऐप के बारे में","About ExamPrep")}</button></div>}</div></header>
+        <header className="topbar"><button type="button" className="mobile-menu-toggle" aria-label={mobileNavOpen ? t("मेन्यू बंद करें","Close menu") : t("मेन्यू खोलें","Open menu")} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(open => !open)}><SlidersHorizontal size={19}/><span>{t("मेन्यू","Menu")}</span><ChevronRight size={15} className={mobileNavOpen ? "menu-toggle-chevron open" : "menu-toggle-chevron"}/></button><div className="breadcrumb">{t("आपकी तैयारी","Your preparation")} <span>/</span> <b>{view === "test" ? t("मॉक टेस्ट","Mock test") : view === "result" ? t("रिज़ल्ट","Results") : view === "history" ? t("मेरे रिज़ल्ट","My results") : view === "paper" ? t("पेपर विश्लेषण","Paper Analyzer") : view === "sources" ? t("Source PDFs","Source PDFs") : view === "about" ? t("ऐप के बारे में","About") : view === "settings" ? t("प्रोफाइल / सेटिंग्स","Profile / Settings") : view === "boards" ? t("परीक्षा बोर्ड","Exam boards") : t("डैशबोर्ड","Dashboard")}</b></div><div className="top-actions"><span className={"live-pill " + (!isOnline ? "offline-pill" : "")}><i/> {isOnline ? t("सिस्टम तैयार","SYSTEM READY") : t("ऑफलाइन मोड","OFFLINE MODE")}</span><button className="home-quick-button" onClick={() => navigateTo("home")} aria-label={t("होम पर जाएँ","Go to Home")} title={t("होम","Home")}><Home size={17}/><span>{t("होम","Home")}</span></button><button className="lang-button" onClick={() => setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "हिंदी" : "English"}</button><button ref={themeButtonRef} className="theme-toggle" data-testid="theme-toggle" aria-expanded={menuOpen} aria-label={t("थीम चुनें","Choose theme")} onClick={() => setMenuOpen(value => !value)} title={t("थीम चुनें","Choose theme")}>{themeMode === "light" ? "☀️" : themeMode === "dark" ? "🌙" : "◐"}<span>{themeMode === "light" ? t("दिन","Day") : themeMode === "dark" ? t("रात","Night") : t("सिस्टम","System")}</span></button><button ref={menuButtonRef} className="menu-button" onClick={() => setMenuOpen(v=>!v)} aria-expanded={menuOpen} aria-label="Menu" data-testid="menu-toggle"><SlidersHorizontal size={18}/></button>{menuOpen && <div ref={menuRef} className="menu-popover"><b>{t("दिखावट","Appearance")}</b><button onClick={() => {setThemeMode("light");setMenuOpen(false)}}>☀️ {t("Day Mode","Day Mode")}</button><button onClick={() => {setThemeMode("dark");setMenuOpen(false)}}>🌙 {t("Night Mode","Night Mode")}</button><button onClick={() => {setThemeMode("system");setMenuOpen(false)}}>◐ {t("System","System")}</button><button onClick={() => {setLanguage(hi ? "en" : "hi");setMenuOpen(false)}}><Languages size={15}/> {hi ? "Switch to English" : "हिंदी भाषा"}</button><button onClick={() => {navigateTo("home");setMenuOpen(false)}}><Home size={15}/> {t("होम","Home")}</button><hr/><button onClick={() => navigateTo("boards")}>{t("परीक्षाएँ","Exams")}</button><button onClick={() => navigateTo("history")}>{t("मेरे रिज़ल्ट","My results")}</button><button data-testid="menu-login" onClick={() => navigateTo("login")}>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button><button onClick={() => navigateTo("settings")}>{t("सेटिंग्स","Settings")}</button><button onClick={() => navigateTo("sources")}>Source PDFs</button><button data-testid="menu-paper-analyzer" onClick={() => navigateTo("paper")}>{t("पेपर विश्लेषण","Paper Analyzer")}</button><button onClick={() => navigateTo("about")}>{t("ऐप के बारे में","About ExamPrep")}</button></div>}</div></header>
 
         {view === "home" && <div className="content dashboard-content">{storageMessage && <div className="bottom-note"><div className="note-icon"><Info size={18}/></div><div><b>{t("डेटा सेव स्थिति","Storage status")}</b><p>{storageMessage}</p></div></div>}
           <div className="auth-panel" aria-label={t("वैकल्पिक लॉगिन","Optional login")}>
@@ -1820,17 +1921,16 @@ export default function HomePage() {
     <div className="guest-login-note">{t("लॉगिन वैकल्पिक है। Cloud sync के लिए Google या Email से login करें।","Login is optional. Use Google or Email to enable cloud sync.")}</div>
     <div className="auth-divider"><span>{t("Cloud sync के लिए login (वैकल्पिक)","OPTIONAL LOGIN FOR CLOUD SYNC")}</span></div>
     {authStep === "phone" ? <>
-      <button type="button" className="google-login-button" onClick={signInWithGoogle}>{t("Google से जारी रखें","Continue with Google")}</button>
+      <button type="button" className="google-login-button" data-testid="login-google-button" onClick={signInWithGoogle}>{t("Google से जारी रखें","Continue with Google")}</button>
       <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address","Your email address")} data-testid="login-email-input"/>
-      <button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : t("Login link भेजें","Send login link")}</button>
+      <button data-testid="login-email-link-button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend link")} (${otpCooldown}s)` : t("Email login link भेजें","Send email login link")}</button>
     </> : authStep === "otp" ? <>
       <input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit code")}/>
       <button onClick={verifyOtp}>{t("Code verify करें","Verify code")}</button>
       <button type="button" onClick={() => { setAuthStep("phone"); setOtp(""); setAuthMessage(""); }}>{t("Login method बदलें","Change login method")}</button>
     </> : authStep === "email-sent" ? <>
-      <div className="guest-login-note">{t("अपने email के inbox/Spam में आए login link को खोलें। यदि email में 6-digit code है, तो नीचे दर्ज करें।","Open the sign-in link in your email inbox/spam. If the email contains a 6-digit code, enter it below.")}</div>
-      <input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("Email code (यदि दिया हो)","Email code (if provided)")}/>
-      <button onClick={verifyOtp}>{t("Email code verify करें","Verify email code")}</button>
+      <div className="guest-login-note">{t("आपके email पर login link भेज दिया गया है। Inbox/Spam खोलें और link पर tap करें। OTP दर्ज करने की जरूरत नहीं है।","A login link has been sent to your email. Open your inbox or spam folder and tap the link. You do not need to enter an OTP.")}</div>
+      <button type="button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("लिंक फिर भेजें","Resend link")} (${otpCooldown}s)` : t("लिंक दोबारा भेजें","Resend login link")}</button>
       <button type="button" onClick={() => { setAuthStep("phone"); setOtp(""); setAuthMessage(""); }}>{t("Email बदलें / वापस जाएँ","Change email / go back")}</button>
     </> : <>
       <input value={recoveryCode} onChange={e=>setRecoveryCode(e.target.value.toUpperCase())} maxLength={9} placeholder={t("Recovery code","Recovery code")}/>
@@ -1963,9 +2063,9 @@ export default function HomePage() {
                   <div className="auth-divider"><span>{t("Google या Email से login", "SIGN IN WITH GOOGLE OR EMAIL")}</span></div>
                   {authStep === "phone" ? (
                     <>
-                      <button type="button" className="google-login-button" onClick={signInWithGoogle}>{t("Google से जारी रखें", "Continue with Google")}</button>
+                      <button type="button" className="google-login-button" data-testid="login-google-button" onClick={signInWithGoogle}>{t("Google से जारी रखें", "Continue with Google")}</button>
                       <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address", "Your email address")} data-testid="login-email-input" />
-                      <button className="primary-button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? t("फिर भेजें", "Resend") + " (" + otpCooldown + "s)" : t("Login link भेजें", "Send login link")}<ArrowRight size={17} /></button>
+                      <button className="primary-button" data-testid="login-email-link-button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? t("लिंक फिर भेजें", "Resend link") + " (" + otpCooldown + "s)" : t("Email login link भेजें", "Send email login link")}<ArrowRight size={17} /></button>
                     </>
                   ) : authStep === "otp" ? (
                     <>
@@ -1975,9 +2075,8 @@ export default function HomePage() {
                     </>
                   ) : authStep === "email-sent" ? (
                     <>
-                      <div className="login-note">{t("अपने email के Inbox/Spam में आए login link को खोलें। यदि email में 6-digit code है, तो नीचे दर्ज करें।", "Open the sign-in link in your email inbox/spam. If the email contains a 6-digit code, enter it below.")}</div>
-                      <input value={otp} onChange={e => setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("Email code (यदि दिया हो)", "Email code (if provided)")} />
-                      <button className="primary-button" onClick={verifyOtp}>{t("Email code verify करें", "Verify email code")}<Check size={17} /></button>
+                      <div className="login-note">{t("आपके email पर login link भेज दिया गया है। Inbox/Spam खोलें और link पर tap करें। OTP दर्ज करने की जरूरत नहीं है।", "A login link has been sent to your email. Open your inbox or spam folder and tap the link. No OTP entry is needed.")}</div>
+                      <button type="button" className="primary-button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? t("लिंक फिर भेजें", "Resend link") + " (" + otpCooldown + "s)" : t("Login link दोबारा भेजें", "Resend login link")}<ArrowRight size={17} /></button>
                       <button type="button" className="secondary-button" onClick={() => { setAuthStep("phone"); setOtp(""); setAuthMessage(""); }}>{t("Email बदलें / वापस जाएँ", "Change email / go back")}</button>
                     </>
                   ) : (
@@ -1986,8 +2085,6 @@ export default function HomePage() {
                       <button className="primary-button" onClick={recoverTrustedDevice}>{t("Device बदलें", "Replace device")}<ArrowRight size={17} /></button>
                     </>
                   )}
-                                    <div className="auth-divider"><span>{t("या", "OR")}</span></div>
-                  <button type="button" className="secondary-button" onClick={signInWithGoogle}><Globe2 size={17} />{t("Google से लॉगिन करें", "Continue with Google")}</button>
                   {authMessage && <small className="login-message">{authMessage}</small>}
                 </>
               )}
@@ -1999,7 +2096,7 @@ export default function HomePage() {
 
         {view === "test" && <div className="content test-content anti-cheat-screen" onContextMenu={e=>e.preventDefault()} onCopy={e=>e.preventDefault()} onCut={e=>e.preventDefault()}><div className="question-screen-top">{testFocusWarning && <div className="test-focus-warning"><ShieldCheck size={15}/> {t("टेस्ट स्क्रीन से बाहर गए थे। ध्यान रखें—यह session जारी है।","You left the test screen. Stay focused—this session is still active.")}</div>}<div className="live-test-badge"><span/> LIVE TEST</div><div className="test-title-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("मॉक टेस्ट / परीक्षा","MOCK TEST / EXAM")}</div><h1>{examName}</h1><p className="intro">{t("सवाल ध्यान से पढ़ें। जरूरत हो तो रिव्यू के लिए मार्क करें।","Read carefully. Mark questions for review when needed.")}</p></div><div className={"timer-card " + (seconds < 60 ? "timer-warning" : "")}><Clock3 size={19}/><div><small>{t("बचा हुआ समय","TIME LEFT")}</small><strong>{formatTime(seconds)}</strong></div></div></div><div className="quick-test-meta"><span>✓ {testQuestions.length} {t("सवाल","questions")}</span><span>◉ {getQuestionSourceLabel(q.sourceType, hi) + (q.sourceType === "pyq" && q.sourceYear ? " " + q.sourceYear : "")}</span></div></div><div className="test-progress"><div><span>{t("टेस्ट की प्रगति","TEST PROGRESS")}</span><b>{answered} / {testQuestions.length} {t("जवाब दिए","answered")}</b></div><div className="progress-track"><span style={{width: (answered/testQuestions.length*100)+"%"}}/></div></div>
           <button type="button" className="mobile-finish-test" onClick={() => { setSubmitError(""); setShowSubmit(true); }}><Flag size={18}/>{t("टेस्ट सबमिट करें","Finish test")}<ArrowRight size={18}/></button>
-          <div className="test-layout"><div className="question-panel"><div className="question-meta"><span className="question-number">{t("सवाल","QUESTION")} {current + 1} <i/> {testQuestions.length}</span><span className="subject-chip">{formatQuestionCategory(q.subject)}</span>{q.topic ? <span className="topic-chip">{formatQuestionCategory(q.topic)}</span> : null}<span className="source-chip">{getQuestionSourceLabel(q.sourceType, hi)}</span></div><h2>{displayQuestion}</h2><p className="question-hint">{t("सही विकल्प चुनें। आप अपना जवाब बदल सकते हैं।","Select one option. You can change your answer before submitting.")}</p><div className="options">{displayOptions.map((option,i)=><button key={q.id + "-" + i} className={"option " + (answers[q.id] === i ? "selected" : "")} onClick={() => chooseAnswer(i)}><span className="option-letter">{String.fromCharCode(65+i)}</span><span>{option}</span>{answers[q.id] === i ? <span className="radio-selected"/> : null}</button>)}</div>
+          <div className="test-layout"><div className="question-panel"><div className="question-meta"><span className="question-number">{t("सवाल","QUESTION")} {current + 1} <i/> {testQuestions.length}</span><span className="subject-chip">{formatQuestionCategory(q.subject)}</span>{q.topic ? <span className="topic-chip">{formatQuestionCategory(q.topic)}</span> : null}<span className="source-chip">{getQuestionSourceLabel(q.sourceType, hi)}</span></div><h2>{displayQuestion}</h2><p className="question-hint">{t("सही विकल्प चुनें। अगला सवाल देखने के लिए Next दबाएँ; जवाब चुनने से सवाल अपने-आप नहीं बदलेगा।","Choose an option. Press Next to move on; selecting an answer will not automatically change the question.")}</p><div className="options">{displayOptions.map((option,i)=><button key={q.id + "-" + i} className={"option " + (answers[q.id] === i ? "selected" : "")} onClick={() => chooseAnswer(i)}><span className="option-letter">{String.fromCharCode(65+i)}</span><span>{option}</span>{answers[q.id] === i ? <span className="radio-selected"/> : null}</button>)}</div>
           <div className="question-controls"><button className="secondary-button" disabled={current===0} onClick={() => setCurrent(c=>c-1)}><ChevronLeft size={17}/>{t("पिछला","Previous")}</button><button className={"review-button " + (review.includes(q.id) ? "review-on" : "")} onClick={toggleReview}><Flag size={16}/>{review.includes(q.id) ? t("रिव्यू हटाएँ","Unmark review") : t("रिव्यू के लिए","Mark for review")}</button>{current < testQuestions.length-1 ? <button className="primary-button next-button" onClick={() => setCurrent(c=>c+1)}>{t("अगला सवाल","Next question")}<ChevronRight size={17}/></button> : <button className="primary-button next-button" onClick={() => { setSubmitError(""); setShowSubmit(true); }}>{t("टेस्ट सबमिट करें","Submit test")}<ArrowRight size={17}/></button>}</div></div>
           <aside className="question-nav"><div className="nav-heading"><h3>{t("सवालों की सूची","Question palette")}</h3><span>{answered}/{testQuestions.length}</span></div><p>{t("किसी सवाल पर जाने के लिए नंबर चुनें।","Tap a number to jump to a question.")}</p><div className="number-grid">{testQuestions.map((item,i)=><button key={item.id} onClick={() => setCurrent(i)} className={"number-cell " + (current===i ? "current" : "") + (answers[item.id] !== undefined ? " answered" : "") + (review.includes(item.id) ? " marked" : "")}>{String(item.id).padStart(2,"0")}{review.includes(item.id) && <i/>}</button>)}</div><div className="legend"><span><i className="legend-answered"/> {t("जवाब दिया","Answered")}</span><span><i className="legend-marked"/> {t("रिव्यू","Review")}</span><span><i className="legend-empty"/> {t("बाकी","Not answered")}</span></div><div className="nav-summary"><div><span>{t("जवाब दिए","Answered")}</span><b>{answered}</b></div><div><span>{t("बाकी सवाल","Remaining")}</span><b>{testQuestions.length-answered}</b></div><div><span>{t("रिव्यू के लिए","For review")}</span><b>{review.length}</b></div></div><button className="submit-full" onClick={() => { setSubmitError(""); setShowSubmit(true); }}>{t("टेस्ट समाप्त करें","Finish test")}<ArrowRight size={16}/></button></aside></div>
           {showSubmit && <div className="modal-backdrop"><div className="confirm-modal"><div className="modal-icon"><Flag size={22}/></div><h2>{t("टेस्ट सबमिट करें?","Submit your test?")}</h2><p>{t("आपने","You have answered")} {answered} {t("में से "+testQuestions.length+" सवालों के जवाब दिए हैं। सबमिट करने के बाद जवाब नहीं बदल पाएँगे।","of the selected questions. You cannot change answers after submission.")}</p>{submitError && <p role="alert" className="setup-message">{submitError}</p>}<div className="modal-actions"><button className="secondary-button" onClick={() => setShowSubmit(false)}>{t("वापस जाएँ","Go back")}</button><button className="primary-button" onClick={finishTest} disabled={grading}>{grading ? t("जाँच हो रही है…","Grading…") : t("हाँ, सबमिट करें","Yes, submit")}</button></div></div></div>}
@@ -2056,7 +2153,7 @@ export default function HomePage() {
               const explanation = (hi ? reviewItem.explanation_hi : reviewItem.explanation_en) || (hi ? reviewItem.explanation : "") || "";
               const isRight = answer !== undefined && answer === correctAnswer;
               const reviewQuestionText = hi ? (item.hi || item.en) : (item.en || item.hi);
-              return <div className="review-question" key={item.id}><div className={"review-status " + (answer === undefined ? "status-empty" : isRight ? "status-right" : "status-wrong")}>{answer === undefined ? "—" : isRight ? <Check size={16}/> : <X size={16}/>}</div><div className="review-body"><b>{i+1}. {reviewQuestionText}</b><span>{t("आपका जवाब:","Your answer:")} {answer === undefined ? t("जवाब नहीं दिया","Not answered") : reviewOptions[answer]}</span><span className="correct-answer">{t("सही जवाब:","Correct answer:")} {correctAnswer === undefined ? t("उपलब्ध नहीं","Unavailable") : reviewOptions[correctAnswer]}</span>{explanation ? <details className="review-explanation" open={!isRight}><summary>{t("उत्तर की व्याख्या","Explanation")}</summary><p>{explanation}</p></details> : <p className="review-explanation-missing">{t("इस सवाल की विस्तृत व्याख्या अभी उपलब्ध नहीं है।","A detailed explanation is not available for this question yet.")}</p>}</div></div>;
+              return <div className="review-question" key={item.id}><div className={"review-status " + (answer === undefined ? "status-empty" : isRight ? "status-right" : "status-wrong")}>{answer === undefined ? "—" : isRight ? <Check size={16}/> : <X size={16}/>}</div><div className="review-body"><b>{i+1}. {reviewQuestionText}</b><span>{t("आपका जवाब:","Your answer:")} {answer === undefined ? t("जवाब नहीं दिया","Not answered") : reviewOptions[answer]}</span><span className="correct-answer">{t("सही जवाब:","Correct answer:")} {correctAnswer === undefined ? t("उपलब्ध नहीं","Unavailable") : reviewOptions[correctAnswer]}</span>{explanation ? <details className="review-explanation" open={!isRight}><summary>{t("उत्तर की व्याख्या","Explanation")}</summary><p>{explanation}</p></details> : answer !== undefined && !isRight && correctAnswer !== undefined ? <details className="review-explanation review-explanation-fallback" open><summary>{t("आपका जवाब गलत क्यों था?","Why this answer was incorrect")}</summary><p>{t(`आपने विकल्प ${String.fromCharCode(65 + answer)} — ${reviewOptions[answer]} चुना। इस प्रश्न का सही उत्तर विकल्प ${String.fromCharCode(65 + correctAnswer)} — ${reviewOptions[correctAnswer]} है। इस सवाल के लिए verified question bank में अलग से विस्तृत व्याख्या नहीं दी गई है।`, `You selected option ${String.fromCharCode(65 + answer)} — ${reviewOptions[answer]}. The verified correct answer is option ${String.fromCharCode(65 + correctAnswer)} — ${reviewOptions[correctAnswer]}. A separate detailed explanation has not been provided for this question.`)}</p></details> : <p className="review-explanation-missing">{t("इस सवाल की विस्तृत व्याख्या अभी उपलब्ध नहीं है।","A detailed explanation is not available for this question yet.")}</p>}</div></div>;
             })}
           </div>
           <div className="result-actions"><button className="secondary-button" onClick={() => setView("home")}><Home size={17}/>{t("डैशबोर्ड","Dashboard")}</button><button className="primary-button" onClick={startTest}><RotateCcw size={17}/>{t("फिर से टेस्ट दें","Retake test")}</button></div>
@@ -2188,8 +2285,8 @@ export default function HomePage() {
         {view === "settings" && <div className="content settings-content">
           <div className="settings-hero"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("आपका कंट्रोल सेंटर","YOUR CONTROL CENTER")}</div><h1>{t("प्रोफाइल और सेटिंग्स","Profile & Settings")}</h1><p className="intro">{t("अपने प्रोफाइल, भाषा, थीम और trusted-device controls एक ही जगह से संभालें।","Manage your profile, language, theme and trusted-device controls from one place.")}</p></div><div className="settings-orb"><Settings size={34}/><span>{user ? "SYNCED" : "GUEST"}</span></div></div>
           <div className="settings-layout">
-            <div className="settings-profile-card"><div className="settings-avatar">{(getUserDisplayName(user).charAt(0) || "अ").toUpperCase()}</div><div className="settings-profile-copy"><span>{t("अभ्यर्थी प्रोफाइल","CANDIDATE PROFILE")}</span><h2>{getUserDisplayName(user)}</h2><p>{user?.email || user?.phone || t("Guest practice mode","Guest practice mode")}</p></div><div className={"settings-status " + (user ? "online" : "")}><i/>{user ? t("Cloud synced","Cloud synced") : t("Local only","Local only")}</div></div>
-            <div className="settings-card"><div className="settings-card-head"><div><span className="settings-kicker">PROFILE</span><h3>{t("नाम और अकाउंट","Name & account")}</h3></div><div className="settings-card-icon"><Award size={18}/></div></div>{user ? <div className="settings-form-row"><input value={profileName} onChange={e=>setProfileName(e.target.value.slice(0,60))} placeholder={t("आपका नाम","Your name")} autoComplete="name"/><button className="primary-button" onClick={saveProfileName}>{t("सेव करें","Save changes")}<Check size={16}/></button></div> : <div className="settings-note"><Info size={17}/><span>{t("Guest mode में प्रोफाइल local है। Cloud history के लिए Dashboard से optional mobile login करें।","In Guest mode your profile is local. Use optional mobile login from Dashboard for cloud history.")}</span></div>}</div>
+            <div className="settings-profile-card"><div className="settings-avatar">{profileAvatarUrl ? <img src={profileAvatarUrl} alt={t("प्रोफाइल फोटो","Profile photo")} /> : (getUserDisplayName(user).charAt(0) || "अ").toUpperCase()}</div><div className="settings-profile-copy"><span>{t("अभ्यर्थी प्रोफाइल","CANDIDATE PROFILE")}</span><h2>{getUserDisplayName(user)}</h2><p>{user?.email || user?.phone || t("Guest practice mode","Guest practice mode")}</p></div><div className={"settings-status " + (user ? "online" : "")}><i/>{user ? t("Cloud synced","Cloud synced") : t("Local only","Local only")}</div></div>
+            <div className="settings-card profile-editor-card"><div className="settings-card-head"><div><span className="settings-kicker">PROFILE</span><h3>{t("अपनी प्रोफाइल","Your profile")}</h3></div><div className="settings-card-icon"><Award size={18}/></div></div>{user ? <><div className="profile-avatar-tools"><img src={profileAvatarUrl} alt={t("चुनी हुई प्रोफाइल फोटो","Selected profile photo")} /><button type="button" className="secondary-button" onClick={randomizeProfileAvatar}>{t("रैंडम फोटो बदलें","Choose random photo")}</button></div><div className="profile-form-grid"><label>{t("नाम","Name")}<input value={profileName} onChange={e=>setProfileName(e.target.value.slice(0,60))} placeholder={t("आपका नाम","Your name")} autoComplete="name"/></label><label>{t("शिक्षा","Education")}<input value={profileEducation} onChange={e=>setProfileEducation(e.target.value.slice(0,80))} placeholder={t("जैसे: 12वीं / ITI / BA","e.g. High school / ITI / BA")}/></label><label>{t("लक्ष्य परीक्षा","Target exam")}<input value={profileTargetExam} onChange={e=>setProfileTargetExam(e.target.value.slice(0,100))} placeholder={t("जैसे: MPESB, RRB, SSC","e.g. MPESB, RRB, SSC")}/></label><label className="profile-bio-field">{t("अपने बारे में","About you")}<textarea value={profileBio} onChange={e=>setProfileBio(e.target.value.slice(0,240))} rows={3} placeholder={t("अपना छोटा परिचय लिखें…","Add a short profile bio…")}/></label></div><div className="profile-save-row"><span>{t("प्रोफाइल और चुनी गई थीम आपके अकाउंट में सेव होगी।","Your profile and selected theme will be saved to your account.")}</span><button className="primary-button" onClick={saveProfileName} disabled={profileSaving}>{profileSaving ? t("सेव हो रहा है…","Saving…") : t("प्रोफाइल सेव करें","Save profile")}<Check size={16}/></button></div></> : <div className="settings-note"><Info size={17}/><span>{t("प्रोफाइल फोटो और अतिरिक्त जानकारी बदलने के लिए पहले Google या Email link से लॉगिन करें।","Sign in with Google or an email link to edit your profile photo and details.")}</span></div>}</div>
             <div className="settings-card"><div className="settings-card-head"><div><span className="settings-kicker">APPEARANCE</span><h3>{t("दिखावट और भाषा","Appearance & language")}</h3></div><div className="settings-card-icon"><Languages size={18}/></div></div><div className="settings-option-grid"><button className={themeMode==="light" ? "setting-choice active" : "setting-choice"} onClick={()=>setThemeMode("light")}><span>☀️</span><b>Day</b><small>Light glass UI</small></button><button className={themeMode==="dark" ? "setting-choice active" : "setting-choice"} onClick={()=>setThemeMode("dark")}><span>🌙</span><b>Night</b><small>Dark glass UI</small></button><button className={themeMode==="system" ? "setting-choice active" : "setting-choice"} onClick={()=>setThemeMode("system")}><span>◐</span><b>System</b><small>Follow device</small></button></div><div className="settings-divider"/><div className="settings-inline-row"><div><b>{t("भाषा","Language")}</b><span>{t("सवाल और labels की भाषा बदलें","Switch question and label language")}</span></div><button className="secondary-button" onClick={()=>setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "English" : "हिंदी"}</button></div></div>
             <div className="settings-card security-card"><div className="settings-card-head"><div><span className="settings-kicker">SECURITY</span><h3>{t("Trusted device","Trusted device")}</h3></div><div className="settings-card-icon"><ShieldCheck size={18}/></div></div><div className="settings-security-row"><div className={"security-indicator " + (trustedDeviceVerified ? "verified" : "")}><ShieldCheck size={18}/></div><div><b>{trustedDeviceVerified ? t("यह device trusted है","This device is trusted") : t("Guest / current device","Guest / current device")}</b><span>{t("Recovery code केवल trusted device से बनाया जा सकता है।","A recovery code can only be created from a trusted device.")}</span></div><button className="secondary-button" onClick={()=>navigateTo("boards")}>{t("परीक्षा खोलें","Open exams")}<ArrowRight size={15}/></button></div></div>
             <div className="settings-card danger-card"><div className="settings-card-head"><div><span className="settings-kicker">SESSION</span><h3>{t("सेशन","Session")}</h3></div><div className="settings-card-icon"><RotateCcw size={18}/></div></div><div className="settings-inline-row"><div><b>{user ? t("अकाउंट से लॉगआउट","Sign out of account") : t("Guest practice mode","Guest practice mode")}</b><span>{user ? t("Cloud sync बंद हो जाएगा, local results इस device पर रहेंगे।","Cloud sync will stop; local results stay on this device.") : t("आप बिना login के mock tests दे सकते हैं।","You can take mock tests without logging in.")}</span></div>{user && <button className="secondary-button danger-button" onClick={logout}>{t("लॉगआउट","Sign out")}<X size={16}/></button>}</div></div>
