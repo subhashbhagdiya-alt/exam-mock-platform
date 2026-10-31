@@ -825,7 +825,7 @@ export default function HomePage() {
   const [user, setUser] = useState(null);
   const [profileName, setProfileName] = useState("");
   const [needsProfileName, setNeedsProfileName] = useState(false);
-  const [phone, setPhone] = useState("");
+  const [phone] = useState("");
   const [email, setEmail] = useState("");
   const [authMethod, setAuthMethod] = useState("email");
   const [otp, setOtp] = useState("");
