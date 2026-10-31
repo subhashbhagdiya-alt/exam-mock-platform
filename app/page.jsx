@@ -786,6 +786,47 @@ const formatTime = (seconds) => {
   return m + ":" + s;
 };
 
+// Keep the one-second countdown isolated from the large page component.
+// This prevents the whole ExamPrep dashboard and question panel re-rendering on every tick.
+function CountdownTimer({ initialSeconds, onExpire, label }) {
+  const [remaining, setRemaining] = useState(initialSeconds);
+  const onExpireRef = useRef(onExpire);
+  const expiredRef = useRef(false);
+
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
+
+  useEffect(() => {
+    const duration = Math.max(0, Number(initialSeconds) || 0);
+    const deadline = Date.now() + duration * 1000;
+    expiredRef.current = false;
+    setRemaining(duration);
+
+    const timer = window.setInterval(() => {
+      const next = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setRemaining(next);
+      if (next === 0 && !expiredRef.current) {
+        expiredRef.current = true;
+        window.clearInterval(timer);
+        onExpireRef.current?.();
+      }
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [initialSeconds]);
+
+  return (
+    <div className={"timer-card " + (remaining < 60 ? "timer-warning" : "")} role="timer" aria-label={label}>
+      <Clock3 size={19}/>
+      <div>
+        <small>{label}</small>
+        <strong>{formatTime(remaining)}</strong>
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [language, setLanguage] = useState("en");
   const [view, setView] = useState("boards");
@@ -815,7 +856,6 @@ export default function HomePage() {
   const [testSessionId, setTestSessionId] = useState("");
   const [testSessionKey, setTestSessionKey] = useState("");
   const [grading, setGrading] = useState(false);
-  const autoSubmitAttempted = useRef(false);
   const submissionInProgress = useRef(false);
   const [history, setHistory] = useState([]);
   const [storageMessage, setStorageMessage] = useState("");
@@ -1068,12 +1108,6 @@ export default function HomePage() {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (view !== "test") return undefined;
-    const timer = setInterval(() => setSeconds(value => Math.max(0, value - 1)), 1000);
-    return () => clearInterval(timer);
-  }, [view]);
 
    useEffect(() => {
     if (otpCooldown <= 0) return undefined;
@@ -1614,7 +1648,6 @@ export default function HomePage() {
   }
 
   async function runTest() {
-    autoSubmitAttempted.current = false;
     setAuthMessage("");
     if (!user) setAuthMessage(t("बिना लॉगिन अभ्यास मोड: टेस्ट शुरू हो रहा है। रिज़ल्ट इसी डिवाइस पर सेव होगा।","Guest practice mode: the test is starting without login. Your result will be saved on this device."));
     if (questionLoadError) { setAuthMessage(questionLoadError); return; }
@@ -1726,7 +1759,6 @@ export default function HomePage() {
       return;
     }
     submissionInProgress.current = true;
-    autoSubmitAttempted.current = true;
     setGrading(true);
     setSubmitError("");
     try {
@@ -1863,12 +1895,6 @@ export default function HomePage() {
       setGrading(false);
     }
   }
-  useEffect(() => {
-    if (view !== "test" || seconds !== 0 || !testQuestions.length || result || grading || autoSubmitAttempted.current || submissionInProgress.current) return;
-    autoSubmitAttempted.current = true;
-    void finishTest();
-  }, [view, seconds, testQuestions.length, result, grading]);
-
   function chooseAnswer(index) {
     if (!q || view !== "test") return;
     setAnswers(old => ({ ...old, [q.id]: index }));
@@ -2094,7 +2120,7 @@ export default function HomePage() {
 
         {view === "instructions" && <div className="content instructions-content"><div className="instructions-hero"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("टेस्ट से पहले","BEFORE YOU START")}</div><h1>{examName}</h1><p className="intro">{t("एक बार नियम देख लें, फिर बिना distraction के टेस्ट शुरू करें।","Review the rules once, then start the test without distractions.")}</p></div><div className="instruction-orb"><BookOpen size={38}/></div></div><div className="instruction-grid"><div className="instruction-stat"><span>{t("सवाल","QUESTIONS")}</span><b>{practiceQuestionCount}</b><small>{selectedSubject === "all" ? t("पूरा syllabus pool","Full syllabus pool") : selectedSubject}</small></div><div className="instruction-stat"><span>{t("समय","TIME")}</span><b>{practiceDuration} min</b><small>{t("Timer test शुरू होते ही चलेगा","Timer starts with the test")}</small></div><div className="instruction-stat"><span>{t("सही उत्तर","CORRECT")}</span><b>+{examConfig.marks_per_question}</b><small>{t("हर सही जवाब","For each correct answer")}</small></div><div className="instruction-stat negative"><span>{t("गलत उत्तर","WRONG")}</span><b>-{examConfig.negative_marks}</b><small>{t("Negative marking","Negative marking")}</small></div></div><div className="rules-card"><div className="section-heading"><div><h2>{t("महत्वपूर्ण निर्देश","Important instructions")}</h2><p>{t("इन नियमों को ध्यान से पढ़ें।","Read these rules carefully.")}</p></div><span className="section-count">RULES</span></div><div className="rules-list"><div><b>01</b><span>{t("हर सवाल का एक सही विकल्प चुनें। जवाब बाद में बदला जा सकता है।","Choose one option for each question. Answers can be changed before submission.")}</span></div><div><b>02</b><span>{t("Review के लिए सवाल mark कर सकते हैं और question palette से वापस जा सकते हैं।","You can mark questions for review and jump back using the question palette.")}</span></div><div><b>03</b><span>{t("Timer समाप्त होने पर test submit हो जाएगा।","The test will submit when the timer reaches zero.")}</span></div><div><b>04</b><span>{t("सवालों के source labels test में दिखाई देंगे: PYQ, OFFICIAL, MEMORY-BASED या PRACTICE।","Question source labels appear in the test: PYQ, OFFICIAL, MEMORY-BASED, or PRACTICE.")}</span></div></div></div><div className="instruction-bottom"><span>{!user ? t("Guest mode: result इसी device पर save होगा।","Guest mode: your result will be saved on this device.") : t("आप logged in हैं; result cloud history में save किया जा सकता है।","You are logged in; your result can be saved to cloud history.")}</span><div><button className="secondary-button" onClick={()=>setView("home")}>{t("वापस","Back")}</button><button className="primary-button" onClick={runTest}>{t("मैं तैयार हूँ — टेस्ट शुरू करें","I’m ready — Start test")}<ArrowRight size={17}/></button></div></div></div>}
 
-        {view === "test" && <div className="content test-content anti-cheat-screen" onContextMenu={e=>e.preventDefault()} onCopy={e=>e.preventDefault()} onCut={e=>e.preventDefault()}><div className="question-screen-top">{testFocusWarning && <div className="test-focus-warning"><ShieldCheck size={15}/> {t("टेस्ट स्क्रीन से बाहर गए थे। ध्यान रखें—यह session जारी है।","You left the test screen. Stay focused—this session is still active.")}</div>}<div className="live-test-badge"><span/> LIVE TEST</div><div className="test-title-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("मॉक टेस्ट / परीक्षा","MOCK TEST / EXAM")}</div><h1>{examName}</h1><p className="intro">{t("सवाल ध्यान से पढ़ें। जरूरत हो तो रिव्यू के लिए मार्क करें।","Read carefully. Mark questions for review when needed.")}</p></div><div className={"timer-card " + (seconds < 60 ? "timer-warning" : "")}><Clock3 size={19}/><div><small>{t("बचा हुआ समय","TIME LEFT")}</small><strong>{formatTime(seconds)}</strong></div></div></div><div className="quick-test-meta"><span>✓ {testQuestions.length} {t("सवाल","questions")}</span><span>◉ {getQuestionSourceLabel(q.sourceType, hi) + (q.sourceType === "pyq" && q.sourceYear ? " " + q.sourceYear : "")}</span></div></div><div className="test-progress"><div><span>{t("टेस्ट की प्रगति","TEST PROGRESS")}</span><b>{answered} / {testQuestions.length} {t("जवाब दिए","answered")}</b></div><div className="progress-track"><span style={{width: (answered/testQuestions.length*100)+"%"}}/></div></div>
+        {view === "test" && <div className="content test-content anti-cheat-screen" onContextMenu={e=>e.preventDefault()} onCopy={e=>e.preventDefault()} onCut={e=>e.preventDefault()}><div className="question-screen-top">{testFocusWarning && <div className="test-focus-warning"><ShieldCheck size={15}/> {t("टेस्ट स्क्रीन से बाहर गए थे। ध्यान रखें—यह session जारी है।","You left the test screen. Stay focused—this session is still active.")}</div>}<div className="live-test-badge"><span/> LIVE TEST</div><div className="test-title-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("मॉक टेस्ट / परीक्षा","MOCK TEST / EXAM")}</div><h1>{examName}</h1><p className="intro">{t("सवाल ध्यान से पढ़ें। जरूरत हो तो रिव्यू के लिए मार्क करें।","Read carefully. Mark questions for review when needed.")}</p></div><CountdownTimer key={testSessionId || "practice"} initialSeconds={seconds} onExpire={finishTest} label={t("बचा हुआ समय","TIME LEFT")}/></div><div className="quick-test-meta"><span>✓ {testQuestions.length} {t("सवाल","questions")}</span><span>◉ {getQuestionSourceLabel(q.sourceType, hi) + (q.sourceType === "pyq" && q.sourceYear ? " " + q.sourceYear : "")}</span></div></div><div className="test-progress"><div><span>{t("टेस्ट की प्रगति","TEST PROGRESS")}</span><b>{answered} / {testQuestions.length} {t("जवाब दिए","answered")}</b></div><div className="progress-track"><span style={{width: (answered/testQuestions.length*100)+"%"}}/></div></div>
           <button type="button" className="mobile-finish-test" onClick={() => { setSubmitError(""); setShowSubmit(true); }}><Flag size={18}/>{t("टेस्ट सबमिट करें","Finish test")}<ArrowRight size={18}/></button>
           <div className="test-layout"><div className="question-panel"><div className="question-meta"><span className="question-number">{t("सवाल","QUESTION")} {current + 1} <i/> {testQuestions.length}</span><span className="subject-chip">{formatQuestionCategory(q.subject)}</span>{q.topic ? <span className="topic-chip">{formatQuestionCategory(q.topic)}</span> : null}<span className="source-chip">{getQuestionSourceLabel(q.sourceType, hi)}</span></div><h2>{displayQuestion}</h2><p className="question-hint">{t("सही विकल्प चुनें। अगला सवाल देखने के लिए Next दबाएँ; जवाब चुनने से सवाल अपने-आप नहीं बदलेगा।","Choose an option. Press Next to move on; selecting an answer will not automatically change the question.")}</p><div className="options">{displayOptions.map((option,i)=><button key={q.id + "-" + i} className={"option " + (answers[q.id] === i ? "selected" : "")} onClick={() => chooseAnswer(i)}><span className="option-letter">{String.fromCharCode(65+i)}</span><span>{option}</span>{answers[q.id] === i ? <span className="radio-selected"/> : null}</button>)}</div>
           <div className="question-controls"><button className="secondary-button" disabled={current===0} onClick={() => setCurrent(c=>c-1)}><ChevronLeft size={17}/>{t("पिछला","Previous")}</button><button className={"review-button " + (review.includes(q.id) ? "review-on" : "")} onClick={toggleReview}><Flag size={16}/>{review.includes(q.id) ? t("रिव्यू हटाएँ","Unmark review") : t("रिव्यू के लिए","Mark for review")}</button>{current < testQuestions.length-1 ? <button className="primary-button next-button" onClick={() => setCurrent(c=>c+1)}>{t("अगला सवाल","Next question")}<ChevronRight size={17}/></button> : <button className="primary-button next-button" onClick={() => { setSubmitError(""); setShowSubmit(true); }}>{t("टेस्ट सबमिट करें","Submit test")}<ArrowRight size={17}/></button>}</div></div>
