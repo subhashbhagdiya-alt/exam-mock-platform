@@ -50,7 +50,7 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
 
   // Use the actual mobile sidebar controls (the desktop theme button is hidden on phones).
   const openMobileAppearance = async () => {
-    await page.getByTestId("menu-toggle").click();
+    await page.getByTestId("mobile-menu-toggle").click();
     await page.locator(".mobile-menu-utilities-toggle").click();
     await expect(page.locator(".mobile-menu-theme-row")).toBeVisible();
   };
@@ -67,8 +67,8 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await expect(page.locator(".shell.theme-light")).toBeVisible();
 
   // Navigate through the real mobile menu into Account. Email uses a link, not a code form.
-  await page.getByTestId("menu-toggle").click();
-  await page.getByTestId("menu-login").click();
+  await page.getByTestId("mobile-menu-toggle").click();
+  await page.getByTestId("sidebar-login").click();
   await expect(page.getByTestId("login-google-button")).toBeVisible();
   await expect(page.getByTestId("login-email-input")).toBeVisible();
   await expect(page.getByTestId("login-email-link-button")).toBeVisible();
@@ -87,7 +87,7 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.screenshot({ path: "test-results/examprep-mobile-login-viewport.png" });
 
   // The paper analyzer should be discoverable on mobile and gated behind account login.
-  await page.getByTestId("menu-toggle").click();
+  await page.getByTestId("mobile-menu-toggle").click();
   await page.getByTestId("menu-paper-analyzer").click();
   await expect(page.getByTestId("paper-analyzer-title")).toBeVisible();
   const analyzerIcon = page.locator(".paper-analyzer-content .paper-analyzer-icon");
