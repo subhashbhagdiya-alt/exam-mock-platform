@@ -48,19 +48,27 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.screenshot({ path: "test-results/examprep-mobile-home-viewport.png" });
   await page.screenshot({ path: "test-results/examprep-mobile-home.png", fullPage: true });
 
-  // The theme picker must open from both light and dark mode.
-  await page.getByTestId("theme-toggle").click();
-  await expect(page.locator(".menu-popover")).toBeVisible();
-  await page.getByText("Night Mode", { exact: false }).click();
+  // Use the actual mobile sidebar controls (the desktop theme button is hidden on phones).
+  const openMobileAppearance = async () => {
+    await page.getByTestId("mobile-menu-toggle").click();
+    await page.locator(".mobile-menu-utilities-toggle").click();
+    await expect(page.locator(".mobile-menu-theme-row")).toBeVisible();
+  };
+  await openMobileAppearance();
+  await page.locator(".mobile-menu-theme-row button").nth(1).click();
   await expect(page.locator(".shell.theme-dark")).toBeVisible();
-  await page.getByTestId("theme-toggle").click();
-  await expect(page.locator(".menu-popover")).toBeVisible();
-  await expect(page.getByText("System", { exact: true })).toBeVisible();
-  await page.getByText("Day Mode", { exact: false }).click();
+
+  // Theme controls must remain visible and usable after switching to dark mode.
+  await openMobileAppearance();
+  await expect(page.locator(".mobile-menu-theme-row button").nth(1)).toBeVisible();
+  await page.locator(".mobile-menu-theme-row button").nth(2).click();
+  await openMobileAppearance();
+  await page.locator(".mobile-menu-theme-row button").nth(0).click();
+  await expect(page.locator(".shell.theme-light")).toBeVisible();
 
   // Navigate through the real mobile menu into Account. Email uses a link, not a code form.
-  await page.getByTestId("menu-toggle").click();
-  await page.getByTestId("menu-login").click();
+  await page.getByTestId("mobile-menu-toggle").click();
+  await page.getByTestId("sidebar-login").click();
   await expect(page.getByTestId("login-google-button")).toBeVisible();
   await expect(page.getByTestId("login-email-input")).toBeVisible();
   await expect(page.getByTestId("login-email-link-button")).toBeVisible();
@@ -79,8 +87,8 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.screenshot({ path: "test-results/examprep-mobile-login-viewport.png" });
 
   // The paper analyzer should be discoverable on mobile and gated behind account login.
-  await page.getByTestId("menu-toggle").click();
-  await page.getByTestId("menu-paper-analyzer").click();
+  await page.getByTestId("mobile-menu-toggle").click();
+  await page.getByTestId("sidebar-paper-analyzer").click();
   await expect(page.getByTestId("paper-analyzer-title")).toBeVisible();
   const analyzerIcon = page.locator(".paper-analyzer-content .paper-analyzer-icon");
   const uploadIcon = page.locator(".paper-analyzer-content .paper-upload-icon");
@@ -127,6 +135,39 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
     pageErrors,
     `The page should not emit uncaught JavaScript errors: ${pageErrors.map(error => error.message).join(" | ")}`
   ).toEqual([]);
+});
+
+test.describe("desktop theme picker", () => {
+  test.use({
+    viewport: { width: 1365, height: 900 },
+    isMobile: false,
+    hasTouch: false
+  });
+
+  test("theme popover remains readable and usable in night mode", async ({ page }) => {
+    await page.goto(baseURL, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
+    await expect(page.getByTestId("theme-toggle")).toBeVisible();
+
+    await page.getByTestId("theme-toggle").click();
+    const popover = page.locator(".menu-popover");
+    await expect(popover).toBeVisible();
+    await page.getByText("Night Mode", { exact: false }).click();
+    await expect(page.locator(".shell.theme-dark")).toBeVisible();
+
+    await page.getByTestId("theme-toggle").click();
+    await expect(popover).toBeVisible();
+    const darkStyles = await popover.evaluate(element => ({
+      color: getComputedStyle(element).color,
+      backgroundImage: getComputedStyle(element).backgroundImage,
+      buttonColor: getComputedStyle(element.querySelector("button")).color
+    }));
+    expect(darkStyles.color).toBe("rgb(246, 244, 255)");
+    expect(darkStyles.backgroundImage).toContain("linear-gradient");
+    expect(darkStyles.buttonColor).toBe("rgb(233, 233, 248)");
+    await page.getByText("System", { exact: true }).click();
+    await expect(popover).toBeHidden();
+  });
 });
 
 test("mock test API grades an attempt and keeps repeated submission idempotent", async ({ request }) => {
