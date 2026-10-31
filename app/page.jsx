@@ -825,7 +825,7 @@ export default function HomePage() {
   const [user, setUser] = useState(null);
   const [profileName, setProfileName] = useState("");
   const [needsProfileName, setNeedsProfileName] = useState(false);
-  const [phone, setPhone] = useState("");
+  const [phone] = useState("");
   const [email, setEmail] = useState("");
   const [authMethod, setAuthMethod] = useState("email");
   const [otp, setOtp] = useState("");
@@ -833,6 +833,7 @@ export default function HomePage() {
   const [recoveryCode, setRecoveryCode] = useState("");
   const [authStep, setAuthStep] = useState("phone");
   const [authMessage, setAuthMessage] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const [paperFile, setPaperFile] = useState(null);
   const [paperAnalysis, setPaperAnalysis] = useState(null);
   const [paperAnalysisError, setPaperAnalysisError] = useState("");
@@ -999,7 +1000,7 @@ export default function HomePage() {
       }
       if (isTrusted !== true) {
         setAuthStep("recovery");
-        setAuthMessage(t("यह अकाउंट दूसरे trusted device से जुड़ा है। पुराने device से recovery code लेकर यहाँ दर्ज करें।","This account is bound to another trusted device. Enter a recovery code generated on the old trusted device."));
+        setAuthMessage(t("यह अकाउंट दूसरे trusted device से जुड़ा है। पुराने फोन में Settings → Device security → नए फोन के लिए recovery code खोलें और 15 मिनट के अंदर वह code यहाँ दर्ज करें।","This account is linked to another trusted device. On the old phone, open Settings → Device security → Create recovery code, then enter it here within 15 minutes."));
         return;
       }
       setTrustedDeviceVerified(true);
@@ -1644,11 +1645,12 @@ export default function HomePage() {
    async function finishTest() {
     if (result || grading) return;
     if (!testSessionId || !testSessionKey) {
-      setAuthMessage(t("इस टेस्ट का सुरक्षित session नहीं मिला। नया टेस्ट शुरू करें।", "Secure test session missing. Please start a new test."));
+      setSubmitError(t("इस टेस्ट का सुरक्षित session नहीं मिला। नया टेस्ट शुरू करें।", "Secure test session missing. Please start a new test."));
+      setShowSubmit(true);
       return;
     }
     setGrading(true);
-    setAuthMessage("");
+    setSubmitError("");
     try {
       const gradeResponse = await fetch("/api/grade", {
         method: "POST",
@@ -1757,7 +1759,7 @@ export default function HomePage() {
           : error?.message || "Result could not be saved to cloud");
       }
     } catch (error) {
-      setAuthMessage(error?.message || t("टेस्ट जाँच नहीं हो सकी। इंटरनेट जाँचकर फिर सबमिट करें।", "Could not grade the test. Check your connection and retry submission."));
+      setSubmitError(error?.message || t("टेस्ट जाँच नहीं हो सकी। इंटरनेट जाँचकर फिर सबमिट करें।", "Could not grade the test. Check your connection and retry submission."));
       setShowSubmit(true);
     } finally {
       setGrading(false);
@@ -1815,17 +1817,12 @@ export default function HomePage() {
           <div className="auth-panel" aria-label={t("वैकल्पिक लॉगिन","Optional login")}>
   <div><b>{user ? t("अकाउंट सक्रिय","Account active") : t("Guest Practice Mode","Guest Practice Mode")}</b><span>{user ? (user.email || user.phone || "") : t("लॉगिन जरूरी नहीं है। मॉक टेस्ट सीधे शुरू करें।","Login is optional. Start the mock test directly.")}</span></div>
   {user ? <>{needsProfileName ? <div className="auth-actions"><div className="guest-login-note">{t("लॉगिन हो गया है। अपना नाम दर्ज करें, यही नाम आपके डैशबोर्ड पर दिखेगा।","Login successful. Enter your name; this name will appear on your dashboard.")}</div><input value={profileName} onChange={e=>setProfileName(e.target.value.slice(0,60))} autoComplete="name" placeholder={t("आपका नाम","Your name")} /><button onClick={saveProfileName}>{t("नाम सेव करें","Save name")}</button></div> : <button onClick={logout}>{t("लॉगआउट","Sign out")}</button>}</> : <div className="auth-actions">
-    <div className="guest-login-note">{t("Login वैकल्पिक है। SMS उपलब्ध न हो तो email से सुरक्षित login link इस्तेमाल करें।","Login is optional. Use a secure email sign-in link when SMS is unavailable.")}</div>
+    <div className="guest-login-note">{t("लॉगिन वैकल्पिक है। Cloud sync के लिए Google या Email से login करें।","Login is optional. Use Google or Email to enable cloud sync.")}</div>
     <div className="auth-divider"><span>{t("Cloud sync के लिए login (वैकल्पिक)","OPTIONAL LOGIN FOR CLOUD SYNC")}</span></div>
     {authStep === "phone" ? <>
-      <div className="auth-method-switch">
-        <button type="button" data-testid="login-method-email" aria-pressed={authMethod === "email"} onClick={() => { setAuthMethod("email"); setAuthMessage(""); }}>{authMethod === "email" ? "✓ " : ""}{t("Email login","Email login")}</button>
-        <button type="button" data-testid="login-method-phone" aria-pressed={authMethod === "phone"} onClick={() => { setAuthMethod("phone"); setAuthMessage(""); }}>{authMethod === "phone" ? "✓ " : ""}{t("Mobile SMS","Mobile SMS")}</button>
-      </div>
-      {authMethod === "email"
-        ? <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address","Your email address")} data-testid="login-email-input"/>
-        : <div className="phone-input"><span>+91</span><input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,"").slice(0,10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर"/></div>}
-      <button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : authMethod === "email" ? t("Login link भेजें","Send login link") : t("OTP भेजें","Send SMS OTP")}</button>
+      <button type="button" className="google-login-button" onClick={signInWithGoogle}>{t("Google से जारी रखें","Continue with Google")}</button>
+      <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address","Your email address")} data-testid="login-email-input"/>
+      <button onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? `${t("फिर भेजें","Resend")} (${otpCooldown}s)` : t("Login link भेजें","Send login link")}</button>
     </> : authStep === "otp" ? <>
       <input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" maxLength={6} placeholder={t("6-digit OTP","6-digit code")}/>
       <button onClick={verifyOtp}>{t("Code verify करें","Verify code")}</button>
@@ -1963,17 +1960,12 @@ export default function HomePage() {
               ) : (
                 <>
                   <div className="login-note">{t("लॉगिन optional है — बिना login के भी test और result local device पर काम करेंगे।", "Login is optional — tests and results work locally without an account.")}</div>
-                  <div className="auth-divider"><span>{t("Email या मोबाइल से login", "EMAIL OR MOBILE LOGIN")}</span></div>
+                  <div className="auth-divider"><span>{t("Google या Email से login", "SIGN IN WITH GOOGLE OR EMAIL")}</span></div>
                   {authStep === "phone" ? (
                     <>
-                      <div className="auth-method-switch">
-                        <button type="button" data-testid="login-method-email" aria-pressed={authMethod === "email"} onClick={() => { setAuthMethod("email"); setAuthMessage(""); }}>{authMethod === "email" ? "✓ " : ""}{t("Email login", "Email login")}</button>
-                        <button type="button" data-testid="login-method-phone" aria-pressed={authMethod === "phone"} onClick={() => { setAuthMethod("phone"); setAuthMessage(""); }}>{authMethod === "phone" ? "✓ " : ""}{t("Mobile SMS", "Mobile SMS")}</button>
-                      </div>
-                      {authMethod === "email"
-                        ? <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address", "Your email address")} data-testid="login-email-input" />
-                        : <div className="phone-input"><span>+91</span><input value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर" /></div>}
-                      <button className="primary-button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? t("फिर भेजें", "Resend") + " (" + otpCooldown + "s)" : authMethod === "email" ? t("Login link भेजें", "Send login link") : t("OTP भेजें", "Send SMS OTP")}<ArrowRight size={17} /></button>
+                      <button type="button" className="google-login-button" onClick={signInWithGoogle}>{t("Google से जारी रखें", "Continue with Google")}</button>
+                      <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address", "Your email address")} data-testid="login-email-input" />
+                      <button className="primary-button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? t("फिर भेजें", "Resend") + " (" + otpCooldown + "s)" : t("Login link भेजें", "Send login link")}<ArrowRight size={17} /></button>
                     </>
                   ) : authStep === "otp" ? (
                     <>
@@ -2006,11 +1998,11 @@ export default function HomePage() {
         {view === "instructions" && <div className="content instructions-content"><div className="instructions-hero"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("टेस्ट से पहले","BEFORE YOU START")}</div><h1>{examName}</h1><p className="intro">{t("एक बार नियम देख लें, फिर बिना distraction के टेस्ट शुरू करें।","Review the rules once, then start the test without distractions.")}</p></div><div className="instruction-orb"><BookOpen size={38}/></div></div><div className="instruction-grid"><div className="instruction-stat"><span>{t("सवाल","QUESTIONS")}</span><b>{practiceQuestionCount}</b><small>{selectedSubject === "all" ? t("पूरा syllabus pool","Full syllabus pool") : selectedSubject}</small></div><div className="instruction-stat"><span>{t("समय","TIME")}</span><b>{practiceDuration} min</b><small>{t("Timer test शुरू होते ही चलेगा","Timer starts with the test")}</small></div><div className="instruction-stat"><span>{t("सही उत्तर","CORRECT")}</span><b>+{examConfig.marks_per_question}</b><small>{t("हर सही जवाब","For each correct answer")}</small></div><div className="instruction-stat negative"><span>{t("गलत उत्तर","WRONG")}</span><b>-{examConfig.negative_marks}</b><small>{t("Negative marking","Negative marking")}</small></div></div><div className="rules-card"><div className="section-heading"><div><h2>{t("महत्वपूर्ण निर्देश","Important instructions")}</h2><p>{t("इन नियमों को ध्यान से पढ़ें।","Read these rules carefully.")}</p></div><span className="section-count">RULES</span></div><div className="rules-list"><div><b>01</b><span>{t("हर सवाल का एक सही विकल्प चुनें। जवाब बाद में बदला जा सकता है।","Choose one option for each question. Answers can be changed before submission.")}</span></div><div><b>02</b><span>{t("Review के लिए सवाल mark कर सकते हैं और question palette से वापस जा सकते हैं।","You can mark questions for review and jump back using the question palette.")}</span></div><div><b>03</b><span>{t("Timer समाप्त होने पर test submit हो जाएगा।","The test will submit when the timer reaches zero.")}</span></div><div><b>04</b><span>{t("सवालों के source labels test में दिखाई देंगे: PYQ, OFFICIAL, MEMORY-BASED या PRACTICE।","Question source labels appear in the test: PYQ, OFFICIAL, MEMORY-BASED, or PRACTICE.")}</span></div></div></div><div className="instruction-bottom"><span>{!user ? t("Guest mode: result इसी device पर save होगा।","Guest mode: your result will be saved on this device.") : t("आप logged in हैं; result cloud history में save किया जा सकता है।","You are logged in; your result can be saved to cloud history.")}</span><div><button className="secondary-button" onClick={()=>setView("home")}>{t("वापस","Back")}</button><button className="primary-button" onClick={runTest}>{t("मैं तैयार हूँ — टेस्ट शुरू करें","I’m ready — Start test")}<ArrowRight size={17}/></button></div></div></div>}
 
         {view === "test" && <div className="content test-content anti-cheat-screen" onContextMenu={e=>e.preventDefault()} onCopy={e=>e.preventDefault()} onCut={e=>e.preventDefault()}><div className="question-screen-top">{testFocusWarning && <div className="test-focus-warning"><ShieldCheck size={15}/> {t("टेस्ट स्क्रीन से बाहर गए थे। ध्यान रखें—यह session जारी है।","You left the test screen. Stay focused—this session is still active.")}</div>}<div className="live-test-badge"><span/> LIVE TEST</div><div className="test-title-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("मॉक टेस्ट / परीक्षा","MOCK TEST / EXAM")}</div><h1>{examName}</h1><p className="intro">{t("सवाल ध्यान से पढ़ें। जरूरत हो तो रिव्यू के लिए मार्क करें।","Read carefully. Mark questions for review when needed.")}</p></div><div className={"timer-card " + (seconds < 60 ? "timer-warning" : "")}><Clock3 size={19}/><div><small>{t("बचा हुआ समय","TIME LEFT")}</small><strong>{formatTime(seconds)}</strong></div></div></div><div className="quick-test-meta"><span>✓ {testQuestions.length} {t("सवाल","questions")}</span><span>◉ {getQuestionSourceLabel(q.sourceType, hi) + (q.sourceType === "pyq" && q.sourceYear ? " " + q.sourceYear : "")}</span></div></div><div className="test-progress"><div><span>{t("टेस्ट की प्रगति","TEST PROGRESS")}</span><b>{answered} / {testQuestions.length} {t("जवाब दिए","answered")}</b></div><div className="progress-track"><span style={{width: (answered/testQuestions.length*100)+"%"}}/></div></div>
-          <button type="button" className="mobile-finish-test" onClick={() => setShowSubmit(true)}><Flag size={18}/>{t("टेस्ट सबमिट करें","Finish test")}<ArrowRight size={18}/></button>
+          <button type="button" className="mobile-finish-test" onClick={() => { setSubmitError(""); setShowSubmit(true); }}><Flag size={18}/>{t("टेस्ट सबमिट करें","Finish test")}<ArrowRight size={18}/></button>
           <div className="test-layout"><div className="question-panel"><div className="question-meta"><span className="question-number">{t("सवाल","QUESTION")} {current + 1} <i/> {testQuestions.length}</span><span className="subject-chip">{formatQuestionCategory(q.subject)}</span>{q.topic ? <span className="topic-chip">{formatQuestionCategory(q.topic)}</span> : null}<span className="source-chip">{getQuestionSourceLabel(q.sourceType, hi)}</span></div><h2>{displayQuestion}</h2><p className="question-hint">{t("सही विकल्प चुनें। आप अपना जवाब बदल सकते हैं।","Select one option. You can change your answer before submitting.")}</p><div className="options">{displayOptions.map((option,i)=><button key={q.id + "-" + i} className={"option " + (answers[q.id] === i ? "selected" : "")} onClick={() => chooseAnswer(i)}><span className="option-letter">{String.fromCharCode(65+i)}</span><span>{option}</span>{answers[q.id] === i ? <span className="radio-selected"/> : null}</button>)}</div>
-          <div className="question-controls"><button className="secondary-button" disabled={current===0} onClick={() => setCurrent(c=>c-1)}><ChevronLeft size={17}/>{t("पिछला","Previous")}</button><button className={"review-button " + (review.includes(q.id) ? "review-on" : "")} onClick={toggleReview}><Flag size={16}/>{review.includes(q.id) ? t("रिव्यू हटाएँ","Unmark review") : t("रिव्यू के लिए","Mark for review")}</button>{current < testQuestions.length-1 ? <button className="primary-button next-button" onClick={() => setCurrent(c=>c+1)}>{t("अगला सवाल","Next question")}<ChevronRight size={17}/></button> : <button className="primary-button next-button" onClick={() => setShowSubmit(true)}>{t("टेस्ट सबमिट करें","Submit test")}<ArrowRight size={17}/></button>}</div></div>
-          <aside className="question-nav"><div className="nav-heading"><h3>{t("सवालों की सूची","Question palette")}</h3><span>{answered}/{testQuestions.length}</span></div><p>{t("किसी सवाल पर जाने के लिए नंबर चुनें।","Tap a number to jump to a question.")}</p><div className="number-grid">{testQuestions.map((item,i)=><button key={item.id} onClick={() => setCurrent(i)} className={"number-cell " + (current===i ? "current" : "") + (answers[item.id] !== undefined ? " answered" : "") + (review.includes(item.id) ? " marked" : "")}>{String(item.id).padStart(2,"0")}{review.includes(item.id) && <i/>}</button>)}</div><div className="legend"><span><i className="legend-answered"/> {t("जवाब दिया","Answered")}</span><span><i className="legend-marked"/> {t("रिव्यू","Review")}</span><span><i className="legend-empty"/> {t("बाकी","Not answered")}</span></div><div className="nav-summary"><div><span>{t("जवाब दिए","Answered")}</span><b>{answered}</b></div><div><span>{t("बाकी सवाल","Remaining")}</span><b>{testQuestions.length-answered}</b></div><div><span>{t("रिव्यू के लिए","For review")}</span><b>{review.length}</b></div></div><button className="submit-full" onClick={() => setShowSubmit(true)}>{t("टेस्ट समाप्त करें","Finish test")}<ArrowRight size={16}/></button></aside></div>
-          {showSubmit && <div className="modal-backdrop"><div className="confirm-modal"><div className="modal-icon"><Flag size={22}/></div><h2>{t("टेस्ट सबमिट करें?","Submit your test?")}</h2><p>{t("आपने","You have answered")} {answered} {t("में से "+testQuestions.length+" सवालों के जवाब दिए हैं। सबमिट करने के बाद जवाब नहीं बदल पाएँगे।","of the selected questions. You cannot change answers after submission.")}</p>{authMessage && <p role="alert" className="setup-message">{authMessage}</p>}<div className="modal-actions"><button className="secondary-button" onClick={() => setShowSubmit(false)}>{t("वापस जाएँ","Go back")}</button><button className="primary-button" onClick={finishTest} disabled={grading}>{grading ? t("जाँच हो रही है…","Grading…") : t("हाँ, सबमिट करें","Yes, submit")}</button></div></div></div>}
+          <div className="question-controls"><button className="secondary-button" disabled={current===0} onClick={() => setCurrent(c=>c-1)}><ChevronLeft size={17}/>{t("पिछला","Previous")}</button><button className={"review-button " + (review.includes(q.id) ? "review-on" : "")} onClick={toggleReview}><Flag size={16}/>{review.includes(q.id) ? t("रिव्यू हटाएँ","Unmark review") : t("रिव्यू के लिए","Mark for review")}</button>{current < testQuestions.length-1 ? <button className="primary-button next-button" onClick={() => setCurrent(c=>c+1)}>{t("अगला सवाल","Next question")}<ChevronRight size={17}/></button> : <button className="primary-button next-button" onClick={() => { setSubmitError(""); setShowSubmit(true); }}>{t("टेस्ट सबमिट करें","Submit test")}<ArrowRight size={17}/></button>}</div></div>
+          <aside className="question-nav"><div className="nav-heading"><h3>{t("सवालों की सूची","Question palette")}</h3><span>{answered}/{testQuestions.length}</span></div><p>{t("किसी सवाल पर जाने के लिए नंबर चुनें।","Tap a number to jump to a question.")}</p><div className="number-grid">{testQuestions.map((item,i)=><button key={item.id} onClick={() => setCurrent(i)} className={"number-cell " + (current===i ? "current" : "") + (answers[item.id] !== undefined ? " answered" : "") + (review.includes(item.id) ? " marked" : "")}>{String(item.id).padStart(2,"0")}{review.includes(item.id) && <i/>}</button>)}</div><div className="legend"><span><i className="legend-answered"/> {t("जवाब दिया","Answered")}</span><span><i className="legend-marked"/> {t("रिव्यू","Review")}</span><span><i className="legend-empty"/> {t("बाकी","Not answered")}</span></div><div className="nav-summary"><div><span>{t("जवाब दिए","Answered")}</span><b>{answered}</b></div><div><span>{t("बाकी सवाल","Remaining")}</span><b>{testQuestions.length-answered}</b></div><div><span>{t("रिव्यू के लिए","For review")}</span><b>{review.length}</b></div></div><button className="submit-full" onClick={() => { setSubmitError(""); setShowSubmit(true); }}>{t("टेस्ट समाप्त करें","Finish test")}<ArrowRight size={16}/></button></aside></div>
+          {showSubmit && <div className="modal-backdrop"><div className="confirm-modal"><div className="modal-icon"><Flag size={22}/></div><h2>{t("टेस्ट सबमिट करें?","Submit your test?")}</h2><p>{t("आपने","You have answered")} {answered} {t("में से "+testQuestions.length+" सवालों के जवाब दिए हैं। सबमिट करने के बाद जवाब नहीं बदल पाएँगे।","of the selected questions. You cannot change answers after submission.")}</p>{submitError && <p role="alert" className="setup-message">{submitError}</p>}<div className="modal-actions"><button className="secondary-button" onClick={() => setShowSubmit(false)}>{t("वापस जाएँ","Go back")}</button><button className="primary-button" onClick={finishTest} disabled={grading}>{grading ? t("जाँच हो रही है…","Grading…") : t("हाँ, सबमिट करें","Yes, submit")}</button></div></div></div>}
         </div>}
 
         {view === "result" && result && <div className="content result-content">
