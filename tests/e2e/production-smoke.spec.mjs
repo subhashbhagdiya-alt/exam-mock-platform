@@ -48,15 +48,23 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.screenshot({ path: "test-results/examprep-mobile-home-viewport.png" });
   await page.screenshot({ path: "test-results/examprep-mobile-home.png", fullPage: true });
 
-  // The theme picker must open from both light and dark mode.
-  await page.getByTestId("theme-toggle").click();
-  await expect(page.locator(".menu-popover")).toBeVisible();
-  await page.getByText("Night Mode", { exact: false }).click();
+  // Use the actual mobile sidebar controls (the desktop theme button is hidden on phones).
+  const openMobileAppearance = async () => {
+    await page.getByTestId("menu-toggle").click();
+    await page.locator(".mobile-menu-utilities-toggle").click();
+    await expect(page.locator(".mobile-menu-theme-row")).toBeVisible();
+  };
+  await openMobileAppearance();
+  await page.locator(".mobile-menu-theme-row button").nth(1).click();
   await expect(page.locator(".shell.theme-dark")).toBeVisible();
-  await page.getByTestId("theme-toggle").click();
-  await expect(page.locator(".menu-popover")).toBeVisible();
-  await expect(page.getByText("System", { exact: true })).toBeVisible();
-  await page.getByText("Day Mode", { exact: false }).click();
+
+  // Theme controls must remain visible and usable after switching to dark mode.
+  await openMobileAppearance();
+  await expect(page.locator(".mobile-menu-theme-row button").nth(1)).toBeVisible();
+  await page.locator(".mobile-menu-theme-row button").nth(2).click();
+  await openMobileAppearance();
+  await page.locator(".mobile-menu-theme-row button").nth(0).click();
+  await expect(page.locator(".shell.theme-light")).toBeVisible();
 
   // Navigate through the real mobile menu into Account. Email uses a link, not a code form.
   await page.getByTestId("menu-toggle").click();
