@@ -40,6 +40,20 @@ async function ensureSessionKey() {
   }
   return key;
 }
+
+function getQuestionMasteryStorageKey(userId, exam, subject, topic) {
+  return ["exam_prep_mastered_questions", userId || "guest", exam || "all", subject || "all", topic || "all"].join("_");
+}
+
+function getProfileAvatarUrl(authUser, selectedSeed = "") {
+  const metadata = authUser?.user_metadata || {};
+  const seed = String(selectedSeed || metadata.avatar_seed || "").trim();
+  if (seed) return `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(seed)}`;
+  const providerPhoto = metadata.avatar_url || metadata.picture || "";
+  if (providerPhoto) return String(providerPhoto);
+  const fallback = authUser?.id || authUser?.email || "ExamPrep";
+  return `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(String(fallback))}`;
+}
 const QUESTION_LOCALIZATIONS = {
   "00276434-e4a5-4bfd-95d4-fbca1d811567": { hi: "भारतीय संविधान का कौन-सा अनुच्छेद मौलिक अधिकारों से संबंधित है?", optionsHi: ["अनुच्छेद 12–35", "अनुच्छेद 36–51", "अनुच्छेद 52–78", "अनुच्छेद 79–122"] },
   "248f4ea3-a93a-421f-ab19-432da695461f": { hi: "यदि A की आयु B की आयु से दोगुनी है और B की आयु 10 वर्ष है, तो A की आयु कितनी है?", en: "If A’s age is twice B’s age and B is 10 years old, A’s age is –", optionsHi: ["15", "20", "25", "30"], optionsEn: ["15", "20", "25", "30"] },
@@ -802,6 +816,7 @@ export default function HomePage() {
   const [testSessionKey, setTestSessionKey] = useState("");
   const [grading, setGrading] = useState(false);
   const autoSubmitAttempted = useRef(false);
+  const submissionInProgress = useRef(false);
   const [history, setHistory] = useState([]);
   const [storageMessage, setStorageMessage] = useState("");
   const [showSubmit, setShowSubmit] = useState(false);
@@ -824,6 +839,11 @@ export default function HomePage() {
   const [isOnline, setIsOnline] = useState(true);
   const [user, setUser] = useState(null);
   const [profileName, setProfileName] = useState("");
+  const [profileAvatarSeed, setProfileAvatarSeed] = useState("");
+  const [profileEducation, setProfileEducation] = useState("");
+  const [profileTargetExam, setProfileTargetExam] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
   const [needsProfileName, setNeedsProfileName] = useState(false);
   const [phone] = useState("");
   const [email, setEmail] = useState("");
@@ -854,12 +874,26 @@ export default function HomePage() {
   const [nativeSimStatus, setNativeSimStatus] = useState("web");
   const [trustedDeviceVerified, setTrustedDeviceVerified] = useState(false);
   const [themeMode, setThemeMode] = useState("dark");
+  const [systemPrefersDark, setSystemPrefersDark] = useState(true);
   const [splashVisible, setSplashVisible] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const menuButtonRef = useRef(null);
   const [showDashboardOptions, setShowDashboardOptions] = useState(false);
   const [testFocusWarning, setTestFocusWarning] = useState(false);
+
+  function hydrateAccountProfile(nextUser) {
+    const metadata = nextUser?.user_metadata || {};
+    const nextName = getUserDisplayName(nextUser);
+    setProfileName(nextName === "अभ्यर्थी" ? "" : nextName);
+    setNeedsProfileName(Boolean(nextUser) && nextName === "अभ्यर्थी");
+    setProfileAvatarSeed(String(metadata.avatar_seed || ""));
+    setProfileEducation(String(metadata.education || ""));
+    setProfileTargetExam(String(metadata.target_exam || ""));
+    setProfileBio(String(metadata.bio || ""));
+    if (["light", "dark", "system"].includes(metadata.theme_mode)) setThemeMode(metadata.theme_mode);
+  }
+
   useEffect(() => {
     if (!menuOpen || typeof document === "undefined") return undefined;
     const closeOnOutsideTap = (event) => {
@@ -885,8 +919,17 @@ export default function HomePage() {
     localStorage.setItem("exam_prep_theme", themeMode);
   }, [themeMode]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return undefined;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncSystemTheme = () => setSystemPrefersDark(media.matches);
+    syncSystemTheme();
+    media.addEventListener?.("change", syncSystemTheme);
+    return () => media.removeEventListener?.("change", syncSystemTheme);
+  }, []);
+
   const effectiveTheme = themeMode === "system"
-    ? (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+    ? (systemPrefersDark ? "dark" : "light")
     : themeMode;
 
   const hi = language === "hi";
@@ -917,6 +960,7 @@ export default function HomePage() {
     return labels[value] ? (hi ? labels[value][0] : labels[value][1]) : value;
   };
   const q = testQuestions[current];
+  const profileAvatarUrl = user ? getProfileAvatarUrl(user, profileAvatarSeed) : "";
   const displayQuestion = q ? (hi ? (q.hi || q.en) : (q.en || q.hi)) : "";
   const displayOptions = q ? (hi && q.optionsHi ? q.optionsHi : !hi && q.optionsEn ? q.optionsEn : q.options) : [];
   const answered = Object.keys(answers).length;
@@ -967,18 +1011,14 @@ export default function HomePage() {
       if (mounted) {
         const nextUser = data.session?.user || null;
         setUser(nextUser);
-        const nextName = getUserDisplayName(nextUser);
-        setProfileName(nextName === "अभ्यर्थी" ? "" : nextName);
-        setNeedsProfileName(Boolean(nextUser) && nextName === "अभ्यर्थी");
+        hydrateAccountProfile(nextUser);
       }
     });
     const { data: listener } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
       if (mounted) {
         const nextUser = session?.user || null;
         setUser(nextUser);
-        const nextName = getUserDisplayName(nextUser);
-        setProfileName(nextName === "अभ्यर्थी" ? "" : nextName);
-        setNeedsProfileName(Boolean(nextUser) && nextName === "अभ्यर्थी");
+        hydrateAccountProfile(nextUser);
       }
     });
     return () => { mounted = false; listener?.subscription?.unsubscribe(); };
@@ -1029,18 +1069,10 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (view !== "test" || seconds <= 0) return undefined;
+    if (view !== "test") return undefined;
     const timer = setInterval(() => setSeconds(value => Math.max(0, value - 1)), 1000);
     return () => clearInterval(timer);
-  }, [view, seconds]);
-
-  // Automatically submit once the countdown expires, so a test cannot remain
-  // open indefinitely at 00:00. finishTest guards against duplicate submissions.
-  useEffect(() => {
-    if (view === "test" && seconds === 0 && !result && !grading) {
-      finishTest();
-    }
-  }, [view, seconds, result, grading]);
+  }, [view]);
 
    useEffect(() => {
     if (otpCooldown <= 0) return undefined;
@@ -1570,15 +1602,27 @@ export default function HomePage() {
     const requestedCount = Math.min(Number(practiceQuestionCount || 10), readyCount);
     setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setReviewAnswers({}); setTestSessionId(""); setTestSessionKey(""); setShowSubmit(false); setTestQuestions([]);
     try {
-      const historyKey = `exam_prep_seen_questions_${selectedExam}_${selectedSubject}_${selectedTopic}`;
-      let seenQuestionIds = [];
+      const masteryKey = getQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+      let masteredQuestionIds = [];
       try {
-        const stored = JSON.parse(localStorage.getItem(historyKey) || "[]");
-        if (Array.isArray(stored)) seenQuestionIds = stored.filter(id => typeof id === "string").slice(-250);
+        const stored = JSON.parse(localStorage.getItem(masteryKey) || "[]");
+        if (Array.isArray(stored)) masteredQuestionIds = stored.filter(id => typeof id === "string").slice(-250);
       } catch {}
-      const excludeParam = seenQuestionIds.length ? `&exclude=${encodeURIComponent(seenQuestionIds.join(","))}` : "";
-      const response = await fetch(`/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${requestedCount}${selectedSubject !== "all" ? `&subject=${encodeURIComponent(selectedSubject)}` : ""}${selectedTopic !== "all" ? `&topic=${encodeURIComponent(selectedTopic)}` : ""}${excludeParam}`, { cache: "no-store" });
-      const payload = await response.json();
+      const buildQuestionUrl = excludedIds => {
+        const excludeParam = excludedIds.length ? `&exclude=${encodeURIComponent(excludedIds.join(","))}` : "";
+        return `/api/questions?exam=${encodeURIComponent(selectedExam)}&limit=${requestedCount}${selectedSubject !== "all" ? `&subject=${encodeURIComponent(selectedSubject)}` : ""}${selectedTopic !== "all" ? `&topic=${encodeURIComponent(selectedTopic)}` : ""}${excludeParam}`;
+      };
+      let response = await fetch(buildQuestionUrl(masteredQuestionIds), { cache: "no-store" });
+      let payload = await response.json();
+      let startedNewMasteryCycle = false;
+      if (response.status === 409 && payload?.code === "QUESTION_POOL_COMPLETED" && masteredQuestionIds.length) {
+        localStorage.removeItem(masteryKey);
+        masteredQuestionIds = [];
+        startedNewMasteryCycle = true;
+        response = await fetch(buildQuestionUrl([]), { cache: "no-store" });
+        payload = await response.json();
+      }
+      if (!response.ok) throw new Error(payload?.error || t("सवाल लोड नहीं हो सके।", "Could not load questions."));
       if (response.ok && payload.exam && payload.test_session_id && payload.test_session_key) { setTestSessionId(payload.test_session_id); setTestSessionKey(payload.test_session_key); const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(Number(practiceDuration || config.duration_minutes || 10) * 60); } else { setSeconds(Number(practiceDuration || examConfig.duration_minutes || 10) * 60); }
       if (response.ok && payload.test_session_id && payload.test_session_key && Array.isArray(payload.data) && payload.data.length) {
         const mapped = payload.data.map((item, index) => {
@@ -1599,14 +1643,15 @@ export default function HomePage() {
           };
         }).filter(item => item.options.length === 4);
         if (mapped.length) {
-          try {
-            const stored = JSON.parse(localStorage.getItem(historyKey) || "[]");
-            const previous = Array.isArray(stored) ? stored.filter(id => typeof id === "string") : [];
-            const seen = [...new Set([...previous, ...mapped.map(item => item.sourceId).filter(Boolean)])].slice(-250);
-            localStorage.setItem(historyKey, JSON.stringify(seen));
-          } catch {}
+          setPracticeQuestionCount(mapped.length);
           setTestQuestions(mapped);
           setView("test");
+          if (startedNewMasteryCycle) {
+            setAuthMessage(t(
+              "इस अभ्यास सेट के सभी सवाल सही हो चुके हैं। नया अभ्यास चक्र शुरू कर दिया गया है।",
+              "You have answered every question in this practice pool correctly. A fresh practice cycle has started."
+            ));
+          }
         }
         else {
           setTestQuestions([]);
@@ -1643,12 +1688,14 @@ export default function HomePage() {
   }
 
    async function finishTest() {
-    if (result || grading) return;
+    if (result || grading || submissionInProgress.current) return;
     if (!testSessionId || !testSessionKey) {
       setSubmitError(t("इस टेस्ट का सुरक्षित session नहीं मिला। नया टेस्ट शुरू करें।", "Secure test session missing. Please start a new test."));
       setShowSubmit(true);
       return;
     }
+    submissionInProgress.current = true;
+    autoSubmitAttempted.current = true;
     setGrading(true);
     setSubmitError("");
     try {
@@ -1661,6 +1708,25 @@ export default function HomePage() {
       if (!gradeResponse.ok || !gradePayload?.data) throw new Error(gradePayload?.error || "Could not grade this test. Please retry.");
 
       const graded = gradePayload.data;
+      const gradeReviewByLocalId = new Map((graded.review || []).map(item => [String(item.id), item]));
+      const newlyMasteredIds = testQuestions
+        .filter(item => {
+          const correctAnswer = gradeReviewByLocalId.get(String(item.id))?.answer;
+          return Boolean(item.sourceId) &&
+            answers[item.id] !== undefined &&
+            Number.isInteger(Number(correctAnswer)) &&
+            Number(answers[item.id]) === Number(correctAnswer);
+        })
+        .map(item => item.sourceId);
+      if (newlyMasteredIds.length && typeof window !== "undefined") {
+        try {
+          const masteryKey = getQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+          const previous = JSON.parse(localStorage.getItem(masteryKey) || "[]");
+          const savedIds = Array.isArray(previous) ? previous.filter(id => typeof id === "string") : [];
+          const nextIds = [...new Set([...savedIds, ...newlyMasteredIds])].slice(-250);
+          localStorage.setItem(masteryKey, JSON.stringify(nextIds));
+        } catch {}
+      }
       setReviewAnswers(Object.fromEntries((graded.review || []).map(item => [String(item.id), item])));
       const summary = {
         practice_mode: true,
@@ -1762,16 +1828,20 @@ export default function HomePage() {
       setSubmitError(error?.message || t("टेस्ट जाँच नहीं हो सकी। इंटरनेट जाँचकर फिर सबमिट करें।", "Could not grade the test. Check your connection and retry submission."));
       setShowSubmit(true);
     } finally {
+      submissionInProgress.current = false;
       setGrading(false);
     }
   }
   useEffect(() => {
-    if (view !== "test" || seconds !== 0 || !testQuestions.length || result || grading || autoSubmitAttempted.current) return;
+    if (view !== "test" || seconds !== 0 || !testQuestions.length || result || grading || autoSubmitAttempted.current || submissionInProgress.current) return;
     autoSubmitAttempted.current = true;
     void finishTest();
   }, [view, seconds, testQuestions.length, result, grading]);
 
-  function chooseAnswer(index) { setAnswers(old => ({ ...old, [q.id]: index })); }
+  function chooseAnswer(index) {
+    if (!q || view !== "test") return;
+    setAnswers(old => ({ ...old, [q.id]: index }));
+  }
   function toggleReview() { setReview(old => old.includes(q.id) ? old.filter(n => n !== q.id) : [...old, q.id]); }
   function navigateTo(nextView) {
     setMenuOpen(false);
