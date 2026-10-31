@@ -4854,6 +4854,52 @@ button{cursor:pointer}
 }
 
 
+/* v42 — keep the mock-test confirmation dialog fully visible on mobile */
+@media (max-width: 760px) {
+  .shell.exam-active .modal-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    width: 100vw !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    padding: calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    z-index: 1000 !important;
+  }
+
+  .shell.exam-active .confirm-modal {
+    width: min(410px, 100%) !important;
+    max-height: calc(100vh - 28px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+    max-height: calc(100dvh - 28px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+    box-sizing: border-box !important;
+    margin: auto !important;
+    padding: 20px !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+  }
+
+  .shell.exam-active .confirm-modal .modal-actions {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 10px !important;
+    margin-top: 16px !important;
+  }
+
+  .shell.exam-active .confirm-modal .modal-actions button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    justify-content: center !important;
+    white-space: normal !important;
+  }
+}
+
+
 /* Google sign-in action in the optional account panel */
 .google-login-button {
   width: 100%;
