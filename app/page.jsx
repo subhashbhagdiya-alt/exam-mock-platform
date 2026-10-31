@@ -1960,17 +1960,12 @@ export default function HomePage() {
               ) : (
                 <>
                   <div className="login-note">{t("लॉगिन optional है — बिना login के भी test और result local device पर काम करेंगे।", "Login is optional — tests and results work locally without an account.")}</div>
-                  <div className="auth-divider"><span>{t("Email या मोबाइल से login", "EMAIL OR MOBILE LOGIN")}</span></div>
+                  <div className="auth-divider"><span>{t("Google या Email से login", "SIGN IN WITH GOOGLE OR EMAIL")}</span></div>
                   {authStep === "phone" ? (
                     <>
-                      <div className="auth-method-switch">
-                        <button type="button" data-testid="login-method-email" aria-pressed={authMethod === "email"} onClick={() => { setAuthMethod("email"); setAuthMessage(""); }}>{authMethod === "email" ? "✓ " : ""}{t("Email login", "Email login")}</button>
-                        <button type="button" data-testid="login-method-phone" aria-pressed={authMethod === "phone"} onClick={() => { setAuthMethod("phone"); setAuthMessage(""); }}>{authMethod === "phone" ? "✓ " : ""}{t("Mobile SMS", "Mobile SMS")}</button>
-                      </div>
-                      {authMethod === "email"
-                        ? <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address", "Your email address")} data-testid="login-email-input" />
-                        : <div className="phone-input"><span>+91</span><input value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 अंकों का मोबाइल नंबर" /></div>}
-                      <button className="primary-button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? t("फिर भेजें", "Resend") + " (" + otpCooldown + "s)" : authMethod === "email" ? t("Login link भेजें", "Send login link") : t("OTP भेजें", "Send SMS OTP")}<ArrowRight size={17} /></button>
+                      <button type="button" className="google-login-button" onClick={signInWithGoogle}>{t("Google से जारी रखें", "Continue with Google")}</button>
+                      <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" placeholder={t("आपका email address", "Your email address")} data-testid="login-email-input" />
+                      <button className="primary-button" onClick={sendOtp} disabled={otpCooldown > 0}>{otpCooldown > 0 ? t("फिर भेजें", "Resend") + " (" + otpCooldown + "s)" : t("Login link भेजें", "Send login link")}<ArrowRight size={17} /></button>
                     </>
                   ) : authStep === "otp" ? (
                     <>
