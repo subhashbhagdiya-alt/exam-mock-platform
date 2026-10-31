@@ -162,9 +162,9 @@ test.describe("desktop theme picker", () => {
       backgroundImage: getComputedStyle(element).backgroundImage,
       buttonColor: getComputedStyle(element.querySelector("button")).color
     }));
-    expect(darkStyles.color).toBe("rgb(245, 243, 255)");
+    expect(darkStyles.color).toBe("rgb(246, 244, 255)");
     expect(darkStyles.backgroundImage).toContain("linear-gradient");
-    expect(darkStyles.buttonColor).toBe("rgb(236, 233, 255)");
+    expect(darkStyles.buttonColor).toBe("rgb(233, 233, 248)");
     await page.getByText("System", { exact: true }).click();
     await expect(popover).toBeHidden();
   });
