@@ -44,14 +44,23 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
   await page.screenshot({ path: "test-results/examprep-mobile-home-viewport.png" });
   await page.screenshot({ path: "test-results/examprep-mobile-home.png", fullPage: true });
 
-  // Navigate through the real mobile menu into Account, then verify both login methods.
+  // The theme picker must open from both light and dark mode.
+  await page.getByTestId("theme-toggle").click();
+  await expect(page.locator(".menu-popover")).toBeVisible();
+  await page.getByText("Night Mode", { exact: false }).click();
+  await expect(page.locator(".shell.theme-dark")).toBeVisible();
+  await page.getByTestId("theme-toggle").click();
+  await expect(page.locator(".menu-popover")).toBeVisible();
+  await expect(page.getByText("System", { exact: true })).toBeVisible();
+  await page.getByText("Day Mode", { exact: false }).click();
+
+  // Navigate through the real mobile menu into Account. Email uses a link, not a code form.
   await page.getByTestId("menu-toggle").click();
   await page.getByTestId("menu-login").click();
+  await expect(page.getByTestId("login-google-button")).toBeVisible();
   await expect(page.getByTestId("login-email-input")).toBeVisible();
-  await page.getByTestId("login-method-phone").click();
-  await expect(page.getByPlaceholder("10 अंकों का मोबाइल नंबर")).toBeVisible();
-  await page.getByTestId("login-method-email").click();
-  await expect(page.getByTestId("login-email-input")).toBeVisible();
+  await expect(page.getByTestId("login-email-link-button")).toBeVisible();
+  await expect(page.getByPlaceholder(/6-digit code|Email code/i)).toHaveCount(0);
 
   const loginIcon = page.locator(".login-content .login-icon");
   await expect(loginIcon).toBeVisible();
