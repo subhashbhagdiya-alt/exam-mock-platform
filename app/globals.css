@@ -4768,3 +4768,11 @@ undefined
 @media (max-width: 600px) {
   .shell .job-official-link { margin-bottom: 12px; min-height: 42px; }
 }
+
+
+/* Profile photo upload controls */
+.profile-avatar-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.profile-upload-button{position:relative;overflow:hidden;cursor:pointer}
+.profile-upload-button input[type="file"]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.profile-upload-button:has(input:disabled){opacity:.55;pointer-events:none}
+@media(max-width:560px){.profile-avatar-actions{width:100%}.profile-avatar-actions .secondary-button{flex:1;justify-content:center;min-height:42px}}
