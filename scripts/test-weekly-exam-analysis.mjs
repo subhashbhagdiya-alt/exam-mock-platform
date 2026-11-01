@@ -28,7 +28,8 @@ const candidates = [
   valid,
   { ...valid, question_en: "WHAT IS THE NEXT NUMBER IN THE SERIES: 2, 4, 8, 16, ?" },
   { ...valid, question_hi: "एक बिल्कुल नया हिंदी प्रश्न", question_en: "A completely different question" },
-  { ...valid, question_en: "A bad question", answer_index: 8 },\n  { ...valid, question_en: "An oversized question " + "x".repeat(1300) },
+  { ...valid, question_en: "A bad question", answer_index: 8 },
+  { ...valid, question_en: "An oversized question " + "x".repeat(1300) },
 ];
 const unique = dedupeGeneratedQuestions(candidates, ["What is the next number in the series: 2, 4, 8, 16, ?"], []);
 assert.equal(unique.length, 1);
