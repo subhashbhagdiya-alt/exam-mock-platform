@@ -47,12 +47,14 @@ function getQuestionMasteryStorageKey(userId, exam, subject, topic) {
 
 function getProfileAvatarUrl(authUser, selectedSeed = "") {
   const metadata = authUser?.user_metadata || {};
-  const seed = String(selectedSeed || metadata.avatar_seed || "").trim();
+  const seed = String(selectedSeed || "").trim();
   if (seed) return `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(seed)}`;
-  const providerPhoto = metadata.avatar_url || metadata.picture || "";
+  const uploadedPhoto = metadata.avatar_url || "";
+  if (uploadedPhoto) return String(uploadedPhoto);
+  const providerPhoto = metadata.picture || "";
   if (providerPhoto) return String(providerPhoto);
-  const fallback = authUser?.id || authUser?.email || "ExamPrep";
-  return `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(String(fallback))}`;
+  const fallbackSeed = String(metadata.avatar_seed || authUser?.id || authUser?.email || "ExamPrep");
+  return `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(fallbackSeed)}`;
 }
 const QUESTION_LOCALIZATIONS = {
   "00276434-e4a5-4bfd-95d4-fbca1d811567": { hi: "भारतीय संविधान का कौन-सा अनुच्छेद मौलिक अधिकारों से संबंधित है?", optionsHi: ["अनुच्छेद 12–35", "अनुच्छेद 36–51", "अनुच्छेद 52–78", "अनुच्छेद 79–122"] },
@@ -1541,7 +1543,8 @@ export default function HomePage() {
       education: profileEducation.trim().slice(0, 80),
       target_exam: profileTargetExam.trim().slice(0, 100),
       bio: profileBio.trim().slice(0, 240),
-      avatar_seed: profileAvatarSeed || user.id,
+      avatar_seed: profileAvatarSeed || (user.user_metadata?.avatar_url ? "" : user.id),
+      avatar_url: profileAvatarSeed ? "" : (user.user_metadata?.avatar_url || ""),
       theme_mode: themeMode
     };
     try {
@@ -1554,6 +1557,47 @@ export default function HomePage() {
       setProfileName(name);
       setNeedsProfileName(false);
       setAuthMessage(t("आपकी प्रोफाइल और थीम सेव हो गई।","Your profile and theme have been saved."));
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  async function uploadProfilePhoto(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !supabaseBrowser || !user) return;
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      setAuthMessage(t("केवल JPG, PNG या WebP फोटो चुनें।", "Choose a JPG, PNG or WebP image."));
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setAuthMessage(t("फोटो 3 MB से छोटी होनी चाहिए।", "The photo must be smaller than 3 MB."));
+      return;
+    }
+    setProfileSaving(true);
+    try {
+      const extension = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
+      const objectPath = `${user.id}/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabaseBrowser.storage.from("avatars").upload(objectPath, file, {
+        cacheControl: "3600",
+        contentType: file.type,
+        upsert: false
+      });
+      if (uploadError) throw uploadError;
+      const { data: publicData } = supabaseBrowser.storage.from("avatars").getPublicUrl(objectPath);
+      const { data, error } = await supabaseBrowser.auth.updateUser({
+        data: { ...(user.user_metadata || {}), avatar_url: publicData.publicUrl, avatar_seed: "" }
+      });
+      if (error) {
+        await supabaseBrowser.storage.from("avatars").remove([objectPath]);
+        throw error;
+      }
+      setUser(data.user);
+      setProfileAvatarSeed("");
+      setAuthMessage(t("आपकी प्रोफाइल फोटो सेव हो गई।", "Your profile photo has been saved."));
+    } catch (error) {
+      setAuthMessage(String(error?.message || t("फोटो अपलोड नहीं हो सकी।", "Could not upload the photo.")));
     } finally {
       setProfileSaving(false);
     }
@@ -2311,7 +2355,7 @@ export default function HomePage() {
           <div className="settings-hero"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("आपका कंट्रोल सेंटर","YOUR CONTROL CENTER")}</div><h1>{t("प्रोफाइल और सेटिंग्स","Profile & Settings")}</h1><p className="intro">{t("अपने प्रोफाइल, भाषा, थीम और trusted-device controls एक ही जगह से संभालें।","Manage your profile, language, theme and trusted-device controls from one place.")}</p></div><div className="settings-orb"><Settings size={34}/><span>{user ? "SYNCED" : "GUEST"}</span></div></div>
           <div className="settings-layout">
             <div className="settings-profile-card"><div className="settings-avatar">{profileAvatarUrl ? <img src={profileAvatarUrl} alt={t("प्रोफाइल फोटो","Profile photo")} /> : (getUserDisplayName(user).charAt(0) || "अ").toUpperCase()}</div><div className="settings-profile-copy"><span>{t("अभ्यर्थी प्रोफाइल","CANDIDATE PROFILE")}</span><h2>{getUserDisplayName(user)}</h2><p>{user?.email || user?.phone || t("Guest practice mode","Guest practice mode")}</p></div><div className={"settings-status " + (user ? "online" : "")}><i/>{user ? t("Cloud synced","Cloud synced") : t("Local only","Local only")}</div></div>
-            <div className="settings-card profile-editor-card"><div className="settings-card-head"><div><span className="settings-kicker">PROFILE</span><h3>{t("अपनी प्रोफाइल","Your profile")}</h3></div><div className="settings-card-icon"><Award size={18}/></div></div>{user ? <><div className="profile-avatar-tools"><img src={profileAvatarUrl} alt={t("चुनी हुई प्रोफाइल फोटो","Selected profile photo")} /><button type="button" className="secondary-button" onClick={randomizeProfileAvatar}>{t("रैंडम फोटो बदलें","Choose random photo")}</button></div><div className="profile-form-grid"><label>{t("नाम","Name")}<input value={profileName} onChange={e=>setProfileName(e.target.value.slice(0,60))} placeholder={t("आपका नाम","Your name")} autoComplete="name"/></label><label>{t("शिक्षा","Education")}<input value={profileEducation} onChange={e=>setProfileEducation(e.target.value.slice(0,80))} placeholder={t("जैसे: 12वीं / ITI / BA","e.g. High school / ITI / BA")}/></label><label>{t("लक्ष्य परीक्षा","Target exam")}<input value={profileTargetExam} onChange={e=>setProfileTargetExam(e.target.value.slice(0,100))} placeholder={t("जैसे: MPESB, RRB, SSC","e.g. MPESB, RRB, SSC")}/></label><label className="profile-bio-field">{t("अपने बारे में","About you")}<textarea value={profileBio} onChange={e=>setProfileBio(e.target.value.slice(0,240))} rows={3} placeholder={t("अपना छोटा परिचय लिखें…","Add a short profile bio…")}/></label></div><div className="profile-save-row"><span>{t("प्रोफाइल और चुनी गई थीम आपके अकाउंट में सेव होगी।","Your profile and selected theme will be saved to your account.")}</span><button className="primary-button" onClick={saveProfileName} disabled={profileSaving}>{profileSaving ? t("सेव हो रहा है…","Saving…") : t("प्रोफाइल सेव करें","Save profile")}<Check size={16}/></button></div></> : <div className="settings-note"><Info size={17}/><span>{t("प्रोफाइल फोटो और अतिरिक्त जानकारी बदलने के लिए पहले Google या Email link से लॉगिन करें।","Sign in with Google or an email link to edit your profile photo and details.")}</span></div>}</div>
+            <div className="settings-card profile-editor-card"><div className="settings-card-head"><div><span className="settings-kicker">PROFILE</span><h3>{t("अपनी प्रोफाइल","Your profile")}</h3></div><div className="settings-card-icon"><Award size={18}/></div></div>{user ? <><div className="profile-avatar-tools"><img src={profileAvatarUrl} alt={t("चुनी हुई प्रोफाइल फोटो","Selected profile photo")} /><div className="profile-avatar-actions"><label className="secondary-button profile-upload-button"><Upload size={15}/>{t("अपनी फोटो अपलोड करें","Upload your photo")}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadProfilePhoto} disabled={profileSaving} aria-label={t("प्रोफाइल फोटो अपलोड करें","Upload profile photo")}/></label><button type="button" className="secondary-button" onClick={randomizeProfileAvatar} disabled={profileSaving}>{t("रैंडम फोटो बदलें","Choose random photo")}</button></div></div><div className="profile-form-grid"><label>{t("नाम","Name")}<input value={profileName} onChange={e=>setProfileName(e.target.value.slice(0,60))} placeholder={t("आपका नाम","Your name")} autoComplete="name"/></label><label>{t("शिक्षा","Education")}<input value={profileEducation} onChange={e=>setProfileEducation(e.target.value.slice(0,80))} placeholder={t("जैसे: 12वीं / ITI / BA","e.g. High school / ITI / BA")}/></label><label>{t("लक्ष्य परीक्षा","Target exam")}<input value={profileTargetExam} onChange={e=>setProfileTargetExam(e.target.value.slice(0,100))} placeholder={t("जैसे: MPESB, RRB, SSC","e.g. MPESB, RRB, SSC")}/></label><label className="profile-bio-field">{t("अपने बारे में","About you")}<textarea value={profileBio} onChange={e=>setProfileBio(e.target.value.slice(0,240))} rows={3} placeholder={t("अपना छोटा परिचय लिखें…","Add a short profile bio…")}/></label></div><div className="profile-save-row"><span>{t("प्रोफाइल और चुनी गई थीम आपके अकाउंट में सेव होगी।","Your profile and selected theme will be saved to your account.")}</span><button className="primary-button" onClick={saveProfileName} disabled={profileSaving}>{profileSaving ? t("सेव हो रहा है…","Saving…") : t("प्रोफाइल सेव करें","Save profile")}<Check size={16}/></button></div></> : <div className="settings-note"><Info size={17}/><span>{t("प्रोफाइल फोटो और अतिरिक्त जानकारी बदलने के लिए पहले Google या Email link से लॉगिन करें।","Sign in with Google or an email link to edit your profile photo and details.")}</span></div>}</div>
             <div className="settings-card"><div className="settings-card-head"><div><span className="settings-kicker">APPEARANCE</span><h3>{t("दिखावट और भाषा","Appearance & language")}</h3></div><div className="settings-card-icon"><Languages size={18}/></div></div><div className="settings-option-grid"><button className={themeMode==="light" ? "setting-choice active" : "setting-choice"} onClick={()=>setThemeMode("light")}><span>☀️</span><b>Day</b><small>Light glass UI</small></button><button className={themeMode==="dark" ? "setting-choice active" : "setting-choice"} onClick={()=>setThemeMode("dark")}><span>🌙</span><b>Night</b><small>Dark glass UI</small></button><button className={themeMode==="system" ? "setting-choice active" : "setting-choice"} onClick={()=>setThemeMode("system")}><span>◐</span><b>System</b><small>Follow device</small></button></div><div className="settings-divider"/><div className="settings-inline-row"><div><b>{t("भाषा","Language")}</b><span>{t("सवाल और labels की भाषा बदलें","Switch question and label language")}</span></div><button className="secondary-button" onClick={()=>setLanguage(hi ? "en" : "hi")}><Languages size={16}/>{hi ? "English" : "हिंदी"}</button></div></div>
             <div className="settings-card security-card"><div className="settings-card-head"><div><span className="settings-kicker">SECURITY</span><h3>{t("Trusted device","Trusted device")}</h3></div><div className="settings-card-icon"><ShieldCheck size={18}/></div></div><div className="settings-security-row"><div className={"security-indicator " + (trustedDeviceVerified ? "verified" : "")}><ShieldCheck size={18}/></div><div><b>{trustedDeviceVerified ? t("यह device trusted है","This device is trusted") : t("Guest / current device","Guest / current device")}</b><span>{t("Recovery code केवल trusted device से बनाया जा सकता है।","A recovery code can only be created from a trusted device.")}</span></div><button className="secondary-button" onClick={()=>navigateTo("boards")}>{t("परीक्षा खोलें","Open exams")}<ArrowRight size={15}/></button></div></div>
             <div className="settings-card danger-card"><div className="settings-card-head"><div><span className="settings-kicker">SESSION</span><h3>{t("सेशन","Session")}</h3></div><div className="settings-card-icon"><RotateCcw size={18}/></div></div><div className="settings-inline-row"><div><b>{user ? t("अकाउंट से लॉगआउट","Sign out of account") : t("Guest practice mode","Guest practice mode")}</b><span>{user ? t("Cloud sync बंद हो जाएगा, local results इस device पर रहेंगे।","Cloud sync will stop; local results stay on this device.") : t("आप बिना login के mock tests दे सकते हैं।","You can take mock tests without logging in.")}</span></div>{user && <button className="secondary-button danger-button" onClick={logout}>{t("लॉगआउट","Sign out")}<X size={16}/></button>}</div></div>
