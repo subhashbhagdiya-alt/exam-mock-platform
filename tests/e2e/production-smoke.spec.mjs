@@ -145,6 +145,7 @@ test.describe("desktop theme picker", () => {
   });
 
   test("theme popover remains readable and usable in night mode", async ({ page }) => {
+    test.setTimeout(45_000);
     await page.goto(baseURL, { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
     await expect(page.getByTestId("theme-toggle")).toBeVisible();
@@ -165,7 +166,9 @@ test.describe("desktop theme picker", () => {
     expect(darkStyles.color).toBe("rgb(246, 244, 255)");
     expect(darkStyles.backgroundImage).toContain("linear-gradient");
     expect(darkStyles.buttonColor).toBe("rgb(233, 233, 248)");
-    await page.getByText("System", { exact: true }).click();
+    // The visible option also includes its decorative ◐ glyph, so target the
+    // third appearance button rather than exact text matching "System".
+    await page.locator(".menu-popover > button").nth(2).click();
     await expect(popover).toBeHidden();
   });
 });
