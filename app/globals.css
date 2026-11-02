@@ -2829,7 +2829,7 @@ undefined
 .analysis-candidate b,.analysis-candidate small{display:block}
 .analysis-candidate b{font-size:13px}
 .analysis-candidate small{margin-top:4px;opacity:.62;font-size:11px;line-height:1.25}
-.analysis-candidate em{font-style:normal;font-weight:900;font-size:16px}
+.analysis-candidate em{font-style:normal;font-weight:900;font-size:12px;line-height:1.2;text-align:right;max-width:112px;overflow-wrap:anywhere}
 @media(max-width:900px){.analysis-candidate-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.analysis-candidates-panel{padding:16px;border-radius:20px}.analysis-candidate-grid{grid-template-columns:1fr 1fr}.analysis-candidate{min-height:76px;padding:11px}}
 

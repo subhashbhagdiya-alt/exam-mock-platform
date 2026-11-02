@@ -89,7 +89,7 @@ async function handleQuestionRequest(request, body = null) {
   const limit = Math.min(Math.max(Number(requestedLimit || examRow.total_questions || 10), 1), 100);
   const { data, error } = await client
     .from("question_bank")
-    .select("id,exam_id,subject,topic,question_hi,question_en,options,answer_index,explanation_hi,explanation_en,difficulty,source_type,source_year,prediction_score")
+    .select("id,exam_id,subject,topic,question_hi,question_en,options,answer_index,explanation_hi,explanation_en,difficulty,source_type,source_year")
     .eq("active", true)
     .eq("verified", true)
     .eq("exam_id", examRow.id)
