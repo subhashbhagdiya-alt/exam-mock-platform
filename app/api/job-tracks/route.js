@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { buildQuestionTopicSignals } from "../../../lib/question-topic-signals.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -41,7 +42,7 @@ export async function GET() {
   const sourceCounts = new Map();
   const subjectSets = new Map();
   const topicSets = new Map();
-  const predictionCandidates = new Map();
+  const topicSignalRows = new Map();
 
   if (examIds.length) {
     // Supabase/PostgREST may cap each response at 500 rows. Paginate the whole
@@ -51,7 +52,7 @@ export async function GET() {
     for (let from = 0; ; from += questionPageSize) {
       const { data: page, error: questionError } = await questionClient
         .from("question_bank")
-        .select("exam_id,source_type,subject,topic,prediction_score,question_hi,question_en")
+        .select("exam_id,source_type,source_name,source_url,subject,topic")
         .in("exam_id", examIds)
         .eq("active", true)
         .eq("verified", true)
@@ -72,8 +73,8 @@ export async function GET() {
       if (!topicSets.has(question.exam_id)) topicSets.set(question.exam_id, new Set());
       if (question.subject) subjectSets.get(question.exam_id).add(question.subject);
       if (question.topic) topicSets.get(question.exam_id).add(question.topic);
-      if (!predictionCandidates.has(question.exam_id)) predictionCandidates.set(question.exam_id, []);
-      predictionCandidates.get(question.exam_id).push(question);
+      if (!topicSignalRows.has(question.exam_id)) topicSignalRows.set(question.exam_id, []);
+      topicSignalRows.get(question.exam_id).push(question);
     }
   }
 
@@ -93,10 +94,7 @@ export async function GET() {
       practice_question_count: sourceCounts.get(`${exam?.id}:curated`) || 0,
       subjects: exam ? [...(subjectSets.get(exam.id) || new Set())].sort() : [],
       topics: exam ? [...(topicSets.get(exam.id) || new Set())].sort() : [],
-      analysis_candidates: exam ? [...(predictionCandidates.get(exam.id) || [])]
-        .sort((a,b) => Number(b.prediction_score || 0) - Number(a.prediction_score || 0))
-        .slice(0,5)
-        .map(q => ({ subject:q.subject, topic:q.topic, prediction_score:Number(q.prediction_score || 0), source_type:q.source_type })) : [],
+      analysis_candidates: exam ? buildQuestionTopicSignals(topicSignalRows.get(exam.id) || [], 5) : [],
       effective_status: questionBankReady ? "question_bank_ready" : track.status === "question_bank_ready" ? "practice" : track.status,
     };
   });
