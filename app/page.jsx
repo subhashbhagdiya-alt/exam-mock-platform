@@ -1745,8 +1745,7 @@ export default function HomePage() {
             optionsHi: QUESTION_OPTIONS_HI[item.id] || locale?.optionsHi || null,
             optionsEn: locale?.optionsEn || null,
             sourceType: item.source_type || "curated",
-            sourceYear: item.source_year || null,
-            predictionScore: Number(item.prediction_score || 0)
+            sourceYear: item.source_year || null
           };
         }).filter(item => item.options.length === 4);
         if (mapped.length) {
@@ -2060,9 +2059,18 @@ export default function HomePage() {
           {selectedTrackData?.question_bank_ready && selectedTrackData?.exam_slug ? <>
 <div className="selected-exam-strip"><div><span>{t("चयनित परीक्षा","SELECTED EXAM")}</span><b>{hi ? selectedTrackData.name_hi : selectedTrackData.name_en}</b></div><em>{availableQuestionCount > 0 ? "✓ " + availableQuestionCount + " " + t("सवाल तैयार","QUESTIONS READY") : t("बैंक जाँच रहे हैं…","CHECKING BANK…")}</em></div>
 <div className="analysis-candidates-panel">
-  <div className="section-heading"><div><h2>{t("परीक्षा विश्लेषण","Exam analysis")}</h2><p>{t("High-signal topics को question-bank analysis से ऊपर रखा गया है। ये forecast हैं, guaranteed questions नहीं।","High-signal topics are ranked from question-bank analysis. These are forecasts, not guaranteed exam questions.")}</p></div><span className="section-count">FORECAST</span></div>
+  <div className="section-heading"><div><h2>{t("परीक्षा विश्लेषण","Exam analysis")}</h2><p>{t("Verified PYQ पेपर और question bank की source-backed coverage यहाँ दिखती है। ये भविष्य के पेपर की संभावना या guarantee नहीं है।","Shows source-backed coverage from verified PYQ papers and the question bank. This is not a probability or guarantee of future questions.")}</p></div><span className="section-count">BANK SIGNALS</span></div>
   <div className="analysis-candidate-grid">
-    {(selectedTrackData.analysis_candidates || []).slice(0,5).map((item,i) => <div className="analysis-candidate" key={item.subject+"-"+item.topic+"-"+i}><span>{String(i+1).padStart(2,"0")}</span><div><b>{item.subject || t("सामान्य","General")}</b><small>{item.topic || t("मिश्रित","Mixed")}</small></div><em>{Math.round(Number(item.prediction_score || 0))}</em></div>)}
+    {(selectedTrackData.analysis_candidates || []).slice(0,5).map((item,i) => {
+      const evidenceLabel = item.pyq_paper_count > 0
+        ? item.pyq_paper_count + " " + t("PYQ पेपर","PYQ papers")
+        : item.official_source_count > 0
+          ? item.official_source_count + " " + t("आधिकारिक स्रोत","official sources")
+          : item.memory_based_source_count > 0
+            ? item.memory_based_source_count + " " + t("memory-based स्रोत","memory-based sources")
+            : (item.curated_question_count || item.question_count || 0) + " " + t("practice सवाल","practice questions");
+      return <div className="analysis-candidate" key={item.subject+"-"+item.topic+"-"+i}><span>{String(i+1).padStart(2,"0")}</span><div><b>{item.subject || t("सामान्य","General")}</b><small>{item.topic || t("मिश्रित","Mixed")}</small></div><em title={evidenceLabel}>{evidenceLabel}</em></div>;
+    })}
   </div>
 </div>
 <div className="subject-chapter-panel"><div className="section-heading"><div><h2>{t("विषय और अध्याय चुनें","Choose subject & chapter")}</h2><p>{t("पूरे exam की जगह किसी एक subject/topic पर focused practice करें।","Practice a specific subject or topic instead of the full exam.")}</p></div><span className="section-count">FOCUSED PRACTICE</span></div><div className="subject-selector" role="group" aria-label={t("विषय चुनें","Choose subject")}><button type="button" aria-pressed={selectedSubject==="all"} className={selectedSubject==="all"?"active":""} onClick={()=>{setSelectedSubject("all");setSelectedTopic("all");setAuthMessage("")}}>{t("सभी विषय","All subjects")}{selectedSubject==="all" && <Check size={13} className="selector-check"/>}</button>{subjectOptions.map(subject=><button type="button" key={subject} aria-pressed={selectedSubject===subject} className={selectedSubject===subject?"active":""} onClick={()=>{setSelectedSubject(subject);setSelectedTopic("all");setAuthMessage("")}}>{formatQuestionCategory(subject)}{selectedSubject===subject && <Check size={13} className="selector-check"/>}</button>)}</div>{selectedSubject!=="all" && <div className="topic-selector" role="group" aria-label={t("अध्याय चुनें","Choose topic")}><span>{t("अध्याय","CHAPTER")}</span><button type="button" aria-pressed={selectedTopic==="all"} className={selectedTopic==="all"?"active":""} onClick={()=>{setSelectedTopic("all");setAuthMessage("")}}>{t("सभी अध्याय","All chapters")}{selectedTopic==="all" && <Check size={13} className="selector-check"/>}</button>{topicOptions.map(topic=><button type="button" key={topic} aria-pressed={selectedTopic===topic} className={selectedTopic===topic?"active":""} onClick={()=>{setSelectedTopic(topic);setAuthMessage("")}}>{formatQuestionCategory(topic)}{selectedTopic===topic && <Check size={13} className="selector-check"/>}</button>)}</div>}{selectedSubject!=="all" && hasCurrentQuestionCatalog && topicOptions.length===0 && <div className="topic-empty">{t("इस विषय के लिए कोई verified chapter उपलब्ध नहीं है।","No verified chapters are available for this subject.")}</div>}</div>
