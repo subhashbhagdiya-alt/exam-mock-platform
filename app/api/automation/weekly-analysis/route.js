@@ -20,13 +20,14 @@ export async function GET(request) {
   const db = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
   const now = new Date();
   const cutoff = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString();
+  const recoveryCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const [{ data: exams, error: examsError }, { data: analyses, error: analysisError }, { data: questions, error: questionsError }, { data: recentTasks, error: taskError }, { data: failedTasks, error: failedTaskError }] = await Promise.all([
     db.from("exams").select("id,name,slug,description").eq("is_active", true).order("name"),
     db.from("exam_analysis").select("exam_id,generated_at").order("generated_at", { ascending: false }),
     db.from("question_bank").select("exam_id,active,verified,source_type").eq("active", true),
     db.from("background_manager_tasks").select("id,status,created_at,payload").eq("task_type", "weekly_exam_analysis").gte("created_at", cutoff).in("status", ["queued", "running", "done"]),
-    db.from("background_manager_tasks").select("id,task_type,status,priority,created_at,payload,result").eq("task_type", "weekly_exam_analysis").eq("status", "failed").gte("created_at", cutoff).order("created_at", { ascending: true }).limit(100)
+    db.from("background_manager_tasks").select("id,task_type,status,priority,created_at,payload,result").eq("task_type", "weekly_exam_analysis").eq("status", "failed").gte("created_at", recoveryCutoff).order("created_at", { ascending: true }).limit(100)
   ]);
 
   const dbError = examsError || analysisError || questionsError || taskError || failedTaskError;
