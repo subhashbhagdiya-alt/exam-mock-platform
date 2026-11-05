@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { buildWeeklyAnalysisRecoveryUpdate, selectRecoverableWeeklyAnalysisTask } from "../../../../lib/weekly-analysis-recovery.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -20,18 +21,46 @@ export async function GET(request) {
   const now = new Date();
   const cutoff = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ data: exams, error: examsError }, { data: analyses, error: analysisError }, { data: questions, error: questionsError }, { data: recentTasks, error: taskError }] = await Promise.all([
+  const [{ data: exams, error: examsError }, { data: analyses, error: analysisError }, { data: questions, error: questionsError }, { data: recentTasks, error: taskError }, { data: failedTasks, error: failedTaskError }] = await Promise.all([
     db.from("exams").select("id,name,slug,description").eq("is_active", true).order("name"),
     db.from("exam_analysis").select("exam_id,generated_at").order("generated_at", { ascending: false }),
     db.from("question_bank").select("exam_id,active,verified,source_type").eq("active", true),
-    db.from("background_manager_tasks").select("id,status,created_at,payload").eq("task_type", "weekly_exam_analysis").gte("created_at", cutoff).in("status", ["queued", "running", "done"])
+    db.from("background_manager_tasks").select("id,status,created_at,payload").eq("task_type", "weekly_exam_analysis").gte("created_at", cutoff).in("status", ["queued", "running", "done"]),
+    db.from("background_manager_tasks").select("id,task_type,status,priority,created_at,payload,result").eq("task_type", "weekly_exam_analysis").eq("status", "failed").gte("created_at", cutoff).order("created_at", { ascending: true }).limit(100)
   ]);
 
-  const dbError = examsError || analysisError || questionsError || taskError;
+  const dbError = examsError || analysisError || questionsError || taskError || failedTaskError;
   if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
   if (!exams?.length) return NextResponse.json({ ok: true, queued: false, reason: "No active exams found." });
 
   const recentExamIds = new Set((recentTasks || []).map((task) => task.payload?.exam_id).filter(Boolean));
+  const activeExamIds = new Set(exams.map((exam) => exam.id));
+  const recoveryTask = selectRecoverableWeeklyAnalysisTask(failedTasks, {
+    excludedExamIds: [...recentExamIds],
+    activeExamIds: [...activeExamIds]
+  });
+  if (recoveryTask) {
+    const { data: recovered, error: recoveryError } = await db.from("background_manager_tasks")
+      .update(buildWeeklyAnalysisRecoveryUpdate(recoveryTask))
+      .eq("id", recoveryTask.id)
+      .eq("status", "failed")
+      .select("id,task_type,status,priority")
+      .maybeSingle();
+    if (recoveryError) return NextResponse.json({ error: recoveryError.message }, { status: 500 });
+    if (!recovered) {
+      return NextResponse.json({ ok: true, queued: false, recovered: false, reason: "The saved checkpoint was already claimed or changed by another worker." });
+    }
+    return NextResponse.json({
+      ok: true,
+      queued: true,
+      recovered: true,
+      task: recovered,
+      selected_exam: recoveryTask.payload.exam_slug || recoveryTask.payload.exam_id,
+      preserved_phase: recoveryTask.result.phase,
+      preserved_draft_questions: recoveryTask.result.draft_questions.length,
+      note: "Resumed the saved analysis checkpoint at low priority. Draft questions remain inactive and unverified pending human approval."
+    });
+  }
   const lastAnalysis = new Map();
   for (const row of analyses || []) {
     if (!lastAnalysis.has(row.exam_id)) lastAnalysis.set(row.exam_id, row.generated_at);
