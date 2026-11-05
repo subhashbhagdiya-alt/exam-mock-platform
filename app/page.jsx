@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, FileText, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Sparkles, Target, Trophy, Upload, X } from "lucide-react";
 import { scorePaperQuiz } from "../lib/paper-analysis-quiz.mjs";
 import { MAX_PAPER_FILE_BYTES, isSupportedPaperFile } from "../lib/paper-analysis-upload.mjs";
+import { applyOptionOrder, createOptionOrder, mapDisplayedAnswersToOriginal, toDisplayAnswer, toOriginalAnswer } from "../lib/option-order.mjs";
 
 const supabaseBrowser = (
   typeof window !== "undefined" &&
@@ -1734,6 +1735,12 @@ export default function HomePage() {
       if (response.ok && payload.test_session_id && payload.test_session_key && Array.isArray(payload.data) && payload.data.length) {
         const mapped = payload.data.map((item, index) => {
           const locale = QUESTION_LOCALIZATIONS[item.id];
+          const originalOptions = Array.isArray(item.options) ? item.options : [];
+          const optionOrder = createOptionOrder(originalOptions.length);
+          const reorderLocalizedOptions = (localizedOptions) =>
+            Array.isArray(localizedOptions) && localizedOptions.length === optionOrder.length
+              ? applyOptionOrder(localizedOptions, optionOrder)
+              : null;
           return {
             id: index + 1,
             sourceId: item.id,
@@ -1741,9 +1748,10 @@ export default function HomePage() {
             topic: item.topic || "",
             en: locale?.en || item.question_en || item.question_hi,
             hi: locale?.hi || item.question_hi || item.question_en,
-            options: Array.isArray(item.options) ? item.options : [],
-            optionsHi: QUESTION_OPTIONS_HI[item.id] || locale?.optionsHi || null,
-            optionsEn: locale?.optionsEn || null,
+            options: applyOptionOrder(originalOptions, optionOrder),
+            optionsHi: reorderLocalizedOptions(QUESTION_OPTIONS_HI[item.id] || locale?.optionsHi || null),
+            optionsEn: reorderLocalizedOptions(locale?.optionsEn || null),
+            optionOrder,
             sourceType: item.source_type || "curated",
             sourceYear: item.source_year || null
           };
@@ -1804,10 +1812,13 @@ export default function HomePage() {
     setGrading(true);
     setSubmitError("");
     try {
+      // The practice UI stores the displayed (shuffled) option index. Convert it
+      // back to the original question-bank index before server-side grading.
+      const gradingAnswers = mapDisplayedAnswersToOriginal(answers, testQuestions);
       const gradeResponse = await fetch("/api/grade", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ test_session_id: testSessionId, test_session_key: testSessionKey, answers })
+        body: JSON.stringify({ test_session_id: testSessionId, test_session_key: testSessionKey, answers: gradingAnswers })
       });
       const gradePayload = await gradeResponse.json();
       if (!gradeResponse.ok || !gradePayload?.data) throw new Error(gradePayload?.error || "Could not grade this test. Please retry.");
@@ -1818,9 +1829,9 @@ export default function HomePage() {
         .filter(item => {
           const correctAnswer = gradeReviewByLocalId.get(String(item.id))?.answer;
           return Boolean(item.sourceId) &&
-            answers[item.id] !== undefined &&
+            gradingAnswers[item.id] !== undefined &&
             Number.isInteger(Number(correctAnswer)) &&
-            Number(answers[item.id]) === Number(correctAnswer);
+            Number(gradingAnswers[item.id]) === Number(correctAnswer);
         })
         .map(item => item.sourceId);
       if (newlyMasteredIds.length && typeof window !== "undefined") {
@@ -1845,7 +1856,7 @@ export default function HomePage() {
         gross_score: Number(graded.gross_score || 0),
         negative_score: Number(graded.negative_score || 0),
         accuracy: Number(graded.accuracy || 0),
-        answers: { ...answers },
+        answers: { ...gradingAnswers },
         review_ids: [...review],
         language,
         total_questions: Number(graded.total_questions || testQuestions.length),
@@ -2211,7 +2222,7 @@ export default function HomePage() {
                 const key = item.subject || "General";
                 const row = acc[key] || {total:0, correct:0};
                 row.total += 1;
-                if (answers[item.id] === reviewAnswers[String(item.id)]?.answer) row.correct += 1;
+                if (toOriginalAnswer(answers[item.id], item.optionOrder) === reviewAnswers[String(item.id)]?.answer) row.correct += 1;
                 acc[key] = row;
                 return acc;
               }, {})).map(([subject,data]) => {
@@ -2225,10 +2236,12 @@ export default function HomePage() {
             {testQuestions.map((item,i) => {
               const answer = answers[item.id];
               const reviewItem = reviewAnswers[String(item.id)] || {};
-              const correctAnswer = reviewItem.answer;
+              const correctAnswer = Number.isInteger(reviewItem.answer)
+                ? (toDisplayAnswer(reviewItem.answer, item.optionOrder) ?? undefined)
+                : undefined;
               const reviewOptions = hi && item.optionsHi ? item.optionsHi : !hi && item.optionsEn ? item.optionsEn : item.options;
               const explanation = (hi ? reviewItem.explanation_hi : reviewItem.explanation_en) || (hi ? reviewItem.explanation : "") || "";
-              const isRight = answer !== undefined && answer === correctAnswer;
+              const isRight = answer !== undefined && correctAnswer !== undefined && answer === correctAnswer;
               const reviewQuestionText = hi ? (item.hi || item.en) : (item.en || item.hi);
               return <div className="review-question" key={item.id}><div className={"review-status " + (answer === undefined ? "status-empty" : isRight ? "status-right" : "status-wrong")}>{answer === undefined ? "—" : isRight ? <Check size={16}/> : <X size={16}/>}</div><div className="review-body"><b>{i+1}. {reviewQuestionText}</b><span>{t("आपका जवाब:","Your answer:")} {answer === undefined ? t("जवाब नहीं दिया","Not answered") : reviewOptions[answer]}</span><span className="correct-answer">{t("सही जवाब:","Correct answer:")} {correctAnswer === undefined ? t("उपलब्ध नहीं","Unavailable") : reviewOptions[correctAnswer]}</span>{explanation ? <details className="review-explanation" open={!isRight}><summary>{t("उत्तर की व्याख्या","Explanation")}</summary><p>{explanation}</p></details> : answer !== undefined && !isRight && correctAnswer !== undefined ? <details className="review-explanation review-explanation-fallback" open><summary>{t("आपका जवाब गलत क्यों था?","Why this answer was incorrect")}</summary><p>{t(`आपने विकल्प ${String.fromCharCode(65 + answer)} — ${reviewOptions[answer]} चुना। इस प्रश्न का सही उत्तर विकल्प ${String.fromCharCode(65 + correctAnswer)} — ${reviewOptions[correctAnswer]} है। इस सवाल के लिए verified question bank में अलग से विस्तृत व्याख्या नहीं दी गई है।`, `You selected option ${String.fromCharCode(65 + answer)} — ${reviewOptions[answer]}. The verified correct answer is option ${String.fromCharCode(65 + correctAnswer)} — ${reviewOptions[correctAnswer]}. A separate detailed explanation has not been provided for this question.`)}</p></details> : <p className="review-explanation-missing">{t("इस सवाल की विस्तृत व्याख्या अभी उपलब्ध नहीं है।","A detailed explanation is not available for this question yet.")}</p>}</div></div>;
             })}
