@@ -11,6 +11,7 @@
     "test:result-validation": "node scripts/test-result-validation.mjs",
     "test:grade-submission-validation": "node scripts/test-grade-submission-validation.mjs",
     "test:mfa-assurance": "node scripts/test-mfa-assurance.mjs",
+    "test:option-order": "node scripts/test-option-order.mjs",
     "test:weekly-exam-analysis": "node scripts/test-weekly-exam-analysis.mjs",
     "test:question-topic-signals": "node scripts/test-question-topic-signals.mjs",
     "test:background-task-retry": "node scripts/test-background-task-retry.mjs",
