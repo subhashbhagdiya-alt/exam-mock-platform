@@ -25,12 +25,14 @@ const oldest = makeTask({ id: "oldest", created_at: "2026-10-31T00:00:00.000Z" }
 const newer = makeTask({ id: "newer", created_at: "2026-11-02T00:00:00.000Z", payload: { exam_id: "exam-b" } });
 const invalid = makeTask({ id: "no-checkpoint", result: null });
 const emptyDraft = makeTask({ id: "empty-draft", result: { phase: "generated", analysis: {}, draft_questions: [] } });
+const generatedPhase = makeTask({ id: "generated-phase", result: { phase: "generated", analysis: {}, draft_questions: [{}] } });
 const wrongPhase = makeTask({ id: "wrong-phase", result: { phase: "finished", analysis: {}, draft_questions: [{}] } });
 const nonFailed = makeTask({ id: "queued", status: "queued" });
 
 assert.equal(isRecoverableWeeklyAnalysisTask(oldest), true);
 assert.equal(isRecoverableWeeklyAnalysisTask(invalid), false);
 assert.equal(isRecoverableWeeklyAnalysisTask(emptyDraft), false);
+assert.equal(isRecoverableWeeklyAnalysisTask(generatedPhase), false);
 assert.equal(isRecoverableWeeklyAnalysisTask(wrongPhase), false);
 assert.equal(isRecoverableWeeklyAnalysisTask(nonFailed), false);
 
