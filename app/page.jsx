@@ -1736,9 +1736,9 @@ export default function HomePage() {
         const mapped = payload.data.map((item, index) => {
           const locale = QUESTION_LOCALIZATIONS[item.id];
           const originalOptions = Array.isArray(item.options) ? item.options : [];
-          const optionOrder = createOptionOrder(originalOptions.length);
+          const optionOrder = originalOptions.length === 4 ? createOptionOrder(4) : [];
           const reorderLocalizedOptions = (localizedOptions) =>
-            Array.isArray(localizedOptions) && localizedOptions.length === optionOrder.length
+            optionOrder.length === 4 && Array.isArray(localizedOptions) && localizedOptions.length === 4
               ? applyOptionOrder(localizedOptions, optionOrder)
               : null;
           return {
@@ -1748,7 +1748,7 @@ export default function HomePage() {
             topic: item.topic || "",
             en: locale?.en || item.question_en || item.question_hi,
             hi: locale?.hi || item.question_hi || item.question_en,
-            options: applyOptionOrder(originalOptions, optionOrder),
+            options: optionOrder.length === 4 ? applyOptionOrder(originalOptions, optionOrder) : originalOptions,
             optionsHi: reorderLocalizedOptions(QUESTION_OPTIONS_HI[item.id] || locale?.optionsHi || null),
             optionsEn: reorderLocalizedOptions(locale?.optionsEn || null),
             optionOrder,
