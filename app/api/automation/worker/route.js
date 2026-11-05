@@ -273,7 +273,7 @@ async function runWeeklyExamAnalysis(task, db) {
     exam_id: examId,
     exam_name: context.exam.name,
     target_new_questions: target,
-    analysis: task.result.analysis || gapDraft.analysis,
+    analysis: gapDraft.analysis,
     draft_questions: merged,
     actual_past_paper_evidence_count: context.historicalEvidence.length,
     note: "Gap-filling batch saved. The next scheduled worker run will review and continue from saved progress; questions remain inactive and unverified pending human approval."
