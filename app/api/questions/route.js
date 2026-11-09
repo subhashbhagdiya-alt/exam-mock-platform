@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildQuestionCatalog, filterQuestionRows } from "../../../lib/question-categories.mjs";
+import { applyOptionOrder, createOptionOrder } from "../../../lib/mock-test-option-order.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 // Question rows contain answer keys and explanations; all database reads stay on the server.
@@ -136,6 +137,11 @@ async function handleQuestionRequest(request, body = null) {
     }, { status: 503 });
   }
 
+  const optionOrders = selected.map(() => createOptionOrder());
+  const shuffledQuestions = selected.map((question, index) => ({
+    ...question,
+    options: applyOptionOrder(question.options, optionOrders[index])
+  }));
   const sessionKey = randomUUID();
   let session = null;
   let sessionError = null;
@@ -144,7 +150,8 @@ async function handleQuestionRequest(request, body = null) {
     const result = await candidate.rpc("create_mock_test_session", {
       p_exam_id: examRow.id,
       p_question_ids: selected.map((item) => item.id),
-      p_session_key: sessionKey
+      p_session_key: sessionKey,
+      p_option_orders: optionOrders
     });
     session = result.data;
     sessionError = result.error;
@@ -164,7 +171,7 @@ async function handleQuestionRequest(request, body = null) {
     }, { status: 503 });
   }
 
-  const safeQuestions = selected.map(({ answer_index, explanation_hi, explanation_en, ...question }) => question);
+  const safeQuestions = shuffledQuestions.map(({ answer_index, explanation_hi, explanation_en, ...question }) => question);
   return NextResponse.json({
     exam: examRow,
     test_session_id: session,
