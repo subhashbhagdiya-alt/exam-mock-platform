@@ -21,8 +21,8 @@ declare
   v_order jsonb;
 begin
   if p_session_key is null
-    or jsonb_typeof(p_question_ids) <> 'array'
-    or jsonb_typeof(p_option_orders) <> 'array' then
+    or coalesce(jsonb_typeof(p_question_ids), '') <> 'array'
+    or coalesce(jsonb_typeof(p_option_orders), '') <> 'array' then
     raise exception 'Invalid mock test session payload';
   end if;
 
@@ -137,7 +137,7 @@ begin
 
     -- Sessions created before this migration have no saved order and retain
     -- the original A/B/C/D mapping.
-    if jsonb_typeof(v_order) <> 'array' or jsonb_array_length(v_order) <> 4 then
+    if coalesce(jsonb_typeof(v_order), '') <> 'array' or jsonb_array_length(v_order) <> 4 then
       v_order := '[0,1,2,3]'::jsonb;
     end if;
 
