@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildQuestionCatalog, filterQuestionRows } from "../../../lib/question-categories.mjs";
+import { applyOptionOrder, createOptionOrder } from "../../../lib/mock-test-option-order.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 // Question rows contain answer keys and explanations; all database reads stay on the server.
@@ -136,10 +137,10 @@ async function handleQuestionRequest(request, body = null) {
     }, { status: 503 });
   }
 
-  const optionOrders = selected.map(() => shuffle([0, 1, 2, 3]));
+  const optionOrders = selected.map(() => createOptionOrder());
   const shuffledQuestions = selected.map((question, index) => ({
     ...question,
-    options: optionOrders[index].map((optionIndex) => question.options[optionIndex])
+    options: applyOptionOrder(question.options, optionOrders[index])
   }));
   const sessionKey = randomUUID();
   let session = null;
