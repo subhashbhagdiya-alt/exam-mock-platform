@@ -164,7 +164,14 @@ async function handleQuestionRequest(request, body = null) {
     }, { status: 503 });
   }
 
-  const safeQuestions = selected.map(({ answer_index, explanation_hi, explanation_en, ...question }) => question);
+  const safeQuestions = selected.map(({ answer_index, explanation_hi, explanation_en, ...question }) => {
+    const option_order = shuffle([0, 1, 2, 3]);
+    return {
+      ...question,
+      options: option_order.map(index => question.options[index]),
+      option_order
+    };
+  });
   return NextResponse.json({
     exam: examRow,
     test_session_id: session,
