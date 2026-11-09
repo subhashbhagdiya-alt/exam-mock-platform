@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, FileText, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Sparkles, Target, Trophy, Upload, X } from "lucide-react";
 import { scorePaperQuiz } from "../lib/paper-analysis-quiz.mjs";
 import { MAX_PAPER_FILE_BYTES, isSupportedPaperFile } from "../lib/paper-analysis-upload.mjs";
+import { mapDisplayedAnswersToOriginal, mapOriginalReviewToDisplayed, reorderOptions } from "../lib/option-order.mjs";
 
 const supabaseBrowser = (
   typeof window !== "undefined" &&
@@ -1742,8 +1743,9 @@ export default function HomePage() {
             en: locale?.en || item.question_en || item.question_hi,
             hi: locale?.hi || item.question_hi || item.question_en,
             options: Array.isArray(item.options) ? item.options : [],
-            optionsHi: QUESTION_OPTIONS_HI[item.id] || locale?.optionsHi || null,
-            optionsEn: locale?.optionsEn || null,
+            optionsHi: (QUESTION_OPTIONS_HI[item.id] || locale?.optionsHi) ? reorderOptions(QUESTION_OPTIONS_HI[item.id] || locale.optionsHi, item.option_order || [0, 1, 2, 3]) : null,
+            optionsEn: locale?.optionsEn ? reorderOptions(locale.optionsEn, item.option_order || [0, 1, 2, 3]) : null,
+            optionOrder: Array.isArray(item.option_order) ? item.option_order : [0, 1, 2, 3],
             sourceType: item.source_type || "curated",
             sourceYear: item.source_year || null
           };
@@ -1804,16 +1806,22 @@ export default function HomePage() {
     setGrading(true);
     setSubmitError("");
     try {
+      const optionOrders = Object.fromEntries(testQuestions.map(item => [
+        String(item.id),
+        Array.isArray(item.optionOrder) ? item.optionOrder : [0, 1, 2, 3]
+      ]));
+      const originalAnswers = mapDisplayedAnswersToOriginal(answers, optionOrders);
       const gradeResponse = await fetch("/api/grade", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ test_session_id: testSessionId, test_session_key: testSessionKey, answers })
+        body: JSON.stringify({ test_session_id: testSessionId, test_session_key: testSessionKey, answers: originalAnswers })
       });
       const gradePayload = await gradeResponse.json();
       if (!gradeResponse.ok || !gradePayload?.data) throw new Error(gradePayload?.error || "Could not grade this test. Please retry.");
 
       const graded = gradePayload.data;
-      const gradeReviewByLocalId = new Map((graded.review || []).map(item => [String(item.id), item]));
+      const displayedReview = mapOriginalReviewToDisplayed(graded.review || [], optionOrders);
+      const gradeReviewByLocalId = new Map(displayedReview.map(item => [String(item.id), item]));
       const newlyMasteredIds = testQuestions
         .filter(item => {
           const correctAnswer = gradeReviewByLocalId.get(String(item.id))?.answer;
@@ -1832,7 +1840,7 @@ export default function HomePage() {
           localStorage.setItem(masteryKey, JSON.stringify(nextIds));
         } catch {}
       }
-      setReviewAnswers(Object.fromEntries((graded.review || []).map(item => [String(item.id), item])));
+      setReviewAnswers(Object.fromEntries(displayedReview.map(item => [String(item.id), item])));
       const summary = {
         practice_mode: true,
         full_exam_mode: selectedSubject === "all" && selectedTopic === "all" && testQuestions.length === Number(examConfig.total_questions),
