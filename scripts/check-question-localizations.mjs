@@ -133,8 +133,10 @@ for (const question of knownHindiOverrides) {
 
 // Correct answers and explanations must stay server-side until submission.
 assert.ok(
-  questionApiSource.includes("const safeQuestions = selected.map(({ answer_index, explanation_hi, explanation_en, ...question }) => question);"),
-  "Question API must strip answer_index and explanations from test payloads"
+  questionApiSource.includes("const safeQuestions = selected.map(({ answer_index, explanation_hi, explanation_en, ...question }) => {") &&
+    questionApiSource.includes("const option_order = shuffleOptionOrder(4);") &&
+    questionApiSource.includes("options: option_order.map(index => question.options[index])"),
+  "Question API must strip answer_index and explanations while returning shuffled options with their index mapping"
 );
 assert.ok(
   questionApiSource.includes("data: safeQuestions"),
