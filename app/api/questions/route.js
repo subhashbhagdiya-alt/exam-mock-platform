@@ -136,6 +136,11 @@ async function handleQuestionRequest(request, body = null) {
     }, { status: 503 });
   }
 
+  const optionOrders = selected.map(() => shuffle([0, 1, 2, 3]));
+  const shuffledQuestions = selected.map((question, index) => ({
+    ...question,
+    options: optionOrders[index].map((optionIndex) => question.options[optionIndex])
+  }));
   const sessionKey = randomUUID();
   let session = null;
   let sessionError = null;
@@ -144,7 +149,8 @@ async function handleQuestionRequest(request, body = null) {
     const result = await candidate.rpc("create_mock_test_session", {
       p_exam_id: examRow.id,
       p_question_ids: selected.map((item) => item.id),
-      p_session_key: sessionKey
+      p_session_key: sessionKey,
+      p_option_orders: optionOrders
     });
     session = result.data;
     sessionError = result.error;
@@ -164,7 +170,7 @@ async function handleQuestionRequest(request, body = null) {
     }, { status: 503 });
   }
 
-  const safeQuestions = selected.map(({ answer_index, explanation_hi, explanation_en, ...question }) => question);
+  const safeQuestions = shuffledQuestions.map(({ answer_index, explanation_hi, explanation_en, ...question }) => question);
   return NextResponse.json({
     exam: examRow,
     test_session_id: session,
