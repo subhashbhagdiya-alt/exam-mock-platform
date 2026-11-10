@@ -30,6 +30,7 @@ jobs:
       - run: npm run test:background-task-retry
       - run: npm run test:weekly-exam-analysis
       - run: npm run test:question-topic-signals
+      - run: npm run test:job-track-fallbacks
       - run: npm run test:paper-analysis-quiz
       - run: npm run test:paper-analysis-upload
       - run: npm run check:localizations
