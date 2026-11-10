@@ -88,3 +88,8 @@ while (remainingQueue.length) {
   remainingQueue = part.remainder;
 }
 assert.deepEqual(processedQueue, reviewQueue, "Chunked review must preserve every question exactly once.");
+
+
+assert.equal(takeWeeklyReviewBatch(reviewQueue, -1).batch.length, 5);
+assert.equal(takeWeeklyReviewBatch(reviewQueue, 11).batch.length, 5);
+assert.equal(takeWeeklyReviewBatch(reviewQueue, 3).batch.length, 3);
