@@ -6,7 +6,7 @@ import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronR
 import { scorePaperQuiz } from "../lib/paper-analysis-quiz.mjs";
 import { MAX_PAPER_FILE_BYTES, isSupportedPaperFile } from "../lib/paper-analysis-upload.mjs";
 import { mapDisplayedAnswersToOriginal, mapOriginalReviewToDisplayed, reorderOptions } from "../lib/option-order.mjs";
-import { getLocalizedQuestionOptions, mergeQuestionIds } from "../lib/question-pool.mjs";
+import { getCorrectlyAnsweredQuestionIds, getLocalizedQuestionOptions, mergeQuestionIds } from "../lib/question-pool.mjs";
 
 const supabaseBrowser = (
   typeof window !== "undefined" &&
@@ -43,8 +43,8 @@ async function ensureSessionKey() {
   return key;
 }
 
-function getQuestionSeenStorageKey(userId, exam, subject, topic) {
-  return ["exam_prep_seen_questions", userId || "guest", exam || "all", subject || "all", topic || "all"].join("_");
+function getQuestionMasteryStorageKey(userId, exam, subject, topic) {
+  return ["exam_prep_mastered_correct_questions", userId || "guest", exam || "all", subject || "all", topic || "all"].join("_");
 }
 
 function getLegacyQuestionMasteryStorageKey(userId, exam, subject, topic) {
@@ -1715,13 +1715,13 @@ export default function HomePage() {
     const requestedCount = Math.min(Number(practiceQuestionCount || 10), readyCount);
     setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setReviewAnswers({}); setTestSessionId(""); setTestSessionKey(""); setShowSubmit(false); setTestQuestions([]);
     try {
-      const seenKey = getQuestionSeenStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+      const masteryKey = getQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
       const legacyMasteryKey = getLegacyQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
       let seenQuestionIds = [];
       try {
-        const seenIds = JSON.parse(localStorage.getItem(seenKey) || "[]");
+        const masteredIds = JSON.parse(localStorage.getItem(masteryKey) || "[]");
         const legacyMasteredIds = JSON.parse(localStorage.getItem(legacyMasteryKey) || "[]");
-        seenQuestionIds = mergeQuestionIds(seenIds, legacyMasteredIds);
+        seenQuestionIds = mergeQuestionIds(masteredIds, legacyMasteredIds);
       } catch {}
       const buildQuestionRequest = excludedIds => ({
         exam: selectedExam,
@@ -1743,7 +1743,7 @@ export default function HomePage() {
         const retryResponse = await fetchPracticeQuestions([]);
         const retryPayload = await retryResponse.json();
         if (retryResponse.ok) {
-          localStorage.removeItem(seenKey);
+          localStorage.removeItem(masteryKey);
           localStorage.removeItem(legacyMasteryKey);
           seenQuestionIds = [];
           startedNewQuestionCycle = true;
@@ -1775,15 +1775,7 @@ export default function HomePage() {
           // Keep the learner's selected preset (20/30/100) for the next cycle;
           // this particular attempt may contain fewer questions if the unseen pool is smaller.
           setTestQuestions(mapped);
-          // Mark each displayed question as seen, so later 20/30/100 presets draw
-          // only from the remaining unseen pool until the full cycle is completed.
-          try {
-            localStorage.setItem(seenKey, JSON.stringify(mergeQuestionIds(
-              seenQuestionIds,
-              mapped.map(item => item.sourceId)
-            )));
-          } catch {}
-          setView("test");
+remove early seen mark          setView("test");
           if (startedNewQuestionCycle) {
             setAuthMessage(t(
               "इस अभ्यास सेट के सभी अलग-अलग सवाल देख लिए गए। नया अभ्यास चक्र शुरू कर दिया गया है।",
@@ -1852,6 +1844,15 @@ export default function HomePage() {
       const graded = gradePayload.data;
       const displayedReview = mapOriginalReviewToDisplayed(graded.review || [], optionOrders);
       setReviewAnswers(Object.fromEntries(displayedReview.map(item => [String(item.id), item])));
+      // Only correct answers count as mastered. Wrong or unanswered questions remain in the practice pool.
+      try {
+        const masteryKey = getQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+        const legacyMasteryKey = getLegacyQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+        const existingMastered = JSON.parse(localStorage.getItem(masteryKey) || "[]");
+        const legacyMastered = JSON.parse(localStorage.getItem(legacyMasteryKey) || "[]");
+        const correctlyAnsweredIds = getCorrectlyAnsweredQuestionIds(testQuestions, answers, displayedReview);
+        localStorage.setItem(masteryKey, JSON.stringify(mergeQuestionIds(existingMastered, legacyMastered, correctlyAnsweredIds)));
+      } catch {}
       const summary = {
         practice_mode: true,
         full_exam_mode: selectedSubject === "all" && selectedTopic === "all" && testQuestions.length === Number(examConfig.total_questions),
