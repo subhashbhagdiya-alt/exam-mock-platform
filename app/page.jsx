@@ -1775,7 +1775,7 @@ export default function HomePage() {
           // Keep the learner's selected preset (20/30/100) for the next cycle;
           // this particular attempt may contain fewer questions if the unseen pool is smaller.
           setTestQuestions(mapped);
-remove early seen mark          setView("test");
+          setView("test");
           if (startedNewQuestionCycle) {
             setAuthMessage(t(
               "इस अभ्यास सेट के सभी अलग-अलग सवाल देख लिए गए। नया अभ्यास चक्र शुरू कर दिया गया है।",
