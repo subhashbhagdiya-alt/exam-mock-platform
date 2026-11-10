@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { shouldYieldAfterWorkerFailure } from "../../../../lib/weekly-analysis-recovery.mjs";
 import { dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../../../../lib/weekly-exam-analysis.mjs";
 import { classifyWorkerFailure, resetWorkerRetryCount, MAX_TRANSIENT_PROVIDER_RETRIES } from "../../../../lib/background-task-retry.mjs";
 
@@ -272,7 +273,7 @@ async function runWeeklyExamAnalysis(task, db) {
     exam_id: examId,
     exam_name: context.exam.name,
     target_new_questions: target,
-    analysis: task.result.analysis || gapDraft.analysis,
+    analysis: gapDraft.analysis,
     draft_questions: merged,
     actual_past_paper_evidence_count: context.historicalEvidence.length,
     note: "Gap-filling batch saved. The next scheduled worker run will review and continue from saved progress; questions remain inactive and unverified pending human approval."
@@ -354,16 +355,14 @@ export async function GET(request) {
     return NextResponse.json({ ok: true, processed: true, task_id: task.id, task_type: task.task_type, status: deferred ? "queued" : blocked ? "blocked" : "done", result });
   } catch (err) {
     const retryDecision = classifyWorkerFailure(err, task.payload);
+    const shouldYield = retryDecision.deferred && shouldYieldAfterWorkerFailure(retryDecision.reason);
     await db.from("background_manager_tasks").update({
       status: retryDecision.deferred ? "queued" : "failed",
       ...(retryDecision.payload !== task.payload ? { payload: retryDecision.payload } : {}),
-      // A free-tier 429 is not actionable until quota recovers. Clear the resume-first
-      // timestamp so this task yields to other queued work while preserving result
-      // checkpoints; never switch to a paid provider or discard the saved draft.
-      ...(retryDecision.reason === "free_quota" ? {
+      // Provider outages are retried later without monopolizing the resume-first
+      // queue. The draft/result checkpoint remains untouched.
+      ...(shouldYield ? {
         started_at: null,
-        // Yield behind normal queued work too; otherwise a high-priority quota-
-        // limited task could remain first even after its resume marker is cleared.
         priority: Math.min(Number(task.priority ?? 0), 0)
       } : {}),
       error_message: err?.message || "Task failed",

@@ -28,6 +28,7 @@ jobs:
       - run: npm run test:grade-submission-validation
       - run: npm run test:mfa-assurance
       - run: npm run test:background-task-retry
+      - run: npm run test:weekly-analysis-recovery
       - run: npm run test:weekly-exam-analysis
       - run: npm run test:question-topic-signals
       - run: npm run test:paper-analysis-quiz
