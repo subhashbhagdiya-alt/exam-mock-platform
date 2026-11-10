@@ -1767,7 +1767,8 @@ export default function HomePage() {
           };
         }).filter(item => item.options.length === 4);
         if (mapped.length) {
-          setPracticeQuestionCount(mapped.length);
+          // Keep the learner's selected preset (20/30/100) for the next cycle;
+          // this particular attempt may contain fewer questions if the unseen pool is smaller.
           setTestQuestions(mapped);
           // Mark each displayed question as seen, so later 20/30/100 presets draw
           // only from the remaining unseen pool until the full cycle is completed.
