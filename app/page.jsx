@@ -841,6 +841,34 @@ export default function HomePage() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileQuickSettingsOpen, setMobileQuickSettingsOpen] = useState(false);
   const [mobileBottomMoreOpen, setMobileBottomMoreOpen] = useState(false);
+  const [mobileBottomNavHidden, setMobileBottomNavHidden] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    let lastScrollY = Math.max(0, window.scrollY || 0);
+    let ticking = false;
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        const currentY = Math.max(0, window.scrollY || 0);
+        const delta = currentY - lastScrollY;
+        if (currentY < 48) {
+          setMobileBottomNavHidden(false);
+        } else if (Math.abs(delta) >= 8 && window.innerWidth <= 600) {
+          if (delta > 0) {
+            setMobileBottomNavHidden(true);
+            setMobileBottomMoreOpen(false);
+          } else {
+            setMobileBottomNavHidden(false);
+          }
+        }
+        lastScrollY = currentY;
+        ticking = false;
+      });
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
   useEffect(() => {
     if (!mobileNavOpen || typeof document === "undefined") return undefined;
     const closeMobileNavOutside = (event) => {
@@ -2404,7 +2432,7 @@ export default function HomePage() {
 
         <footer className="footer"><span>© 2026 ExamPrep</span><span>{t("अभ्यास • प्रगति • सफलता","PRACTICE · PROGRESS · SUCCESS")}</span><span>{t("आपकी तैयारी जारी है","Keep showing up ✦")}</span></footer>
       </section>
-      {view !== "test" && view !== "instructions" && <div className="mobile-bottom-navigation-wrap">
+      {view !== "test" && view !== "instructions" && <div className={"mobile-bottom-navigation-wrap" + (mobileBottomNavHidden ? " mobile-bottom-navigation-hidden" : "")}>
         {mobileBottomMoreOpen && <><button className="mobile-bottom-more-backdrop" type="button" aria-label={t("मेन्यू बंद करें","Close more menu")} onClick={() => setMobileBottomMoreOpen(false)} /><div className="mobile-bottom-more-panel">
           <button type="button" onClick={() => {navigateTo("history");setMobileBottomMoreOpen(false);}}><Award size={18}/>{t("मेरे रिज़ल्ट","My results")}</button>
           <button type="button" onClick={() => {navigateTo("login");setMobileBottomMoreOpen(false);}}><ShieldCheck size={18}/>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button>
