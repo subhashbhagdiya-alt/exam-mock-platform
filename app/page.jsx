@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, FileText, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Sparkles, Target, Trophy, Upload, X } from "lucide-react";
 import { scorePaperQuiz } from "../lib/paper-analysis-quiz.mjs";
 import { MAX_PAPER_FILE_BYTES, isSupportedPaperFile } from "../lib/paper-analysis-upload.mjs";
+import { openPaperFilePicker } from "../lib/paper-file-picker.mjs";
 import { mapDisplayedAnswersToOriginal, mapOriginalReviewToDisplayed, reorderOptions } from "../lib/option-order.mjs";
 import { getLocalizedQuestionOptions, mergeQuestionIds } from "../lib/question-pool.mjs";
 
@@ -2301,7 +2302,7 @@ export default function HomePage() {
               <div className="paper-upload-icon"><Upload size={27}/></div>
               <h2>{t("अपना पेपर चुनें","Choose your paper")}</h2>
               <p>{t("PDF, JPG, PNG या WEBP · अधिकतम 3 MB","PDF, JPG, PNG, or WEBP · 3 MB maximum")}</p>
-              <button type="button" className="secondary-button" onClick={() => paperFileInputRef.current?.click()}><FileText size={17}/>{paperFile ? t("फ़ाइल बदलें","Change file") : t("फ़ाइल चुनें","Browse files")}</button>
+              <button type="button" className="secondary-button" onClick={() => openPaperFilePicker(paperFileInputRef.current)}><FileText size={17}/>{paperFile ? t("फ़ाइल बदलें","Change file") : t("फ़ाइल चुनें","Browse files")}</button>
               {paperFile && <div className="paper-file-selected"><CheckCircle2 size={17}/><span>{paperFile.name}</span><small>{(paperFile.size / 1024 / 1024).toFixed(2)} MB</small></div>}
             </div>
             {paperAnalysisError && <div className="paper-analysis-error" role="alert">{paperAnalysisError}</div>}
