@@ -1791,8 +1791,8 @@ export default function HomePage() {
           setView("test");
           if (startedNewQuestionCycle) {
             setAuthMessage(t(
-              "इस अभ्यास सेट के सभी अलग-अलग सवाल देख लिए गए। नया अभ्यास चक्र शुरू कर दिया गया है।",
-              "You have seen every unique question in this practice pool. A fresh practice cycle has started."
+              "इस अभ्यास पूल के सभी अलग-अलग सवालों के सही जवाब दे चुके हैं। नया अभ्यास चक्र शुरू कर दिया गया है।",
+              "You have mastered every unique question in this practice pool. A fresh practice cycle has started."
             ));
           }
         }
