@@ -2283,14 +2283,6 @@ export default function HomePage() {
             <button type="button" className="primary-button" onClick={() => navigateTo("login")}>{t("लॉगिन / अकाउंट खोलें","Open Login / Account")}<ArrowRight size={17}/></button>
           </div>}
           <form className="paper-upload-card" onSubmit={analyzeUploadedPaper}>
-            <input
-              ref={paperFileInputRef}
-              className="paper-file-input"
-              type="file"
-              accept=".pdf,application/pdf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-              aria-label={t("प्रश्न-पत्र फ़ाइल चुनें","Choose question paper file")}
-              onChange={(event) => { selectPaperFile(event.target.files?.[0] || null); event.target.value = ""; }}
-            />
             <div
               className={"paper-upload-dropzone" + (paperDragActive ? " is-dragging" : "")}
               onDragEnter={(event) => { event.preventDefault(); setPaperDragActive(true); }}
@@ -2301,7 +2293,19 @@ export default function HomePage() {
               <div className="paper-upload-icon"><Upload size={27}/></div>
               <h2>{t("अपना पेपर चुनें","Choose your paper")}</h2>
               <p>{t("PDF, JPG, PNG या WEBP · अधिकतम 3 MB","PDF, JPG, PNG, or WEBP · 3 MB maximum")}</p>
-              <button type="button" className="secondary-button" onClick={() => paperFileInputRef.current?.click()}><FileText size={17}/>{paperFile ? t("फ़ाइल बदलें","Change file") : t("फ़ाइल चुनें","Browse files")}</button>
+              <label className="secondary-button paper-file-picker" data-testid="paper-file-picker">
+                <input
+                  ref={paperFileInputRef}
+                  className="paper-file-input"
+                  type="file"
+                  accept=".pdf,application/pdf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                  aria-label={t("प्रश्न-पत्र फ़ाइल चुनें","Choose question paper file")}
+                  data-testid="paper-file-input"
+                  onChange={(event) => { selectPaperFile(event.target.files?.[0] || null); event.target.value = ""; }}
+                />
+                <FileText size={17}/>
+                {paperFile ? t("फ़ाइल बदलें","Change file") : t("फ़ाइल चुनें","Browse files")}
+              </label>
               {paperFile && <div className="paper-file-selected"><CheckCircle2 size={17}/><span>{paperFile.name}</span><small>{(paperFile.size / 1024 / 1024).toFixed(2)} MB</small></div>}
             </div>
             {paperAnalysisError && <div className="paper-analysis-error" role="alert">{paperAnalysisError}</div>}
