@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../lib/weekly-exam-analysis.mjs";
+import { buildWeeklyEvidence, dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../lib/weekly-exam-analysis.mjs";
 
 const valid = {
   subject: "Reasoning",
@@ -36,3 +36,35 @@ assert.equal(unique.length, 1);
 assert.equal(unique[0].question_en, "A completely different question");
 
 console.log("Weekly exam analysis validation tests passed.");
+
+
+const largeContext = {
+  active: Array.from({ length: 40 }, (_, i) => ({ id: i })),
+  topicCounts: Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`Topic ${i}`, i])),
+  difficultyCounts: { easy: 10, medium: 20, hard: 10 },
+  historicalEvidence: Array.from({ length: 30 }, (_, i) => ({
+    subject: "Reasoning",
+    topic: `Topic ${i}`,
+    question_hi: "ह".repeat(600),
+    question_en: "E".repeat(600),
+    options: ["A".repeat(180), "B", "C", "D"],
+    answer_index: 1,
+    source_type: "pyq",
+    source_name: "Official paper",
+    source_url: "https://example.com/" + "x".repeat(300),
+  })),
+  sources: Array.from({ length: 30 }, (_, i) => ({
+    board: "Board",
+    name: `Source ${i}`,
+    url: "https://example.com/" + "y".repeat(300),
+  })),
+};
+const compactEvidence = buildWeeklyEvidence(largeContext);
+assert.equal(compactEvidence.active_question_count, 40);
+assert.equal(compactEvidence.actual_pyq_or_official_question_count, 30);
+assert.equal(compactEvidence.topic_counts.length, 25);
+assert.equal(compactEvidence.actual_past_question_sample.length, 12);
+assert.equal(compactEvidence.official_source_references.length, 12);
+assert.equal(compactEvidence.actual_past_question_sample[0].question_en.length, 260);
+assert.equal(compactEvidence.actual_past_question_sample[0].options[0].length, 100);
+assert.equal(compactEvidence.actual_past_question_sample[0].source_url.length, 220);
