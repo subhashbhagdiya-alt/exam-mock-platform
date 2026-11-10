@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../../../../lib/weekly-exam-analysis.mjs";
+import { buildWeeklyEvidence, dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../../../../lib/weekly-exam-analysis.mjs";
 import { classifyWorkerFailure, resetWorkerRetryCount, MAX_TRANSIENT_PROVIDER_RETRIES } from "../../../../lib/background-task-retry.mjs";
 
 export const dynamic = "force-dynamic";
@@ -109,20 +109,6 @@ async function loadWeeklyContext(db, examId) {
   };
 }
 
-function patternEvidence(context) {
-  return {
-    active_question_count: context.active.length,
-    topic_counts: context.topicCounts,
-    difficulty_counts: context.difficultyCounts,
-    actual_pyq_or_official_question_count: context.historicalEvidence.length,
-    actual_past_question_sample: context.historicalEvidence.map((q) => ({
-      subject: q.subject, topic: q.topic, question_hi: q.question_hi, question_en: q.question_en,
-      options: q.options, answer_index: q.answer_index, source_type: q.source_type,
-      source_name: q.source_name, source_url: q.source_url
-    })),
-    official_source_references: context.sources
-  };
-}
 
 async function generateWeeklyDraft(apiKey, task, context, previousDraft = []) {
   const target = Math.max(50, Math.min(100, Number(task.payload?.target_new_questions) || 50));
@@ -135,10 +121,10 @@ async function generateWeeklyDraft(apiKey, task, context, previousDraft = []) {
 Return valid JSON only with shape {"analysis":{"trend_summary":"...","subjects":[{"name":"...","weight_estimate":"...","evidence":"..."}],"topic_breakdown":[{"subject":"...","topic":"...","priority":"high|medium|low","reason":"..."}],"difficulty_breakdown":{"easy":"...","medium":"...","hard":"..."},"confidence_notes":"...","source_evidence":[{"title":"...","url":"...","source_type":"official_syllabus|official_paper|other","what_it_supports":"..."}]},"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}.
 Target exam: ${JSON.stringify(context.exam)}.
 Request only ${requested} questions in this small resumable batch. Do not try to generate the full ${target}-question target in one request; progress is saved between scheduled worker runs.
-Evidence from existing bank and stored official/PYQ questions: ${JSON.stringify(patternEvidence(context))}.
+Evidence from existing bank and stored official/PYQ questions: ${JSON.stringify(buildWeeklyEvidence(context))}.
 Previously generated questions from this same task (do not duplicate): ${JSON.stringify(previousDraft.map((q) => ({ question_hi: q.question_hi, question_en: q.question_en, subject: q.subject, topic: q.topic })))}
 Do not claim to browse or open websites in this free-tier workflow. Use stored PYQ/official questions, exam configuration, topic coverage, and the supplied official_source_references metadata only. Treat listed source URLs as references, not proof that their contents were inspected. Include source_evidence only for evidence actually present in the supplied records; do not invent citations, paper contents, exact frequencies, official status, or guarantees that a question will appear. When authentic past-paper question content is absent, explicitly state that frequency estimates are weak and recommend practice priorities from the available syllabus/description and topic coverage. All generated questions are curated practice, not PYQs. Check each answer and explanation before returning it. Each question needs four distinct options, 0-based answer_index, Hindi/English versions, and concise explanations. Avoid all concepts/questions already in the bank; favor coverage gaps and varied easy/medium/hard difficulty.`;
-  const parsed = await callModel(apiKey, prompt, 16000);
+  const parsed = await callModel(apiKey, prompt, 8000);
   if (!parsed.analysis || typeof parsed.analysis.trend_summary !== "string" || !Array.isArray(parsed.analysis.topic_breakdown)) {
     throw new Error("Weekly exam-pattern analysis failed schema validation.");
   }
