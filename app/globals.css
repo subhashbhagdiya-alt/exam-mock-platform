@@ -4531,13 +4531,34 @@ undefined
   font-size: 12px;
   line-height: 1.5;
 }
+.shell .paper-analyzer-content .paper-file-picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  max-width: 100%;
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 .shell .paper-analyzer-content .paper-file-input {
   position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
   opacity: 0 !important;
   overflow: hidden !important;
-  pointer-events: none !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 2 !important;
+}
+.shell .paper-analyzer-content .paper-file-picker > svg {
+  pointer-events: none;
 }
 .shell .paper-analyzer-content .paper-file-selected {
   display: flex;
