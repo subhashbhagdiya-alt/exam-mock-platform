@@ -840,6 +840,7 @@ export default function HomePage() {
   const [view, setView] = useState("boards");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileQuickSettingsOpen, setMobileQuickSettingsOpen] = useState(false);
+  const [mobileBottomMoreOpen, setMobileBottomMoreOpen] = useState(false);
   useEffect(() => {
     if (!mobileNavOpen || typeof document === "undefined") return undefined;
     const closeMobileNavOutside = (event) => {
@@ -2403,6 +2404,22 @@ export default function HomePage() {
 
         <footer className="footer"><span>© 2026 ExamPrep</span><span>{t("अभ्यास • प्रगति • सफलता","PRACTICE · PROGRESS · SUCCESS")}</span><span>{t("आपकी तैयारी जारी है","Keep showing up ✦")}</span></footer>
       </section>
+      {view !== "test" && view !== "instructions" && <div className="mobile-bottom-navigation-wrap">
+        {mobileBottomMoreOpen && <><button className="mobile-bottom-more-backdrop" type="button" aria-label={t("मेन्यू बंद करें","Close more menu")} onClick={() => setMobileBottomMoreOpen(false)} /><div className="mobile-bottom-more-panel">
+          <button type="button" onClick={() => {navigateTo("history");setMobileBottomMoreOpen(false);}}><Award size={18}/>{t("मेरे रिज़ल्ट","My results")}</button>
+          <button type="button" onClick={() => {navigateTo("login");setMobileBottomMoreOpen(false);}}><ShieldCheck size={18}/>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button>
+          <button type="button" onClick={() => {navigateTo("settings");setMobileBottomMoreOpen(false);}}><Settings size={18}/>{t("वेबसाइट सेटिंग्स","Website settings")}</button>
+          <button type="button" onClick={() => {navigateTo("paper");setMobileBottomMoreOpen(false);}}><FileText size={18}/>{t("पेपर विश्लेषण","Paper Analyzer")}</button>
+          <button type="button" onClick={() => {navigateTo("sources");setMobileBottomMoreOpen(false);}}><Download size={18}/>Source PDFs</button>
+        </div></>}
+        <nav className="mobile-bottom-navigation" aria-label={t("मुख्य नेविगेशन","Main navigation")}>
+          <button type="button" className={view === "home" ? "active" : ""} aria-current={view === "home" ? "page" : undefined} onClick={() => {navigateTo("home");setMobileBottomMoreOpen(false);}}><Home size={21}/><span>{t("होम","Home")}</span><small>Home</small></button>
+          <button type="button" className={view === "boards" || view === "setup" ? "active" : ""} aria-current={view === "boards" || view === "setup" ? "page" : undefined} onClick={() => {navigateTo("boards");setMobileBottomMoreOpen(false);}}><GraduationCap size={21}/><span>{t("परीक्षाएँ","Exams")}</span><small>Exams</small></button>
+          <button type="button" className={view === "setup" ? "active" : ""} aria-current={view === "setup" ? "page" : undefined} onClick={() => {navigateTo(selectedTrackData ? "setup" : "boards");setMobileBottomMoreOpen(false);}}><BookOpen size={21}/><span>{t("अभ्यास","Practice")}</span><small>Practice</small></button>
+          <button type="button" className={view === "instructions" || view === "result" ? "active" : ""} aria-current={view === "instructions" || view === "result" ? "page" : undefined} onClick={() => {navigateTo("boards");setMobileBottomMoreOpen(false);}}><Clock3 size={21}/><span>{t("मॉक","Mock")}</span><small>Mock</small></button>
+          <button type="button" className={mobileBottomMoreOpen || ["history","login","settings","paper","sources","about"].includes(view) ? "active" : ""} aria-expanded={mobileBottomMoreOpen} onClick={() => setMobileBottomMoreOpen(open => !open)}><SlidersHorizontal size={21}/><span>{t("और","More")}</span><small>More</small></button>
+        </nav>
+      </div>}
     </main>
   );
 }
