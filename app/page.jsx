@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, FileText, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Sparkles, Target, Trophy, Upload, X } from "lucide-react";
 import { scorePaperQuiz } from "../lib/paper-analysis-quiz.mjs";
 import { MAX_PAPER_FILE_BYTES, isSupportedPaperFile } from "../lib/paper-analysis-upload.mjs";
+import { isMobileNavigationViewport, MOBILE_NAV_REVEAL_DELAY_MS } from "../lib/mobile-navigation.mjs";
 import { mapDisplayedAnswersToOriginal, mapOriginalReviewToDisplayed, reorderOptions } from "../lib/option-order.mjs";
 import { getLocalizedQuestionOptions, mergeQuestionIds } from "../lib/question-pool.mjs";
 
@@ -843,21 +844,54 @@ export default function HomePage() {
   const [mobileBottomMoreOpen, setMobileBottomMoreOpen] = useState(false);
   const [mobileBottomNavHidden, setMobileBottomNavHidden] = useState(false);
   useEffect(() => {
-    if (typeof window === "undefined" || window.innerWidth > 600) return undefined;
-    let showTimer;
+    if (typeof window === "undefined") return undefined;
+
+    let showTimer = null;
+    const isMobileViewport = () => isMobileNavigationViewport(window.innerWidth);
+    const clearShowTimer = () => {
+      if (showTimer !== null) {
+        window.clearTimeout(showTimer);
+        showTimer = null;
+      }
+    };
+    const revealNavigation = () => {
+      clearShowTimer();
+      setMobileBottomNavHidden(false);
+    };
     const handleScroll = () => {
-      if (window.innerWidth > 600) return;
+      if (!isMobileViewport()) {
+        revealNavigation();
+        return;
+      }
+
       setMobileBottomNavHidden(true);
       setMobileBottomMoreOpen(false);
-      window.clearTimeout(showTimer);
+      clearShowTimer();
       showTimer = window.setTimeout(() => {
         setMobileBottomNavHidden(false);
-      }, 500);
+        showTimer = null;
+      }, MOBILE_NAV_REVEAL_DELAY_MS);
     };
+    const handleViewportChange = () => {
+      revealNavigation();
+      if (!isMobileViewport()) setMobileBottomMoreOpen(false);
+    };
+    const handlePageResume = () => revealNavigation();
+
+    // Attach on every screen size so desktop-to-mobile resizing works too.
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleViewportChange, { passive: true });
+    window.addEventListener("orientationchange", handleViewportChange);
+    window.addEventListener("pageshow", handlePageResume);
+    document.addEventListener("visibilitychange", handlePageResume);
+
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      window.clearTimeout(showTimer);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("orientationchange", handleViewportChange);
+      window.removeEventListener("pageshow", handlePageResume);
+      document.removeEventListener("visibilitychange", handlePageResume);
+      clearShowTimer();
     };
   }, []);
   useEffect(() => {
