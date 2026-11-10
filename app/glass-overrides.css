@@ -4334,12 +4334,12 @@ button{cursor:pointer}
 /* Mobile exam UX hotfix: keep the finish action reachable and prevent bottom UI overlap. */
 @media (max-width: 760px) {
   .shell.exam-active .test-content {
-    padding-bottom: calc(280px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)) !important;
   }
   .shell.exam-active .mobile-finish-test {
-    z-index: 1001 !important;
-    /* Keep the action above the app's fixed multi-row mobile navigation. */
-    bottom: calc(205px + env(safe-area-inset-bottom)) !important;
+    z-index: 8 !important;
+    /* The test view hides bottom navigation; keep the action at the viewport edge. */
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
     pointer-events: auto !important;
   }
   .shell.exam-active .test-content .question-controls {
