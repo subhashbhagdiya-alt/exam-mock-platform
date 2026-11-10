@@ -105,8 +105,48 @@ test("production homepage renders in a mobile viewport", async ({ page }) => {
     expect(iconStyles.svgFilter).toContain("drop-shadow");
   }
   await page.screenshot({ path: "test-results/examprep-mobile-paper-analyzer-viewport.png" });
-  await expect(page.locator('input[type="file"][accept*=".pdf"]')).toBeAttached();
+  const paperFileInput = page.locator('input[type="file"][accept*=".pdf"]');
+  await expect(paperFileInput).toBeAttached();
   await expect(page.getByRole("button", { name: /Analyze & Generate MCQs/i })).toBeDisabled();
+
+  // Exercise the actual mobile Browse files button and browser file chooser.
+  const choosePaperFile = async (file) => {
+    const chooserPromise = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: /Browse files|Change file/i }).click();
+    const chooser = await chooserPromise;
+    await chooser.setFiles(file);
+  };
+  await choosePaperFile({
+    name: "mobile-sample.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.7\\nMobile picker test\\n")
+  });
+  await expect(page.locator(".paper-file-selected")).toContainText("mobile-sample.pdf");
+
+  await choosePaperFile({
+    name: "unsupported.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("not a paper")
+  });
+  await expect(page.locator(".paper-analysis-error")).toContainText(/PDF, JPG, PNG or WEBP/i);
+  await expect(page.locator(".paper-file-selected")).toHaveCount(0);
+
+  await choosePaperFile({
+    name: "oversized.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.alloc(3 * 1024 * 1024 + 1, 65)
+  });
+  await expect(page.locator(".paper-analysis-error")).toContainText(/3 MB/i);
+  await expect(page.locator(".paper-file-selected")).toHaveCount(0);
+
+  // Re-select a valid PDF to confirm choosing the same supported type still works.
+  await choosePaperFile({
+    name: "mobile-sample.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.7\\nMobile picker test\\n")
+  });
+  await expect(page.locator(".paper-file-selected")).toContainText("mobile-sample.pdf");
+
 
   const dimensions = await page.evaluate(() => ({
     viewportWidth: window.innerWidth,
