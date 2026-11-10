@@ -843,31 +843,26 @@ export default function HomePage() {
   const [mobileBottomMoreOpen, setMobileBottomMoreOpen] = useState(false);
   const [mobileBottomNavHidden, setMobileBottomNavHidden] = useState(false);
   useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-    let lastScrollY = Math.max(0, window.scrollY || 0);
-    let ticking = false;
+    if (typeof window === "undefined" || window.innerWidth > 600) return undefined;
+    let showTimer;
+    let scrollStarted = false;
     const handleScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      window.requestAnimationFrame(() => {
-        const currentY = Math.max(0, window.scrollY || 0);
-        const delta = currentY - lastScrollY;
-        if (currentY < 48) {
-          setMobileBottomNavHidden(false);
-        } else if (Math.abs(delta) >= 8 && window.innerWidth <= 600) {
-          if (delta > 0) {
-            setMobileBottomNavHidden(true);
-            setMobileBottomMoreOpen(false);
-          } else {
-            setMobileBottomNavHidden(false);
-          }
-        }
-        lastScrollY = currentY;
-        ticking = false;
-      });
+      if (window.innerWidth > 600) return;
+      scrollStarted = true;
+      setMobileBottomNavHidden(true);
+      setMobileBottomMoreOpen(false);
+      window.clearTimeout(showTimer);
+      showTimer = window.setTimeout(() => {
+        setMobileBottomNavHidden(false);
+        scrollStarted = false;
+      }, 500);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.clearTimeout(showTimer);
+      if (scrollStarted) setMobileBottomNavHidden(false);
+    };
   }, []);
   useEffect(() => {
     if (!mobileNavOpen || typeof document === "undefined") return undefined;
