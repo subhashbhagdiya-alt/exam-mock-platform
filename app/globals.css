@@ -4902,3 +4902,33 @@ undefined
     transition: none !important;
   }
 }
+
+
+/* v43 — keep the mobile dock and its More panel inside the viewport on narrow screens. */
+@media (max-width: 600px) {
+  .shell .mobile-bottom-navigation-wrap {
+    position: fixed !important;
+    left: max(11px, calc((100vw - 560px) / 2)) !important;
+    right: max(11px, calc((100vw - 560px) / 2)) !important;
+    width: auto !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+    transform: none !important;
+    margin: 0 !important;
+  }
+  .shell .mobile-bottom-navigation {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+  .shell .mobile-bottom-more-panel {
+    right: 0 !important;
+    width: min(250px, calc(100vw - 44px)) !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .shell .mobile-bottom-navigation-wrap.mobile-bottom-navigation-hidden {
+    transform: translateY(calc(100% + 28px)) !important;
+  }
+}
