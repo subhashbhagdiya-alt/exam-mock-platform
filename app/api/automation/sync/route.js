@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const SOURCE_CHECK_CONCURRENCY = 6;
-const SOURCE_FETCH_TIMEOUT_MS = 10_000;
+const SOURCE_FETCH_TIMEOUT_MS = 8_000;
 const MAX_SOURCE_RESPONSE_BYTES = 3 * 1024 * 1024;
 
 
@@ -53,26 +53,41 @@ async function readLimitedResponseBody(response, maxBytes) {
 async function recordSourceResult(client, source, {
   status, httpStatus = null, contentHash = null, summary, errorMessage = null, started
 }) {
-  const rpc = await client.rpc("record_exam_sync", {
-    p_source_id: source.id,
-    p_status: status,
-    p_http_status: httpStatus,
-    p_content_hash: contentHash,
-    p_change_summary: summary,
-    p_error_message: errorMessage
-  });
-  return {
-    board: source.board || "Unknown",
-    name: source.name || source.url,
-    url: source.url,
-    status,
-    http_status: httpStatus,
-    changed: status === "changed",
-    duration_ms: Date.now() - started,
-    recorded: !rpc.error,
-    ...(rpc.error ? { record_error: rpc.error.message } : {}),
-    ...(errorMessage ? { error: errorMessage } : {})
-  };
+  try {
+    const rpc = await client.rpc("record_exam_sync", {
+      p_source_id: source.id,
+      p_status: status,
+      p_http_status: httpStatus,
+      p_content_hash: contentHash,
+      p_change_summary: summary,
+      p_error_message: errorMessage
+    });
+    return {
+      board: source.board || "Unknown",
+      name: source.name || source.url,
+      url: source.url,
+      status,
+      http_status: httpStatus,
+      changed: status === "changed",
+      duration_ms: Date.now() - started,
+      recorded: !rpc.error,
+      ...(rpc.error ? { record_error: rpc.error.message } : {}),
+      ...(errorMessage ? { error: errorMessage } : {})
+    };
+  } catch (recordError) {
+    return {
+      board: source.board || "Unknown",
+      name: source.name || source.url,
+      url: source.url,
+      status,
+      http_status: httpStatus,
+      changed: status === "changed",
+      duration_ms: Date.now() - started,
+      recorded: false,
+      record_error: formatSourceFetchError(recordError),
+      ...(errorMessage ? { error: errorMessage } : {})
+    };
+  }
 }
 
 async function checkSource(client, source) {
