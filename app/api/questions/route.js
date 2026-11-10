@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildQuestionCatalog, filterQuestionRows } from "../../../lib/question-categories.mjs";
 import { shuffleOptionOrder } from "../../../lib/option-order.mjs";
+import { dedupeQuestionRows } from "../../../lib/question-pool.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 // Question rows contain answer keys and explanations; all database reads stay on the server.
@@ -93,13 +94,17 @@ async function handleQuestionRequest(request, body = null) {
     .select("id,exam_id,subject,topic,question_hi,question_en,options,answer_index,explanation_hi,explanation_en,difficulty,source_type,source_year")
     .eq("active", true)
     .eq("verified", true)
-    .eq("exam_id", examRow.id)
+     .eq("exam_id", examRow.id)
+    .order("created_at", { ascending: true })
     .limit(1000);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const allRows = data || [];
-  // Treat capitalization and repeated whitespace as equivalent in user-selected categories.
-  const rows = filterQuestionRows(allRows, subject, topic);
+  // Keep one canonical verified row for repeated question text within this exam.
+  // Math operators, percentages, digits and symbols are preserved by normalization.
+  const uniqueRows = dedupeQuestionRows(allRows);
+  const duplicateRowsFiltered = allRows.length - uniqueRows.length;
+  const rows = filterQuestionRows(uniqueRows, subject, topic);
 
   if (searchParams.get("mode") === "availability") {
     const { subjects, subject_topics: subjectTopics } = buildQuestionCatalog(allRows);
@@ -110,6 +115,7 @@ async function handleQuestionRequest(request, body = null) {
       meta: {
         requested: limit,
         available: rows.length,
+        duplicate_rows_filtered: duplicateRowsFiltered,
         subjects,
         subject_topics: subjectTopics
       }
@@ -122,9 +128,9 @@ async function handleQuestionRequest(request, body = null) {
   // Never re-introduce mastered items merely because the requested batch is larger.
   if (excludedIds.size > 0 && unseen.length === 0 && rows.length > 0) {
     return NextResponse.json({
-      error: "You have answered every verified question in this practice pool correctly.",
+      error: "You have seen every unique verified question in this practice pool.",
       code: "QUESTION_POOL_COMPLETED",
-      meta: { available: rows.length, mastered: Math.min(excludedIds.size, rows.length) }
+      meta: { available: rows.length, seen: Math.min(excludedIds.size, rows.length) }
     }, { status: 409 });
   }
   const selected = selectBalancedQuestions(unseen, Math.min(limit, unseen.length));
@@ -182,7 +188,7 @@ async function handleQuestionRequest(request, body = null) {
       requested: limit,
       available: rows.length,
       unseen_available: unseen.length,
-      selection: "randomized, subject/topic-diverse, mastered-question avoidance"
+      selection: "randomized, duplicate-free, subject/topic-diverse, seen-question avoidance"
     }
   });
 }
