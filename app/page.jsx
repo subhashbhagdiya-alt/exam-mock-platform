@@ -1739,12 +1739,16 @@ export default function HomePage() {
       let payload = await response.json();
       let startedNewQuestionCycle = false;
       if (response.status === 409 && payload?.code === "QUESTION_POOL_COMPLETED" && seenQuestionIds.length) {
-        localStorage.removeItem(seenKey);
-        localStorage.removeItem(legacyMasteryKey);
-        seenQuestionIds = [];
-        startedNewQuestionCycle = true;
-        response = await fetchPracticeQuestions([]);
-        payload = await response.json();
+        const retryResponse = await fetchPracticeQuestions([]);
+        const retryPayload = await retryResponse.json();
+        if (retryResponse.ok) {
+          localStorage.removeItem(seenKey);
+          localStorage.removeItem(legacyMasteryKey);
+          seenQuestionIds = [];
+          startedNewQuestionCycle = true;
+        }
+        response = retryResponse;
+        payload = retryPayload;
       }
       if (!response.ok) throw new Error(payload?.error || t("सवाल लोड नहीं हो सके।", "Could not load questions."));
       if (response.ok && payload.exam && payload.test_session_id && payload.test_session_key) { setTestSessionId(payload.test_session_id); setTestSessionKey(payload.test_session_key); const config = { total_questions: Number(payload.exam.total_questions || 10), duration_minutes: Number(payload.exam.duration_minutes || 10), marks_per_question: Number(payload.exam.marks_per_question || 1), negative_marks: Number(payload.exam.negative_marks || 0), passing_percentage: Number(payload.exam.passing_percentage || 33) }; setExamConfig(config); setExamName(String(payload.exam.name || "MPESB Mock Test")); setExamId(payload.exam.id || null); setSeconds(Number(practiceDuration || config.duration_minutes || 10) * 60); } else { setSeconds(Number(practiceDuration || examConfig.duration_minutes || 10) * 60); }
