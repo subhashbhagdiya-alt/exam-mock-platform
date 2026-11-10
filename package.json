@@ -17,7 +17,8 @@
     "test:question-topic-signals": "node scripts/test-question-topic-signals.mjs",
     "test:background-task-retry": "node scripts/test-background-task-retry.mjs",
     "test:paper-analysis-quiz": "node scripts/test-paper-analysis-quiz.mjs",
-    "test:paper-analysis-upload": "node scripts/test-paper-analysis-upload.mjs"
+    "test:paper-analysis-upload": "node scripts/test-paper-analysis-upload.mjs",
+    "test:cbt-mobile-layout": "node scripts/test-cbt-mobile-layout.mjs"
   },
   "dependencies": {
     "next": "16.3.8",
