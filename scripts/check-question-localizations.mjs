@@ -185,8 +185,8 @@ assert.ok(questionApiSource.includes("buildQuestionCatalog(allRows)"), "Question
 assert.ok(questionApiSource.includes("filterQuestionRows(uniqueRows, subject, topic)"), "Question API must apply the directly tested subject/topic filter helper after duplicate removal");
 
 // Global UI language and question-language preferences must persist across reloads.
-assert.match(source, /const \\[language, setLanguage\\] = useState\\("en"\\)/, "UI language state must exist");
-assert.match(source, /const \\[languageHydrated, setLanguageHydrated\\] = useState\\(false\\)/, "Language preference hydration guard must exist");
+assert.ok(source.includes('const [language, setLanguage] = useState("en")'), "UI language state must exist");
+assert.ok(source.includes('const [languageHydrated, setLanguageHydrated] = useState(false)'), "Language preference hydration guard must exist");
 assert.ok(source.includes('localStorage.getItem("exam_prep_language")'), "UI language must be restored from local storage");
 assert.ok(source.includes('localStorage.setItem("exam_prep_language", language)'), "UI language must be persisted");
 assert.ok(source.includes('localStorage.getItem("exam_prep_question_language")'), "Question language must be restored");
@@ -194,7 +194,7 @@ assert.ok(source.includes('localStorage.setItem("exam_prep_question_language", q
 assert.ok(source.includes("function changeLanguage(nextLanguage)"), "Global language changes must use one shared handler");
 assert.ok(source.includes("setQuestionLanguage(next)"), "Global language changes must synchronize question language");
 assert.ok(source.includes('document.documentElement.lang = language'), "Document language metadata must follow the selected UI language");
-assert.equal((source.match(/setLanguage\\(hi \\? "en" : "hi"\\)/g) || []).length, 0, "All global language toggles must use the shared handler");
+assert.equal(source.split('setLanguage(hi ? "en" : "hi")').length - 1, 0, "All global language toggles must use the shared handler");
 
 // Critical interface controls must provide Hindi/English labels, not English-only fixed strings.
 for (const fragment of [
