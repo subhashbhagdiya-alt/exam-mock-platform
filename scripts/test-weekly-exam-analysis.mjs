@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildWeeklyEvidence, dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../lib/weekly-exam-analysis.mjs";
+import { buildWeeklyEvidence, dedupeGeneratedQuestions, normalizeQuestionText, takeWeeklyReviewBatch, WEEKLY_REVIEW_BATCH_SIZE, validateGeneratedQuestion } from "../lib/weekly-exam-analysis.mjs";
 
 const valid = {
   subject: "Reasoning",
@@ -68,3 +68,23 @@ assert.equal(compactEvidence.official_source_references.length, 12);
 assert.equal(compactEvidence.actual_past_question_sample[0].question_en.length, 260);
 assert.equal(compactEvidence.actual_past_question_sample[0].options[0].length, 100);
 assert.equal(compactEvidence.actual_past_question_sample[0].source_url.length, 220);
+
+
+assert.equal(WEEKLY_REVIEW_BATCH_SIZE, 5);
+const reviewQueue = Array.from({ length: 23 }, (_, i) => ({ question_en: "Question " + (i + 1) }));
+const firstReview = takeWeeklyReviewBatch(reviewQueue);
+assert.equal(firstReview.batch.length, 5);
+assert.equal(firstReview.remainder.length, 18);
+const secondReview = takeWeeklyReviewBatch(firstReview.remainder);
+assert.equal(secondReview.batch.length, 5);
+assert.equal(secondReview.remainder.length, 13);
+const invalidBatchSize = takeWeeklyReviewBatch(reviewQueue, 0);
+assert.equal(invalidBatchSize.batch.length, 5, "Invalid batch sizes should fall back to the safe default.");
+let remainingQueue = reviewQueue;
+const processedQueue = [];
+while (remainingQueue.length) {
+  const part = takeWeeklyReviewBatch(remainingQueue);
+  processedQueue.push(...part.batch);
+  remainingQueue = part.remainder;
+}
+assert.deepEqual(processedQueue, reviewQueue, "Chunked review must preserve every question exactly once.");
