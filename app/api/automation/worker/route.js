@@ -253,8 +253,7 @@ async function runWeeklyExamAnalysis(task, db) {
     const legacyPending = Array.isArray(previousResult.pending_review_questions)
       ? previousResult.pending_review_questions
       : (Array.isArray(previousResult.draft_questions) ? previousResult.draft_questions : []);
-    const { batch, remainder } = takeWeeklyReviewBatch(legacyPending);
-    if (!batch.length) {
+    if (!legacyPending.length) {
       return {
         deferred: true, phase: "needs_more", exam_id: examId, exam_name: context.exam.name,
         target_new_questions: target, analysis: savedAnalysis, draft_questions: reviewedDraft,
@@ -267,11 +266,10 @@ async function runWeeklyExamAnalysis(task, db) {
       deferred: true, phase: "review_batch", exam_id: examId, exam_name: context.exam.name,
       target_new_questions: target, analysis: savedAnalysis,
       draft_questions: reviewedDraft,
-      pending_review_questions: batch,
-      remaining_review_questions: remainder,
+      pending_review_questions: legacyPending,
       empty_generation_batches: 0,
       actual_past_paper_evidence_count: context.historicalEvidence.length,
-      note: "Migrated a legacy draft into a review batch of " + batch.length + "; remaining candidates are checkpointed for later review."
+      note: "Migrated a legacy draft of " + legacyPending.length + " candidates into the resumable review queue."
     };
   }
 
@@ -305,6 +303,7 @@ async function runWeeklyExamAnalysis(task, db) {
     );
     const pool = dedupeGeneratedQuestions(reviewedDraft.concat(uniqueBatch), existingEnglish, existingHindi).slice(0, target);
 
+    if (pool.length >= target) return stageWeeklyExamQuestions(task, db, context, savedAnalysis, pool);
     if (remainder.length) {
       return {
         deferred: true, phase: "review_batch", exam_id: examId, exam_name: context.exam.name,
@@ -316,7 +315,6 @@ async function runWeeklyExamAnalysis(task, db) {
         note: "Reviewed " + uniqueBatch.length + " candidates; " + remainder.length + " candidates remain in the review queue."
       };
     }
-    if (pool.length >= target) return stageWeeklyExamQuestions(task, db, context, savedAnalysis, pool);
     return {
       deferred: true, phase: "needs_more", exam_id: examId, exam_name: context.exam.name,
       target_new_questions: target, analysis: savedAnalysis, draft_questions: pool,
