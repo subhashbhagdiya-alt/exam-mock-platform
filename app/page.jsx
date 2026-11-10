@@ -6,7 +6,7 @@ import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronR
 import { scorePaperQuiz } from "../lib/paper-analysis-quiz.mjs";
 import { MAX_PAPER_FILE_BYTES, isSupportedPaperFile } from "../lib/paper-analysis-upload.mjs";
 import { mapDisplayedAnswersToOriginal, mapOriginalReviewToDisplayed, reorderOptions } from "../lib/option-order.mjs";
-import { getLocalizedQuestionOptions, mergeQuestionIds } from "../lib/question-pool.mjs";
+import { getCorrectQuestionSourceIds, getLocalizedQuestionOptions, mergeQuestionIds } from "../lib/question-pool.mjs";
 
 const supabaseBrowser = (
   typeof window !== "undefined" &&
@@ -43,7 +43,11 @@ async function ensureSessionKey() {
   return key;
 }
 
-function getQuestionSeenStorageKey(userId, exam, subject, topic) {
+function getQuestionMasteryStorageKey(userId, exam, subject, topic) {
+  return ["exam_prep_mastered_questions_v2", userId || "guest", exam || "all", subject || "all", topic || "all"].join("_");
+}
+
+function getLegacyQuestionSeenStorageKey(userId, exam, subject, topic) {
   return ["exam_prep_seen_questions", userId || "guest", exam || "all", subject || "all", topic || "all"].join("_");
 }
 
@@ -1715,13 +1719,20 @@ export default function HomePage() {
     const requestedCount = Math.min(Number(practiceQuestionCount || 10), readyCount);
     setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setReviewAnswers({}); setTestSessionId(""); setTestSessionKey(""); setShowSubmit(false); setTestQuestions([]);
     try {
-      const seenKey = getQuestionSeenStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+      const masteryKey = getQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+      const legacySeenKey = getLegacyQuestionSeenStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
       const legacyMasteryKey = getLegacyQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
-      let seenQuestionIds = [];
+      let masteredQuestionIds = [];
+      let legacyMasteredIds = [];
       try {
-        const seenIds = JSON.parse(localStorage.getItem(seenKey) || "[]");
-        const legacyMasteredIds = JSON.parse(localStorage.getItem(legacyMasteryKey) || "[]");
-        seenQuestionIds = mergeQuestionIds(seenIds, legacyMasteredIds);
+        const storedMasteredIds = JSON.parse(localStorage.getItem(masteryKey) || "[]");
+        legacyMasteredIds = JSON.parse(localStorage.getItem(legacyMasteryKey) || "[]");
+        masteredQuestionIds = mergeQuestionIds(storedMasteredIds, legacyMasteredIds);
+        if (legacyMasteredIds.length) localStorage.setItem(masteryKey, JSON.stringify(masteredQuestionIds));
+        // Older releases marked every displayed question as seen before grading.
+        // Those IDs do not prove mastery, so discard that polluted list.
+        localStorage.removeItem(legacySeenKey);
+        localStorage.removeItem(legacyMasteryKey);
       } catch {}
       const buildQuestionRequest = excludedIds => ({
         exam: selectedExam,
@@ -1736,16 +1747,16 @@ export default function HomePage() {
         body: JSON.stringify(buildQuestionRequest(excludedIds)),
         cache: "no-store"
       });
-      let response = await fetchPracticeQuestions(seenQuestionIds);
+      let response = await fetchPracticeQuestions(masteredQuestionIds);
       let payload = await response.json();
       let startedNewQuestionCycle = false;
-      if (response.status === 409 && payload?.code === "QUESTION_POOL_COMPLETED" && seenQuestionIds.length) {
+      if (response.status === 409 && payload?.code === "QUESTION_POOL_COMPLETED" && masteredQuestionIds.length) {
         const retryResponse = await fetchPracticeQuestions([]);
         const retryPayload = await retryResponse.json();
         if (retryResponse.ok) {
-          localStorage.removeItem(seenKey);
+          localStorage.removeItem(masteryKey);
           localStorage.removeItem(legacyMasteryKey);
-          seenQuestionIds = [];
+          masteredQuestionIds = [];
           startedNewQuestionCycle = true;
         }
         response = retryResponse;
@@ -1775,14 +1786,8 @@ export default function HomePage() {
           // Keep the learner's selected preset (20/30/100) for the next cycle;
           // this particular attempt may contain fewer questions if the unseen pool is smaller.
           setTestQuestions(mapped);
-          // Mark each displayed question as seen, so later 20/30/100 presets draw
-          // only from the remaining unseen pool until the full cycle is completed.
-          try {
-            localStorage.setItem(seenKey, JSON.stringify(mergeQuestionIds(
-              seenQuestionIds,
-              mapped.map(item => item.sourceId)
-            )));
-          } catch {}
+          // Only correctly answered questions are marked as mastered after grading.
+          // Wrong and unanswered questions stay eligible for the next practice set.
           setView("test");
           if (startedNewQuestionCycle) {
             setAuthMessage(t(
@@ -1850,6 +1855,21 @@ export default function HomePage() {
       if (!gradeResponse.ok || !gradePayload?.data) throw new Error(gradePayload?.error || "Could not grade this test. Please retry.");
 
       const graded = gradePayload.data;
+      // Store mastery only after the server has graded the attempt. The RPC review
+      // uses the original answer-key indexes, and originalAnswers has been mapped
+      // back from the shuffled option order above.
+      try {
+        const correctSourceIds = getCorrectQuestionSourceIds(graded.review || [], originalAnswers, testQuestions);
+        const masteryKey = getQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+        const legacyMasteryKey = getLegacyQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+        const legacySeenKey = getLegacyQuestionSeenStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+        const storedMasteredIds = JSON.parse(localStorage.getItem(masteryKey) || "[]");
+        const legacyMasteredIds = JSON.parse(localStorage.getItem(legacyMasteryKey) || "[]");
+        const masteredIds = mergeQuestionIds(storedMasteredIds, legacyMasteredIds, correctSourceIds);
+        if (masteredIds.length) localStorage.setItem(masteryKey, JSON.stringify(masteredIds));
+        localStorage.removeItem(legacyMasteryKey);
+        localStorage.removeItem(legacySeenKey);
+      } catch {}
       const displayedReview = mapOriginalReviewToDisplayed(graded.review || [], optionOrders);
       setReviewAnswers(Object.fromEntries(displayedReview.map(item => [String(item.id), item])));
       const summary = {
