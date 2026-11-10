@@ -13,6 +13,12 @@ const rows = [
   { id: "math-b", question_en: "Solve: P ≤ Q < F = R", question_hi: "हल करें: P ≤ Q < F = R" },
 ];
 assert.deepEqual(dedupeQuestionRows(rows).map(row => row.id), ["one", "math-a", "math-b"]);
+
+const competingCopies = [
+  { id: "curated-copy", source_type: "curated", question_en: "Same question?", question_hi: "एक जैसा सवाल?", explanation_hi: "छोटी", explanation_en: "Short" },
+  { id: "official-copy", source_type: "official", question_en: "Same question?", question_hi: "एक जैसा सवाल?", explanation_hi: "Official explanation", explanation_en: "Official explanation" },
+];
+assert.deepEqual(dedupeQuestionRows(competingCopies).map(row => row.id), ["official-copy"]);
 assert.equal(normalizeQuestionText("  25% of a number is 45? "), "25%ofanumberis45");
 assert.notEqual(normalizeQuestionText("P < Q"), normalizeQuestionText("P ≤ Q"));
 assert.deepEqual(mergeQuestionIds(["11111111-1111-4111-8111-111111111111"], ["11111111-1111-4111-8111-111111111111", "invalid"]), ["11111111-1111-4111-8111-111111111111"]);
