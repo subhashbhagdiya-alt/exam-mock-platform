@@ -15,6 +15,7 @@
     "test:mfa-assurance": "node scripts/test-mfa-assurance.mjs",
     "test:weekly-exam-analysis": "node scripts/test-weekly-exam-analysis.mjs",
     "test:question-topic-signals": "node scripts/test-question-topic-signals.mjs",
+    "test:job-track-fallbacks": "node scripts/test-job-track-fallbacks.mjs",
     "test:background-task-retry": "node scripts/test-background-task-retry.mjs",
     "test:paper-analysis-quiz": "node scripts/test-paper-analysis-quiz.mjs",
     "test:paper-analysis-upload": "node scripts/test-paper-analysis-upload.mjs"
