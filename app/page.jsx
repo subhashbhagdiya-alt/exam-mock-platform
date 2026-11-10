@@ -993,16 +993,19 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const savedLanguage = localStorage.getItem("exam_prep_language");
-    const savedQuestionLanguage = localStorage.getItem("exam_prep_question_language");
-    const nextLanguage = savedLanguage === "hi" ? "hi" : "en";
-    const nextQuestionLanguage = savedQuestionLanguage === "hi" || savedQuestionLanguage === "en"
-      ? savedQuestionLanguage
-      : nextLanguage;
-    setLanguage(nextLanguage);
-    setQuestionLanguage(nextQuestionLanguage);
-    setLanguageHydrated(true);
+    if (typeof window === "undefined") return undefined;
+    const timer = window.setTimeout(() => {
+      const savedLanguage = localStorage.getItem("exam_prep_language");
+      const savedQuestionLanguage = localStorage.getItem("exam_prep_question_language");
+      const nextLanguage = savedLanguage === "hi" ? "hi" : "en";
+      const nextQuestionLanguage = savedQuestionLanguage === "hi" || savedQuestionLanguage === "en"
+        ? savedQuestionLanguage
+        : nextLanguage;
+      setLanguage(nextLanguage);
+      setQuestionLanguage(nextQuestionLanguage);
+      setLanguageHydrated(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
