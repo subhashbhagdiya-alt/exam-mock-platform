@@ -182,6 +182,6 @@ assert.deepEqual(sampleCatalog.subject_topics, [
   { subject: "Mathematics", topic: "Profit and Loss" }
 ]);
 assert.ok(questionApiSource.includes("buildQuestionCatalog(allRows)"), "Question API must build its subject/topic catalog from all active verified questions");
-assert.ok(questionApiSource.includes("filterQuestionRows(allRows, subject, topic)"), "Question API must use the directly tested subject/topic filter helper");
+assert.ok(questionApiSource.includes("filterQuestionRows(uniqueRows, subject, topic)"), "Question API must apply the directly tested subject/topic filter helper after duplicate removal");
 
 console.log(`Localization regression checks passed: ${Object.keys(hindiOptions).length} Hindi option sets, ${localizationEntries.size} localized questions, bilingual answer-order/security checks, and normalized subject/topic filters.`);
