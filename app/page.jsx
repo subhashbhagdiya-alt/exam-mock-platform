@@ -845,23 +845,19 @@ export default function HomePage() {
   useEffect(() => {
     if (typeof window === "undefined" || window.innerWidth > 600) return undefined;
     let showTimer;
-    let scrollStarted = false;
     const handleScroll = () => {
       if (window.innerWidth > 600) return;
-      scrollStarted = true;
       setMobileBottomNavHidden(true);
       setMobileBottomMoreOpen(false);
       window.clearTimeout(showTimer);
       showTimer = window.setTimeout(() => {
         setMobileBottomNavHidden(false);
-        scrollStarted = false;
       }, 500);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", handleScroll);
       window.clearTimeout(showTimer);
-      if (scrollStarted) setMobileBottomNavHidden(false);
     };
   }, []);
   useEffect(() => {
