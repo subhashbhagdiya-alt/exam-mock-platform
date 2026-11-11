@@ -1,0 +1,57 @@
+name: Build Trick Maths APK
+
+on:
+  push:
+    branches:
+      - trick-maths-android-apk
+    paths:
+      - android/trick-maths-android/**
+      - .github/workflows/build-trick-maths-apk.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    name: Build installable Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.7'
+          cache-provider: basic
+
+      - name: Build debug APK
+        working-directory: android/trick-maths-android
+        run: gradle --no-daemon clean assembleDebug
+
+      - name: Verify APK output
+        run: |
+          test -s android/trick-maths-android/app/build/outputs/apk/debug/app-debug.apk
+          ls -lh android/trick-maths-android/app/build/outputs/apk/debug/app-debug.apk
+          sha256sum android/trick-maths-android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Trick-Maths-Android-APK
+          path: android/trick-maths-android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
