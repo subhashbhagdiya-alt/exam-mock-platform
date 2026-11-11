@@ -1,0 +1,27 @@
+name: Read-only production mobile QA
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-production-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright test runner
+        run: npm install --no-save --package-lock=false @playwright/test
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run read-only production mobile QA
+        env:
+          E2E_BASE_URL: https://exam-prep-direct-box.vercel.app
+        run: npx playwright test tests/e2e/mobile-readonly-production.spec.mjs --reporter=list
