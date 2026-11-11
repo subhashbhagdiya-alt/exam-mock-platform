@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Trick Maths</string>
+    <string name="brand_tagline">Learn smarter. Calculate faster.</string>
+    <string name="loading_message">Your maths studio is getting ready…</string>
+</resources>
