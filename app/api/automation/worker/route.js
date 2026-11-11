@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { dedupeGeneratedQuestions, normalizeQuestionText, validateGeneratedQuestion } from "../../../../lib/weekly-exam-analysis.mjs";
+import { buildWeeklyEvidence, dedupeGeneratedQuestions, normalizeQuestionText, takeWeeklyReviewBatch, validateGeneratedQuestion } from "../../../../lib/weekly-exam-analysis.mjs";
 import { classifyWorkerFailure, resetWorkerRetryCount, MAX_TRANSIENT_PROVIDER_RETRIES } from "../../../../lib/background-task-retry.mjs";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ function extractGeminiText(body) {
 async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
   // Free-tier provider only: never fall back to a paid provider or a paid model.
   const model = "gemini-3.6-flash";
-  const maxAttempts = 3;
+  const maxAttempts = 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -35,8 +35,8 @@ async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: { responseMimeType: "application/json", maxOutputTokens }
         }),
-        // Keep all attempts inside Vercel's 60-second function budget.
-        signal: AbortSignal.timeout(15000)
+        // Keep one worker invocation short; the durable task queue handles later retries.
+        signal: AbortSignal.timeout(12000)
       });
       if (!response.ok) {
         const failure = new Error(`Gemini API returned HTTP ${response.status}; no paid-provider fallback was attempted.`);
@@ -109,41 +109,108 @@ async function loadWeeklyContext(db, examId) {
   };
 }
 
-function patternEvidence(context) {
-  return {
-    active_question_count: context.active.length,
-    topic_counts: context.topicCounts,
-    difficulty_counts: context.difficultyCounts,
-    actual_pyq_or_official_question_count: context.historicalEvidence.length,
-    actual_past_question_sample: context.historicalEvidence.map((q) => ({
-      subject: q.subject, topic: q.topic, question_hi: q.question_hi, question_en: q.question_en,
-      options: q.options, answer_index: q.answer_index, source_type: q.source_type,
-      source_name: q.source_name, source_url: q.source_url
-    })),
-    official_source_references: context.sources
-  };
-}
 
-async function generateWeeklyDraft(apiKey, task, context, previousDraft = []) {
+async function generateWeeklyDraft(apiKey, task, context, previousDraft = [], includeAnalysis = true) {
   const target = Math.max(50, Math.min(100, Number(task.payload?.target_new_questions) || 50));
   const need = target - previousDraft.length;
-  // Keep each provider request small. The task result is persisted between worker
-  // invocations, so the next scheduled run resumes from the saved draft.
   const batchSize = 5;
   const requested = Math.min(batchSize, Math.max(need, 1));
-  const prompt = `You are ExamPrep's exam-pattern analyst and question writer. Analyze the exam evidence and create NEW bilingual practice MCQs.
-Return valid JSON only with shape {"analysis":{"trend_summary":"...","subjects":[{"name":"...","weight_estimate":"...","evidence":"..."}],"topic_breakdown":[{"subject":"...","topic":"...","priority":"high|medium|low","reason":"..."}],"difficulty_breakdown":{"easy":"...","medium":"...","hard":"..."},"confidence_notes":"...","source_evidence":[{"title":"...","url":"...","source_type":"official_syllabus|official_paper|other","what_it_supports":"..."}]},"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}.
-Target exam: ${JSON.stringify(context.exam)}.
-Request only ${requested} questions in this small resumable batch. Do not try to generate the full ${target}-question target in one request; progress is saved between scheduled worker runs.
-Evidence from existing bank and stored official/PYQ questions: ${JSON.stringify(patternEvidence(context))}.
-Previously generated questions from this same task (do not duplicate): ${JSON.stringify(previousDraft.map((q) => ({ question_hi: q.question_hi, question_en: q.question_en, subject: q.subject, topic: q.topic })))}
-Do not claim to browse or open websites in this free-tier workflow. Use stored PYQ/official questions, exam configuration, topic coverage, and the supplied official_source_references metadata only. Treat listed source URLs as references, not proof that their contents were inspected. Include source_evidence only for evidence actually present in the supplied records; do not invent citations, paper contents, exact frequencies, official status, or guarantees that a question will appear. When authentic past-paper question content is absent, explicitly state that frequency estimates are weak and recommend practice priorities from the available syllabus/description and topic coverage. All generated questions are curated practice, not PYQs. Check each answer and explanation before returning it. Each question needs four distinct options, 0-based answer_index, Hindi/English versions, and concise explanations. Avoid all concepts/questions already in the bank; favor coverage gaps and varied easy/medium/hard difficulty.`;
-  const parsed = await callModel(apiKey, prompt, 16000);
-  if (!parsed.analysis || typeof parsed.analysis.trend_summary !== "string" || !Array.isArray(parsed.analysis.topic_breakdown)) {
+  const questionSchema = { subject: "...", topic: "...", question_hi: "...", question_en: "...", options: ["...", "...", "...", "..."], answer_index: 0, explanation_hi: "...", explanation_en: "...", difficulty: "easy|medium|hard" };
+  const responseShape = includeAnalysis
+    ? { analysis: { trend_summary: "...", subjects: [{ name: "...", weight_estimate: "...", evidence: "..." }], topic_breakdown: [{ subject: "...", topic: "...", priority: "high|medium|low", reason: "..." }], difficulty_breakdown: { easy: "...", medium: "...", hard: "..." }, confidence_notes: "...", source_evidence: [{ title: "...", url: "...", source_type: "official_syllabus|official_paper|other", what_it_supports: "..." }] }, questions: [questionSchema] }
+    : { questions: [questionSchema] };
+  const evidenceLine = includeAnalysis
+    ? "Analyze the supplied evidence and include a concise pattern analysis. Evidence: " + JSON.stringify(buildWeeklyEvidence(context))
+    : "Use the already saved analysis and same exam evidence; do not return another analysis object.";
+  const previousLine = JSON.stringify(previousDraft.slice(-15).map((q) => ({
+    question_hi: String(q.question_hi || "").slice(0, 140),
+    question_en: String(q.question_en || "").slice(0, 140),
+    subject: q.subject,
+    topic: q.topic
+  })));
+  const prompt = [
+    "You are ExamPrep's exam-pattern analyst and question writer. Create NEW bilingual practice MCQs.",
+    "Return valid JSON only with shape " + JSON.stringify(responseShape) + ".",
+    "Target exam: " + JSON.stringify(context.exam) + ".",
+    "Request only " + requested + " NEW questions in this resumable batch. Do not generate the full " + target + "-question target in one request.",
+    evidenceLine,
+    "Previously generated questions from this task (do not duplicate): " + previousLine,
+    "Do not claim to browse websites. Treat source URLs as metadata, not proof that their contents were inspected. Do not invent citations, paper contents, exact frequencies, official status, or guarantees. When authentic past-paper content is absent, say frequency estimates are weak. All generated questions are curated practice, not PYQs. Check each answer and explanation. Every question needs four distinct options, a 0-based answer_index, Hindi/English versions, and concise explanations. Avoid questions already present in the bank and vary difficulty."
+  ].join("\n");
+  const parsed = await callModel(apiKey, prompt, includeAnalysis ? 7000 : 5000);
+  if (includeAnalysis && (!parsed.analysis || typeof parsed.analysis.trend_summary !== "string" || !Array.isArray(parsed.analysis.topic_breakdown))) {
     throw new Error("Weekly exam-pattern analysis failed schema validation.");
   }
   const questions = Array.isArray(parsed.questions) ? parsed.questions.filter(validateGeneratedQuestion) : [];
-  return { analysis: parsed.analysis, questions };
+  return { analysis: parsed.analysis || null, questions };
+}
+
+async function stageWeeklyExamQuestions(task, db, context, analysis, pool) {
+  const records = pool.map((q) => ({
+    exam_id: context.exam.id,
+    subject: q.subject.trim(),
+    topic: q.topic.trim(),
+    question_hi: q.question_hi.trim(),
+    question_en: q.question_en.trim(),
+    options: q.options.map((option) => option.trim()),
+    answer_index: q.answer_index,
+    explanation_hi: q.explanation_hi.trim(),
+    explanation_en: q.explanation_en.trim(),
+    difficulty: q.difficulty,
+    source_type: "curated",
+    source_year: new Date().getUTCFullYear(),
+    frequency_score: 0.5,
+    recency_score: 0.5,
+    topic_score: 0.7,
+    prediction_score: 0.5,
+    verified: false,
+    active: false,
+    source_name: "ExamPrep weekly AI pattern batch (awaiting human approval)",
+    source_url: null,
+    fingerprint: createHash("sha256").update(normalizeQuestionText(q.question_en)).digest("hex")
+  }));
+  const { data: inserted, error: insertError } = await db.from("question_bank")
+    .upsert(records, { onConflict: "exam_id,fingerprint", ignoreDuplicates: true })
+    .select("id,subject,topic,difficulty");
+  if (insertError) throw insertError;
+
+  const subjects = [...new Set((inserted || []).map((q) => q.subject))].map((name) => ({ name }));
+  const generatedTopics = {};
+  const generatedDifficulties = { easy: 0, medium: 0, hard: 0 };
+  for (const q of inserted || []) {
+    const key = q.subject + " — " + (q.topic || "Unclassified");
+    generatedTopics[key] = (generatedTopics[key] || 0) + 1;
+    if (Object.hasOwn(generatedDifficulties, q.difficulty)) generatedDifficulties[q.difficulty] += 1;
+  }
+  const trendSummary = [
+    analysis.trend_summary,
+    "Confidence/evidence note: " + (analysis.confidence_notes || "No confidence note supplied."),
+    "Registered source references (metadata only; not live-verified): " + JSON.stringify(analysis.source_evidence || []),
+    "Actual stored PYQ/official evidence count: " + context.historicalEvidence.length + ". New questions are curated practice, not official past questions."
+  ].join("\n\n");
+  const { error: analysisError } = await db.from("exam_analysis").insert({
+    exam_id: context.exam.id,
+    source_year: new Date().getUTCFullYear(),
+    question_count: context.active.length,
+    subjects,
+    topic_breakdown: analysis.topic_breakdown,
+    difficulty_breakdown: { ...analysis.difficulty_breakdown, generated_batch: generatedDifficulties, generated_topic_counts: generatedTopics },
+    trend_summary: trendSummary
+  });
+
+  return {
+    deferred: false,
+    blocked: false,
+    exam: context.exam.name,
+    exam_slug: context.exam.slug,
+    analysis_saved: !analysisError,
+    analysis_error: analysisError?.message || null,
+    analysis_summary: analysis.trend_summary,
+    confidence_notes: analysis.confidence_notes || "Not supplied",
+    actual_past_paper_evidence_count: context.historicalEvidence.length,
+    approved_for_human_review: (inserted || []).length,
+    note: "Staged as inactive and unverified after separate small-batch review, bilingual schema checks, and deduplication. A human must approve the questions before they enter the live bank; no AI-generated question was auto-published."
+  };
 }
 
 async function runWeeklyExamAnalysis(task, db) {
@@ -153,130 +220,148 @@ async function runWeeklyExamAnalysis(task, db) {
   if (!examId) throw new Error("Weekly task is missing exam_id.");
   const target = Math.max(50, Math.min(100, Number(task.payload?.target_new_questions) || 50));
   const context = await loadWeeklyContext(db, examId);
-  const previous = task.result?.phase === "needs_more" ? (task.result.draft_questions || []) : [];
+  const previousResult = task.result && typeof task.result === "object" ? task.result : {};
+  const phase = previousResult.phase || "start";
+  const existingEnglish = context.existing.map((q) => q.question_en);
+  const existingHindi = context.existing.map((q) => q.question_hi);
+  const reviewedDraft = Array.isArray(previousResult.draft_questions) ? previousResult.draft_questions : [];
+  const savedAnalysis = previousResult.analysis || null;
 
-  if (!["generated", "needs_more"].includes(task.result?.phase)) {
-    const draft = await generateWeeklyDraft(apiKey, task, context, []);
-    const unique = dedupeGeneratedQuestions(draft.questions, context.existing.map((q) => q.question_en), context.existing.map((q) => q.question_hi));
+  if (phase === "start") {
+    const draft = await generateWeeklyDraft(apiKey, task, context, [], true);
+    const unique = dedupeGeneratedQuestions(draft.questions, existingEnglish, existingHindi);
+    if (!unique.length) {
+      return {
+        deferred: true, phase: "needs_more", exam_id: examId, exam_name: context.exam.name,
+        target_new_questions: target, analysis: draft.analysis, draft_questions: [],
+        empty_generation_batches: 1,
+        actual_past_paper_evidence_count: context.historicalEvidence.length,
+        note: "The model returned no valid unique questions in this batch. The next worker run will try a fresh batch."
+      };
+    }
     return {
-      deferred: true,
-      phase: "generated",
-      exam_id: examId,
-      exam_name: context.exam.name,
-      target_new_questions: target,
-      analysis: draft.analysis,
-      draft_questions: unique,
+      deferred: true, phase: "review_batch", exam_id: examId, exam_name: context.exam.name,
+      target_new_questions: target, analysis: draft.analysis, draft_questions: [],
+      pending_review_questions: unique,
+      empty_generation_batches: 0,
       actual_past_paper_evidence_count: context.historicalEvidence.length,
-      note: "Analysis and small candidate batch saved. The next scheduled worker run will independently review, deduplicate, and continue from saved progress. Nothing is published automatically."
+      note: "Saved " + unique.length + " candidate questions. The next worker run will independently review only this small batch. Nothing is published automatically."
     };
   }
 
-  if (task.result?.phase === "generated") {
-    const reviewPrompt = `Independently review these bilingual competitive-exam practice questions for factual correctness, correct answer index, ambiguity, translation agreement, and explanation accuracy. Fix errors; do not add or remove questions. Return JSON only: {"questions":[same question schema]}. Do not label them official or PYQ. If a fact is uncertain, replace the question with a reliable syllabus-level question. Exam: ${context.exam.name}. Pattern analysis: ${JSON.stringify(task.result.analysis)}. Questions: ${JSON.stringify(task.result.draft_questions)}`;
-    const reviewed = await callModel(apiKey, reviewPrompt, 16000);
-    const reviewedQuestions = Array.isArray(reviewed.questions) ? reviewed.questions.filter(validateGeneratedQuestion) : [];
-    const unique = dedupeGeneratedQuestions(reviewedQuestions, context.existing.map((q) => q.question_en), context.existing.map((q) => q.question_hi));
-    const pool = unique.slice(0, target);
-    if (pool.length < target) {
+  if (phase === "generated") {
+    const legacyPending = Array.isArray(previousResult.pending_review_questions)
+      ? previousResult.pending_review_questions
+      : (Array.isArray(previousResult.draft_questions) ? previousResult.draft_questions : []);
+    if (!legacyPending.length) {
       return {
-        deferred: true,
-        phase: "needs_more",
-        exam_id: examId,
-        exam_name: context.exam.name,
-        target_new_questions: target,
-        analysis: task.result.analysis,
-        draft_questions: pool,
+        deferred: true, phase: "needs_more", exam_id: examId, exam_name: context.exam.name,
+        target_new_questions: target, analysis: savedAnalysis, draft_questions: reviewedDraft,
+        empty_generation_batches: 0,
         actual_past_paper_evidence_count: context.historicalEvidence.length,
-        note: `Independent review left ${pool.length}/${target} unique questions. The next scheduled run will generate a gap-filling batch.`
+        note: "The legacy draft had no remaining review candidates. Continuing with a fresh gap-filling batch."
+      };
+    }
+    return {
+      deferred: true, phase: "review_batch", exam_id: examId, exam_name: context.exam.name,
+      target_new_questions: target, analysis: savedAnalysis,
+      draft_questions: reviewedDraft,
+      pending_review_questions: legacyPending,
+      empty_generation_batches: 0,
+      actual_past_paper_evidence_count: context.historicalEvidence.length,
+      note: "Migrated a legacy draft of " + legacyPending.length + " candidates into the resumable review queue."
+    };
+  }
+
+  if (phase === "review_batch") {
+    const pending = Array.isArray(previousResult.pending_review_questions) ? previousResult.pending_review_questions : [];
+    const { batch, remainder } = takeWeeklyReviewBatch(pending);
+    if (!batch.length) {
+      const pool = reviewedDraft.slice(0, target);
+      if (pool.length >= target) return stageWeeklyExamQuestions(task, db, context, savedAnalysis, pool);
+      return {
+        deferred: true, phase: "needs_more", exam_id: examId, exam_name: context.exam.name,
+        target_new_questions: target, analysis: savedAnalysis, draft_questions: pool,
+        empty_generation_batches: 0,
+        actual_past_paper_evidence_count: context.historicalEvidence.length,
+        note: "Reviewed " + pool.length + "/" + target + " unique questions. The next worker run will generate a small gap-filling batch."
       };
     }
 
-    const records = pool.map((q) => ({
-      exam_id: context.exam.id,
-      subject: q.subject.trim(),
-      topic: q.topic.trim(),
-      question_hi: q.question_hi.trim(),
-      question_en: q.question_en.trim(),
-      options: q.options.map((option) => option.trim()),
-      answer_index: q.answer_index,
-      explanation_hi: q.explanation_hi.trim(),
-      explanation_en: q.explanation_en.trim(),
-      difficulty: q.difficulty,
-      source_type: "curated",
-      source_year: new Date().getUTCFullYear(),
-      frequency_score: 0.5,
-      recency_score: 0.5,
-      topic_score: 0.7,
-      prediction_score: 0.5,
-      // AI-created content is staged for a human review; it must never self-publish.
-      verified: false,
-      active: false,
-      source_name: "ExamPrep weekly AI pattern batch (awaiting human approval)",
-      source_url: null,
-      fingerprint: createHash("sha256").update(normalizeQuestionText(q.question_en)).digest("hex")
-    }));
-    // The unique (exam_id, fingerprint) index keeps worker retries duplicate-safe.
-    const { data: inserted, error: insertError } = await db.from("question_bank")
-      .upsert(records, { onConflict: "exam_id,fingerprint", ignoreDuplicates: true })
-      .select("id,subject,topic,difficulty");
-    if (insertError) throw insertError;
+    const reviewPrompt = [
+      "Independently review this batch of " + batch.length + " bilingual competitive-exam practice questions for factual correctness, correct answer index, ambiguity, translation agreement, and explanation accuracy.",
+      "Fix errors without adding or removing questions. Return JSON only: {\"questions\":[same question schema]}.",
+      "Do not label any question official or PYQ. If a fact is uncertain, replace that question with a reliable syllabus-level question.",
+      "Exam: " + context.exam.name + ". Candidates: " + JSON.stringify(batch)
+    ].join("\n");
+    const reviewed = await callModel(apiKey, reviewPrompt, 6000);
+    const reviewedQuestions = Array.isArray(reviewed.questions) ? reviewed.questions.filter(validateGeneratedQuestion) : [];
+    const uniqueBatch = dedupeGeneratedQuestions(
+      reviewedQuestions,
+      existingEnglish.concat(reviewedDraft.map((q) => q.question_en)),
+      existingHindi.concat(reviewedDraft.map((q) => q.question_hi))
+    );
+    const pool = dedupeGeneratedQuestions(reviewedDraft.concat(uniqueBatch), existingEnglish, existingHindi).slice(0, target);
 
-    const subjects = [...new Set((inserted || []).map((q) => q.subject))].map((name) => ({ name }));
-    const generatedTopics = {};
-    const generatedDifficulties = { easy: 0, medium: 0, hard: 0 };
-    for (const q of inserted || []) {
-      const key = `${q.subject} — ${q.topic || "Unclassified"}`;
-      generatedTopics[key] = (generatedTopics[key] || 0) + 1;
-      if (Object.hasOwn(generatedDifficulties, q.difficulty)) generatedDifficulties[q.difficulty] += 1;
+    if (pool.length >= target) return stageWeeklyExamQuestions(task, db, context, savedAnalysis, pool);
+    if (remainder.length) {
+      return {
+        deferred: true, phase: "review_batch", exam_id: examId, exam_name: context.exam.name,
+        target_new_questions: target, analysis: savedAnalysis,
+        draft_questions: pool,
+        pending_review_questions: remainder,
+        empty_generation_batches: 0,
+        actual_past_paper_evidence_count: context.historicalEvidence.length,
+        note: "Reviewed " + uniqueBatch.length + " candidates; " + remainder.length + " candidates remain in the review queue."
+      };
     }
-    const analysis = task.result.analysis;
-    const trendSummary = [
-      analysis.trend_summary,
-      `Confidence/evidence note: ${analysis.confidence_notes || "No confidence note supplied."}`,
-      `Registered source references (metadata only; not live-verified): ${JSON.stringify(analysis.source_evidence || [])}`,
-      `Actual stored PYQ/official evidence count: ${context.historicalEvidence.length}. New questions are curated practice, not official past questions.`
-    ].join("\n\n");
-    const { error: analysisError } = await db.from("exam_analysis").insert({
-      exam_id: context.exam.id,
-      source_year: new Date().getUTCFullYear(),
-      question_count: context.active.length,
-      subjects,
-      topic_breakdown: analysis.topic_breakdown,
-      difficulty_breakdown: { ...analysis.difficulty_breakdown, generated_batch: generatedDifficulties, generated_topic_counts: generatedTopics },
-      trend_summary: trendSummary
-    });
     return {
-      deferred: false,
-      blocked: false,
-      exam: context.exam.name,
-      exam_slug: context.exam.slug,
-      analysis_saved: !analysisError,
-      analysis_error: analysisError?.message || null,
-      analysis_summary: analysis.trend_summary,
-      confidence_notes: analysis.confidence_notes || "Not supplied",
+      deferred: true, phase: "needs_more", exam_id: examId, exam_name: context.exam.name,
+      target_new_questions: target, analysis: savedAnalysis, draft_questions: pool,
+      empty_generation_batches: 0,
       actual_past_paper_evidence_count: context.historicalEvidence.length,
-      inserted_questions: (inserted || []).length,
-      note: "Staged as inactive and unverified after bilingual schema checks, deduplication, and a separate AI review pass. A human must approve the questions before they enter the live question bank; no AI-generated question was auto-published."
+      note: "Independently reviewed " + pool.length + "/" + target + " unique questions. The next worker run will generate a small gap-filling batch."
     };
   }
 
-  const gapDraft = await generateWeeklyDraft(apiKey, task, context, previous);
-  const merged = dedupeGeneratedQuestions(
-    [...previous, ...gapDraft.questions],
-    context.existing.map((q) => q.question_en),
-    context.existing.map((q) => q.question_hi)
-  ).slice(0, target + 10);
-  return {
-    deferred: true,
-    phase: "generated",
-    exam_id: examId,
-    exam_name: context.exam.name,
-    target_new_questions: target,
-    analysis: task.result.analysis || gapDraft.analysis,
-    draft_questions: merged,
-    actual_past_paper_evidence_count: context.historicalEvidence.length,
-    note: "Gap-filling batch saved. The next scheduled worker run will review and continue from saved progress; questions remain inactive and unverified pending human approval."
-  };
+  if (phase === "needs_more") {
+    const emptyCount = Number(previousResult.empty_generation_batches || 0);
+    const draft = await generateWeeklyDraft(apiKey, task, context, reviewedDraft, !savedAnalysis);
+    const uniqueNew = dedupeGeneratedQuestions(
+      draft.questions,
+      existingEnglish.concat(reviewedDraft.map((q) => q.question_en)),
+      existingHindi.concat(reviewedDraft.map((q) => q.question_hi))
+    );
+    if (!uniqueNew.length) {
+      const nextEmptyCount = emptyCount + 1;
+      if (nextEmptyCount >= 3) {
+        return {
+          blocked: true,
+          reason: "AI produced no valid unique questions in " + nextEmptyCount + " consecutive gap-filling batches. The task was stopped for manual review.",
+          phase: phase, exam_id: examId, exam_name: context.exam.name,
+          reviewed_question_count: reviewedDraft.length
+        };
+      }
+      return {
+        deferred: true, phase: "needs_more", exam_id: examId, exam_name: context.exam.name,
+        target_new_questions: target, analysis: savedAnalysis || draft.analysis,
+        draft_questions: reviewedDraft, empty_generation_batches: nextEmptyCount,
+        actual_past_paper_evidence_count: context.historicalEvidence.length,
+        note: "No new valid unique questions in this batch (" + nextEmptyCount + "/3); one later retry remains before stopping."
+      };
+    }
+    return {
+      deferred: true, phase: "review_batch", exam_id: examId, exam_name: context.exam.name,
+      target_new_questions: target, analysis: savedAnalysis || draft.analysis,
+      draft_questions: reviewedDraft,
+      pending_review_questions: uniqueNew,
+      empty_generation_batches: 0,
+      actual_past_paper_evidence_count: context.historicalEvidence.length,
+      note: "Saved " + uniqueNew.length + " new candidates. The next worker run will review only this batch, then continue toward " + target + "."
+    };
+  }
+
+  return { blocked: true, reason: "Unknown weekly analysis phase " + String(phase) + "; manual review is required." };
 }
 
 export async function GET(request) {

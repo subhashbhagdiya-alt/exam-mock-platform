@@ -11,12 +11,18 @@ assert.deepEqual(first, {
 const second = classifyWorkerFailure({ status: 504 }, first.payload);
 assert.equal(second.deferred, true);
 assert.equal(second.retryCount, 2);
-assert.equal(second.payload.provider_retry_count, MAX_TRANSIENT_PROVIDER_RETRIES);
+assert.equal(second.payload.provider_retry_count, 2);
 
-const capped = classifyWorkerFailure({ status: 503 }, second.payload);
+let lastRetry = second;
+for (let attempt = 3; attempt <= MAX_TRANSIENT_PROVIDER_RETRIES; attempt += 1) {
+  lastRetry = classifyWorkerFailure({ status: 503 }, lastRetry.payload);
+  assert.equal(lastRetry.deferred, true);
+  assert.equal(lastRetry.retryCount, attempt);
+}
+const capped = classifyWorkerFailure({ status: 503 }, lastRetry.payload);
 assert.equal(capped.deferred, false, "Retries must stop at the configured cap.");
 assert.equal(capped.reason, "terminal");
-assert.equal(capped.payload.provider_retry_count, 2);
+assert.equal(capped.payload.provider_retry_count, MAX_TRANSIENT_PROVIDER_RETRIES);
 
 const quota = classifyWorkerFailure({ code: "FREE_QUOTA_EXHAUSTED", status: 429 }, initialPayload);
 assert.equal(quota.deferred, true, "Free quota exhaustion remains queued for a future scheduled run.");

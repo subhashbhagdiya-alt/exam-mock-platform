@@ -5,8 +5,10 @@ import { createClient } from "@supabase/supabase-js";
 import { ArrowRight, Award, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, FileText, Flame, Flag, Globe2, GraduationCap, Home, Info, Languages, ListChecks, RotateCcw, Search, ShieldCheck, Settings, SlidersHorizontal, Sparkles, Target, Trophy, Upload, X } from "lucide-react";
 import { scorePaperQuiz } from "../lib/paper-analysis-quiz.mjs";
 import { MAX_PAPER_FILE_BYTES, isSupportedPaperFile } from "../lib/paper-analysis-upload.mjs";
+import { openPaperFilePicker } from "../lib/paper-file-picker.mjs";
+import { isMobileNavigationViewport, MOBILE_NAV_REVEAL_DELAY_MS } from "../lib/mobile-navigation.mjs";
 import { mapDisplayedAnswersToOriginal, mapOriginalReviewToDisplayed, reorderOptions } from "../lib/option-order.mjs";
-import { getLocalizedQuestionOptions, mergeQuestionIds } from "../lib/question-pool.mjs";
+import { getCorrectQuestionSourceIds, getLocalizedQuestionOptions, mergeQuestionIds } from "../lib/question-pool.mjs";
 
 const supabaseBrowser = (
   typeof window !== "undefined" &&
@@ -43,7 +45,11 @@ async function ensureSessionKey() {
   return key;
 }
 
-function getQuestionSeenStorageKey(userId, exam, subject, topic) {
+function getQuestionMasteryStorageKey(userId, exam, subject, topic) {
+  return ["exam_prep_mastered_questions_v2", userId || "guest", exam || "all", subject || "all", topic || "all"].join("_");
+}
+
+function getLegacyQuestionSeenStorageKey(userId, exam, subject, topic) {
   return ["exam_prep_seen_questions", userId || "guest", exam || "all", subject || "all", topic || "all"].join("_");
 }
 
@@ -841,6 +847,58 @@ export default function HomePage() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileQuickSettingsOpen, setMobileQuickSettingsOpen] = useState(false);
   const [mobileBottomMoreOpen, setMobileBottomMoreOpen] = useState(false);
+  const [mobileBottomNavHidden, setMobileBottomNavHidden] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    let showTimer = null;
+    const isMobileViewport = () => isMobileNavigationViewport(window.innerWidth);
+    const clearShowTimer = () => {
+      if (showTimer !== null) {
+        window.clearTimeout(showTimer);
+        showTimer = null;
+      }
+    };
+    const revealNavigation = () => {
+      clearShowTimer();
+      setMobileBottomNavHidden(false);
+    };
+    const handleScroll = () => {
+      if (!isMobileViewport()) {
+        revealNavigation();
+        return;
+      }
+
+      setMobileBottomNavHidden(true);
+      setMobileBottomMoreOpen(false);
+      clearShowTimer();
+      showTimer = window.setTimeout(() => {
+        setMobileBottomNavHidden(false);
+        showTimer = null;
+      }, MOBILE_NAV_REVEAL_DELAY_MS);
+    };
+    const handleViewportChange = () => {
+      revealNavigation();
+      if (!isMobileViewport()) setMobileBottomMoreOpen(false);
+    };
+    const handlePageResume = () => revealNavigation();
+
+    // Attach on every screen size so desktop-to-mobile resizing works too.
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleViewportChange, { passive: true });
+    window.addEventListener("orientationchange", handleViewportChange);
+    window.addEventListener("pageshow", handlePageResume);
+    document.addEventListener("visibilitychange", handlePageResume);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("orientationchange", handleViewportChange);
+      window.removeEventListener("pageshow", handlePageResume);
+      document.removeEventListener("visibilitychange", handlePageResume);
+      clearShowTimer();
+    };
+  }, []);
   useEffect(() => {
     if (!mobileNavOpen || typeof document === "undefined") return undefined;
     const closeMobileNavOutside = (event) => {
@@ -1715,13 +1773,20 @@ export default function HomePage() {
     const requestedCount = Math.min(Number(practiceQuestionCount || 10), readyCount);
     setAnswers({}); setReview([]); setCurrent(0); setSeconds(0); setResult(null); setReviewAnswers({}); setTestSessionId(""); setTestSessionKey(""); setShowSubmit(false); setTestQuestions([]);
     try {
-      const seenKey = getQuestionSeenStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+      const masteryKey = getQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+      const legacySeenKey = getLegacyQuestionSeenStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
       const legacyMasteryKey = getLegacyQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
-      let seenQuestionIds = [];
+      let masteredQuestionIds = [];
+      let legacyMasteredIds = [];
       try {
-        const seenIds = JSON.parse(localStorage.getItem(seenKey) || "[]");
-        const legacyMasteredIds = JSON.parse(localStorage.getItem(legacyMasteryKey) || "[]");
-        seenQuestionIds = mergeQuestionIds(seenIds, legacyMasteredIds);
+        const storedMasteredIds = JSON.parse(localStorage.getItem(masteryKey) || "[]");
+        legacyMasteredIds = JSON.parse(localStorage.getItem(legacyMasteryKey) || "[]");
+        masteredQuestionIds = mergeQuestionIds(storedMasteredIds, legacyMasteredIds);
+        if (legacyMasteredIds.length) localStorage.setItem(masteryKey, JSON.stringify(masteredQuestionIds));
+        // Older releases marked every displayed question as seen before grading.
+        // Those IDs do not prove mastery, so discard that polluted list.
+        localStorage.removeItem(legacySeenKey);
+        localStorage.removeItem(legacyMasteryKey);
       } catch {}
       const buildQuestionRequest = excludedIds => ({
         exam: selectedExam,
@@ -1736,16 +1801,16 @@ export default function HomePage() {
         body: JSON.stringify(buildQuestionRequest(excludedIds)),
         cache: "no-store"
       });
-      let response = await fetchPracticeQuestions(seenQuestionIds);
+      let response = await fetchPracticeQuestions(masteredQuestionIds);
       let payload = await response.json();
       let startedNewQuestionCycle = false;
-      if (response.status === 409 && payload?.code === "QUESTION_POOL_COMPLETED" && seenQuestionIds.length) {
+      if (response.status === 409 && payload?.code === "QUESTION_POOL_COMPLETED" && masteredQuestionIds.length) {
         const retryResponse = await fetchPracticeQuestions([]);
         const retryPayload = await retryResponse.json();
         if (retryResponse.ok) {
-          localStorage.removeItem(seenKey);
+          localStorage.removeItem(masteryKey);
           localStorage.removeItem(legacyMasteryKey);
-          seenQuestionIds = [];
+          masteredQuestionIds = [];
           startedNewQuestionCycle = true;
         }
         response = retryResponse;
@@ -1775,14 +1840,8 @@ export default function HomePage() {
           // Keep the learner's selected preset (20/30/100) for the next cycle;
           // this particular attempt may contain fewer questions if the unseen pool is smaller.
           setTestQuestions(mapped);
-          // Mark each displayed question as seen, so later 20/30/100 presets draw
-          // only from the remaining unseen pool until the full cycle is completed.
-          try {
-            localStorage.setItem(seenKey, JSON.stringify(mergeQuestionIds(
-              seenQuestionIds,
-              mapped.map(item => item.sourceId)
-            )));
-          } catch {}
+          // Only correctly answered questions are marked as mastered after grading.
+          // Wrong and unanswered questions stay eligible for the next practice set.
           setView("test");
           if (startedNewQuestionCycle) {
             setAuthMessage(t(
@@ -1850,6 +1909,21 @@ export default function HomePage() {
       if (!gradeResponse.ok || !gradePayload?.data) throw new Error(gradePayload?.error || "Could not grade this test. Please retry.");
 
       const graded = gradePayload.data;
+      // Store mastery only after the server has graded the attempt. The RPC review
+      // uses the original answer-key indexes, and originalAnswers has been mapped
+      // back from the shuffled option order above.
+      try {
+        const correctSourceIds = getCorrectQuestionSourceIds(graded.review || [], originalAnswers, testQuestions);
+        const masteryKey = getQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+        const legacyMasteryKey = getLegacyQuestionMasteryStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+        const legacySeenKey = getLegacyQuestionSeenStorageKey(user?.id, selectedExam, selectedSubject, selectedTopic);
+        const storedMasteredIds = JSON.parse(localStorage.getItem(masteryKey) || "[]");
+        const legacyMasteredIds = JSON.parse(localStorage.getItem(legacyMasteryKey) || "[]");
+        const masteredIds = mergeQuestionIds(storedMasteredIds, legacyMasteredIds, correctSourceIds);
+        if (masteredIds.length) localStorage.setItem(masteryKey, JSON.stringify(masteredIds));
+        localStorage.removeItem(legacyMasteryKey);
+        localStorage.removeItem(legacySeenKey);
+      } catch {}
       const displayedReview = mapOriginalReviewToDisplayed(graded.review || [], optionOrders);
       setReviewAnswers(Object.fromEntries(displayedReview.map(item => [String(item.id), item])));
       const summary = {
@@ -2195,9 +2269,9 @@ export default function HomePage() {
 
         {view === "instructions" && <div className="content instructions-content"><div className="instructions-hero"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("टेस्ट से पहले","BEFORE YOU START")}</div><h1>{examName}</h1><p className="intro">{t("एक बार नियम देख लें, फिर बिना distraction के टेस्ट शुरू करें।","Review the rules once, then start the test without distractions.")}</p></div><div className="instruction-orb"><BookOpen size={38}/></div></div><div className="instruction-grid"><div className="instruction-stat"><span>{t("सवाल","QUESTIONS")}</span><b>{practiceQuestionCount}</b><small>{selectedSubject === "all" ? t("पूरा syllabus pool","Full syllabus pool") : selectedSubject}</small></div><div className="instruction-stat"><span>{t("समय","TIME")}</span><b>{practiceDuration} min</b><small>{t("Timer test शुरू होते ही चलेगा","Timer starts with the test")}</small></div><div className="instruction-stat"><span>{t("सही उत्तर","CORRECT")}</span><b>+{examConfig.marks_per_question}</b><small>{t("हर सही जवाब","For each correct answer")}</small></div><div className="instruction-stat negative"><span>{t("गलत उत्तर","WRONG")}</span><b>-{examConfig.negative_marks}</b><small>{t("Negative marking","Negative marking")}</small></div></div>{renderQuestionLanguageSwitch()}<div className="rules-card"><div className="section-heading"><div><h2>{t("महत्वपूर्ण निर्देश","Important instructions")}</h2><p>{t("इन नियमों को ध्यान से पढ़ें।","Read these rules carefully.")}</p></div><span className="section-count">RULES</span></div><div className="rules-list"><div><b>01</b><span>{t("हर सवाल का एक सही विकल्प चुनें। जवाब बाद में बदला जा सकता है।","Choose one option for each question. Answers can be changed before submission.")}</span></div><div><b>02</b><span>{t("Review के लिए सवाल mark कर सकते हैं और question palette से वापस जा सकते हैं।","You can mark questions for review and jump back using the question palette.")}</span></div><div><b>03</b><span>{t("Timer समाप्त होने पर test submit हो जाएगा।","The test will submit when the timer reaches zero.")}</span></div><div><b>04</b><span>{t("सवालों के source labels test में दिखाई देंगे: PYQ, OFFICIAL, MEMORY-BASED या PRACTICE।","Question source labels appear in the test: PYQ, OFFICIAL, MEMORY-BASED, or PRACTICE.")}</span></div></div></div><div className="instruction-bottom"><span>{!user ? t("Guest mode: result इसी device पर save होगा।","Guest mode: your result will be saved on this device.") : t("आप logged in हैं; result cloud history में save किया जा सकता है।","You are logged in; your result can be saved to cloud history.")}</span><div><button className="secondary-button" onClick={()=>setView("home")}>{t("वापस","Back")}</button><button className="primary-button" onClick={runTest}>{t("मैं तैयार हूँ — टेस्ट शुरू करें","I’m ready — Start test")}<ArrowRight size={17}/></button></div></div></div>}
 
-        {view === "test" && <div className="content test-content anti-cheat-screen" onContextMenu={e=>e.preventDefault()} onCopy={e=>e.preventDefault()} onCut={e=>e.preventDefault()}><div className="question-screen-top">{testFocusWarning && <div className="test-focus-warning"><ShieldCheck size={15}/> {t("टेस्ट स्क्रीन से बाहर गए थे। ध्यान रखें—यह session जारी है।","You left the test screen. Stay focused—this session is still active.")}</div>}<div className="live-test-badge"><span/> LIVE TEST</div><div className="test-title-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("मॉक टेस्ट / परीक्षा","MOCK TEST / EXAM")}</div><h1>{examName}</h1><p className="intro">{t("सवाल ध्यान से पढ़ें। जरूरत हो तो रिव्यू के लिए मार्क करें।","Read carefully. Mark questions for review when needed.")}</p></div><CountdownTimer key={testSessionId || "practice"} initialSeconds={seconds} onExpire={finishTest} label={t("बचा हुआ समय","TIME LEFT")}/></div><div className="quick-test-meta"><span>✓ {testQuestions.length} {t("सवाल","questions")}</span><span>◉ {getQuestionSourceLabel(q.sourceType, hi) + (q.sourceType === "pyq" && q.sourceYear ? " " + q.sourceYear : "")}</span>{renderQuestionLanguageSwitch()}</div></div><div className="test-progress"><div><span>{t("टेस्ट की प्रगति","TEST PROGRESS")}</span><b>{answered} / {testQuestions.length} {t("जवाब दिए","answered")}</b></div><div className="progress-track"><span style={{width: (answered/testQuestions.length*100)+"%"}}/></div></div>
+        {view === "test" && <div className="content test-content anti-cheat-screen" onContextMenu={e=>e.preventDefault()} onCopy={e=>e.preventDefault()} onCut={e=>e.preventDefault()}><div className="question-screen-top">{testFocusWarning && <div className="test-focus-warning"><ShieldCheck size={15}/> {t("टेस्ट स्क्रीन से बाहर गए थे। ध्यान रखें—यह session जारी है।","You left the test screen. Stay focused—this session is still active.")}</div>}<div className="live-test-badge"><span/> LIVE TEST</div><div className="test-title-row"><div><div className="eyebrow"><span className="eyebrow-line"/> {t("मॉक टेस्ट / परीक्षा","MOCK TEST / EXAM")}</div><h1>{examName}</h1><p className="intro">{t("सवाल ध्यान से पढ़ें। जरूरत हो तो रिव्यू के लिए मार्क करें।","Read carefully. Mark questions for review when needed.")}</p></div><CountdownTimer key={testSessionId || "practice"} initialSeconds={seconds} onExpire={finishTest} label={t("बचा हुआ समय","TIME LEFT")}/></div><div className="quick-test-meta"><span>✓ {testQuestions.length} {t("सवाल","questions")}</span><span>◉ {getQuestionSourceLabel(q.sourceType, hi) + (q.sourceType === "pyq" && q.sourceYear ? " " + q.sourceYear : "")}</span></div></div><div className="test-progress"><div><span>{t("टेस्ट की प्रगति","TEST PROGRESS")}</span><b>{answered} / {testQuestions.length} {t("जवाब दिए","answered")}</b></div><div className="progress-track"><span style={{width: (answered/testQuestions.length*100)+"%"}}/></div></div>
           <button type="button" className="mobile-finish-test" onClick={() => { setSubmitError(""); setShowSubmit(true); }}><Flag size={18}/>{t("टेस्ट सबमिट करें","Finish test")}<ArrowRight size={18}/></button>
-          <div className="test-layout"><div className="question-panel"><div className="question-meta"><span className="question-number">{t("सवाल","QUESTION")} {current + 1} <i/> {testQuestions.length}</span><span className="subject-chip">{formatQuestionCategory(q.subject)}</span>{q.topic ? <span className="topic-chip">{formatQuestionCategory(q.topic)}</span> : null}<span className="source-chip">{getQuestionSourceLabel(q.sourceType, hi)}</span></div><h2>{displayQuestion}</h2><p className="question-hint">{t("सही विकल्प चुनें। अगला सवाल देखने के लिए Next दबाएँ; जवाब चुनने से सवाल अपने-आप नहीं बदलेगा।","Choose an option. Press Next to move on; selecting an answer will not automatically change the question.")}</p><div className="options">{displayOptions.map((option,i)=><button key={q.id + "-" + i} className={"option " + (answers[q.id] === i ? "selected" : "")} onClick={() => chooseAnswer(i)}><span className="option-letter">{String.fromCharCode(65+i)}</span><span>{option}</span>{answers[q.id] === i ? <span className="radio-selected"/> : null}</button>)}</div>
+          <div className="test-layout"><div className="question-panel"><div className="exam-question-toolbar">{renderQuestionLanguageSwitch()}</div><div className="question-meta"><span className="question-number">{t("सवाल","QUESTION")} {current + 1} <i/> {testQuestions.length}</span><span className="subject-chip">{formatQuestionCategory(q.subject)}</span>{q.topic ? <span className="topic-chip">{formatQuestionCategory(q.topic)}</span> : null}<span className="source-chip">{getQuestionSourceLabel(q.sourceType, hi)}</span></div><h2>{displayQuestion}</h2><p className="question-hint">{t("सही विकल्प चुनें। अगला सवाल देखने के लिए Next दबाएँ; जवाब चुनने से सवाल अपने-आप नहीं बदलेगा।","Choose an option. Press Next to move on; selecting an answer will not automatically change the question.")}</p><div className="options">{displayOptions.map((option,i)=><button key={q.id + "-" + i} className={"option " + (answers[q.id] === i ? "selected" : "")} onClick={() => chooseAnswer(i)}><span className="option-letter">{String.fromCharCode(65+i)}</span><span>{option}</span>{answers[q.id] === i ? <span className="radio-selected"/> : null}</button>)}</div>
           <div className="question-controls"><button className="secondary-button" disabled={current===0} onClick={() => setCurrent(c=>c-1)}><ChevronLeft size={17}/>{t("पिछला","Previous")}</button><button className={"review-button " + (review.includes(q.id) ? "review-on" : "")} onClick={toggleReview}><Flag size={16}/>{review.includes(q.id) ? t("रिव्यू हटाएँ","Unmark review") : t("रिव्यू के लिए","Mark for review")}</button>{current < testQuestions.length-1 ? <button className="primary-button next-button" onClick={() => setCurrent(c=>c+1)}>{t("अगला सवाल","Next question")}<ChevronRight size={17}/></button> : <button className="primary-button next-button" onClick={() => { setSubmitError(""); setShowSubmit(true); }}>{t("टेस्ट सबमिट करें","Submit test")}<ArrowRight size={17}/></button>}</div></div>
           <aside className="question-nav"><div className="nav-heading"><h3>{t("सवालों की सूची","Question palette")}</h3><span>{answered}/{testQuestions.length}</span></div><p>{t("किसी सवाल पर जाने के लिए नंबर चुनें।","Tap a number to jump to a question.")}</p><div className="number-grid">{testQuestions.map((item,i)=><button key={item.id} onClick={() => setCurrent(i)} className={"number-cell " + (current===i ? "current" : "") + (answers[item.id] !== undefined ? " answered" : "") + (review.includes(item.id) ? " marked" : "")}>{String(item.id).padStart(2,"0")}{review.includes(item.id) && <i/>}</button>)}</div><div className="legend"><span><i className="legend-answered"/> {t("जवाब दिया","Answered")}</span><span><i className="legend-marked"/> {t("रिव्यू","Review")}</span><span><i className="legend-empty"/> {t("बाकी","Not answered")}</span></div><div className="nav-summary"><div><span>{t("जवाब दिए","Answered")}</span><b>{answered}</b></div><div><span>{t("बाकी सवाल","Remaining")}</span><b>{testQuestions.length-answered}</b></div><div><span>{t("रिव्यू के लिए","For review")}</span><b>{review.length}</b></div></div><button className="submit-full" onClick={() => { setSubmitError(""); setShowSubmit(true); }}>{t("टेस्ट समाप्त करें","Finish test")}<ArrowRight size={16}/></button></aside></div>
           {showSubmit && <div className="modal-backdrop"><div className="confirm-modal"><div className="modal-icon"><Flag size={22}/></div><h2>{t("टेस्ट सबमिट करें?","Submit your test?")}</h2><p>{t("आपने","You have answered")} {answered} {t("में से "+testQuestions.length+" सवालों के जवाब दिए हैं। सबमिट करने के बाद जवाब नहीं बदल पाएँगे।","of the selected questions. You cannot change answers after submission.")}</p>{submitError && <p role="alert" className="setup-message">{submitError}</p>}<div className="modal-actions"><button className="secondary-button" onClick={() => setShowSubmit(false)}>{t("वापस जाएँ","Go back")}</button><button className="primary-button" onClick={finishTest} disabled={grading}>{grading ? t("जाँच हो रही है…","Grading…") : t("हाँ, सबमिट करें","Yes, submit")}</button></div></div></div>}
@@ -2301,7 +2375,7 @@ export default function HomePage() {
               <div className="paper-upload-icon"><Upload size={27}/></div>
               <h2>{t("अपना पेपर चुनें","Choose your paper")}</h2>
               <p>{t("PDF, JPG, PNG या WEBP · अधिकतम 3 MB","PDF, JPG, PNG, or WEBP · 3 MB maximum")}</p>
-              <button type="button" className="secondary-button" onClick={() => paperFileInputRef.current?.click()}><FileText size={17}/>{paperFile ? t("फ़ाइल बदलें","Change file") : t("फ़ाइल चुनें","Browse files")}</button>
+              <button type="button" className="secondary-button" onClick={() => openPaperFilePicker(paperFileInputRef.current)}><FileText size={17}/>{paperFile ? t("फ़ाइल बदलें","Change file") : t("फ़ाइल चुनें","Browse files")}</button>
               {paperFile && <div className="paper-file-selected"><CheckCircle2 size={17}/><span>{paperFile.name}</span><small>{(paperFile.size / 1024 / 1024).toFixed(2)} MB</small></div>}
             </div>
             {paperAnalysisError && <div className="paper-analysis-error" role="alert">{paperAnalysisError}</div>}
@@ -2404,7 +2478,7 @@ export default function HomePage() {
 
         <footer className="footer"><span>© 2026 ExamPrep</span><span>{t("अभ्यास • प्रगति • सफलता","PRACTICE · PROGRESS · SUCCESS")}</span><span>{t("आपकी तैयारी जारी है","Keep showing up ✦")}</span></footer>
       </section>
-      {view !== "test" && view !== "instructions" && <div className="mobile-bottom-navigation-wrap">
+      {view !== "test" && view !== "instructions" && <div className={"mobile-bottom-navigation-wrap" + (mobileBottomNavHidden ? " mobile-bottom-navigation-hidden" : "")}>
         {mobileBottomMoreOpen && <><button className="mobile-bottom-more-backdrop" type="button" aria-label={t("मेन्यू बंद करें","Close more menu")} onClick={() => setMobileBottomMoreOpen(false)} /><div className="mobile-bottom-more-panel">
           <button type="button" onClick={() => {navigateTo("history");setMobileBottomMoreOpen(false);}}><Award size={18}/>{t("मेरे रिज़ल्ट","My results")}</button>
           <button type="button" onClick={() => {navigateTo("login");setMobileBottomMoreOpen(false);}}><ShieldCheck size={18}/>{user ? t("अकाउंट","Account") : t("लॉगिन","Login")}</button>
