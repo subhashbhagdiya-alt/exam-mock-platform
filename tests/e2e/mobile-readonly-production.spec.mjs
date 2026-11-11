@@ -111,7 +111,7 @@ test("read-only production mobile smoke: tracks, navigation, and paper picker", 
     mimeType: "text/plain",
     buffer: Buffer.from("not a paper"),
   });
-  await expect(page.locator(".paper-analysis-error")).toContainText(/PDF, JPG, PNG or WEBP/i);
+  await expect(page.locator(".paper-analysis-error")).toContainText(/PDF, JPG, PNG,? or WEBP/i);
   await expect(page.locator(".paper-file-selected")).toHaveCount(0);
 
   await chooseFile({
