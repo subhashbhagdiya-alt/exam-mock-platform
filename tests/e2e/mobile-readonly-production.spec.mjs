@@ -47,10 +47,14 @@ test("read-only production mobile smoke: tracks, navigation, and paper picker", 
   expect(Number(ssc.verified_question_count)).toBeGreaterThanOrEqual(Number(ssc.required_question_count));
 
   await expect(page.getByText("MPESB General Practice", { exact: true })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText(/READY|अभी उपलब्ध/).first()).toBeVisible();
+  const mpesbCard = page.locator(".job-card").filter({ hasText: "MPESB General Practice" });
+  await expect(mpesbCard).toBeVisible();
+  await expect(mpesbCard.locator("em")).toContainText(/READY|अभी उपलब्ध/);
 
   await page.getByRole("tab", { name: /SSC/ }).click();
-  await expect(page.getByText("SSC General Practice", { exact: true })).toBeVisible();
+  const sscCard = page.locator(".job-card").filter({ hasText: "SSC General Practice" });
+  await expect(sscCard).toBeVisible();
+  await expect(sscCard.locator("em")).toContainText(/READY|अभी उपलब्ध/);
 
   // Check the page fits a 390px viewport without horizontal document overflow.
   const dimensions = await page.evaluate(() => ({
