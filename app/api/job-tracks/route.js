@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildQuestionTopicSignals } from "../../../lib/question-topic-signals.mjs";
+import { summarizeExamQuestionBank } from "../../../lib/exam-question-readiness.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -38,7 +39,9 @@ export async function GET() {
   }
 
   const examIds = [...examsBySlug.values()].map((exam) => exam.id);
+  const requiredCountByExamId = new Map([...examsBySlug.values()].map((exam) => [exam.id, Number(exam.total_questions || 0)]));
   const verifiedCounts = new Map();
+  const questionReadyByExam = new Map();
   const sourceCounts = new Map();
   const subjectSets = new Map();
   const topicSets = new Map();
@@ -52,7 +55,7 @@ export async function GET() {
     for (let from = 0; ; from += questionPageSize) {
       const { data: page, error: questionError } = await questionClient
         .from("question_bank")
-        .select("exam_id,source_type,source_name,source_url,subject,topic")
+        .select("exam_id,id,source_type,source_name,source_url,subject,topic,question_hi,question_en,explanation_hi,explanation_en,created_at")
         .in("exam_id", examIds)
         .eq("active", true)
         .eq("verified", true)
@@ -65,16 +68,27 @@ export async function GET() {
       if (!page || page.length < questionPageSize) break;
     }
 
+    const questionsByExam = new Map();
     for (const question of questions) {
-      verifiedCounts.set(question.exam_id, (verifiedCounts.get(question.exam_id) || 0) + 1);
-      const key = `${question.exam_id}:${question.source_type || "unknown"}`;
-      sourceCounts.set(key, (sourceCounts.get(key) || 0) + 1);
-      if (!subjectSets.has(question.exam_id)) subjectSets.set(question.exam_id, new Set());
-      if (!topicSets.has(question.exam_id)) topicSets.set(question.exam_id, new Set());
-      if (question.subject) subjectSets.get(question.exam_id).add(question.subject);
-      if (question.topic) topicSets.get(question.exam_id).add(question.topic);
-      if (!topicSignalRows.has(question.exam_id)) topicSignalRows.set(question.exam_id, []);
-      topicSignalRows.get(question.exam_id).push(question);
+      if (!questionsByExam.has(question.exam_id)) questionsByExam.set(question.exam_id, []);
+      questionsByExam.get(question.exam_id).push(question);
+    }
+
+    for (const [examId, examQuestions] of questionsByExam) {
+      // Match the practice API's normalized-text deduplication exactly.
+      const summary = summarizeExamQuestionBank(examQuestions, requiredCountByExamId.get(examId) || 0);
+      const uniqueQuestions = summary.uniqueRows;
+      verifiedCounts.set(examId, summary.verifiedQuestionCount);
+      questionReadyByExam.set(examId, summary.questionBankReady);
+      for (const question of uniqueQuestions) {
+        const sourceKey = `${examId}:${question.source_type || "unknown"}`;
+        sourceCounts.set(sourceKey, (sourceCounts.get(sourceKey) || 0) + 1);
+        if (!subjectSets.has(examId)) subjectSets.set(examId, new Set());
+        if (!topicSets.has(examId)) topicSets.set(examId, new Set());
+        if (question.subject) subjectSets.get(examId).add(question.subject);
+        if (question.topic) topicSets.get(examId).add(question.topic);
+      }
+      topicSignalRows.set(examId, uniqueQuestions);
     }
   }
 
@@ -82,7 +96,7 @@ export async function GET() {
     const exam = track.exam_slug ? examsBySlug.get(track.exam_slug) : null;
     const verifiedQuestionCount = exam ? (verifiedCounts.get(exam.id) || 0) : 0;
     const requiredQuestionCount = exam?.total_questions || 0;
-    const questionBankReady = Boolean(exam && verifiedQuestionCount >= requiredQuestionCount && requiredQuestionCount > 0);
+    const questionBankReady = Boolean(exam && questionReadyByExam.get(exam.id));
 
     return {
       ...track,
