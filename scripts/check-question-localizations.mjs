@@ -184,4 +184,34 @@ assert.deepEqual(sampleCatalog.subject_topics, [
 assert.ok(questionApiSource.includes("buildQuestionCatalog(allRows)"), "Question API must build its subject/topic catalog from all active verified questions");
 assert.ok(questionApiSource.includes("filterQuestionRows(uniqueRows, subject, topic)"), "Question API must apply the directly tested subject/topic filter helper after duplicate removal");
 
+// Global UI language and question-language preferences must persist across reloads.
+assert.ok(source.includes('const [language, setLanguage] = useState("en")'), "UI language state must exist");
+assert.ok(source.includes('const [languageHydrated, setLanguageHydrated] = useState(false)'), "Language preference hydration guard must exist");
+assert.ok(source.includes('localStorage.getItem("exam_prep_language")'), "UI language must be restored from local storage");
+assert.ok(source.includes('localStorage.setItem("exam_prep_language", language)'), "UI language must be persisted");
+assert.ok(source.includes('localStorage.getItem("exam_prep_question_language")'), "Question language must be restored");
+assert.ok(source.includes('localStorage.setItem("exam_prep_question_language", questionLanguage)'), "Question language must be persisted");
+assert.ok(source.includes("function changeLanguage(nextLanguage)"), "Global language changes must use one shared handler");
+assert.ok(source.includes("setQuestionLanguage(next)"), "Global language changes must synchronize question language");
+assert.ok(source.includes('document.documentElement.lang = language'), "Document language metadata must follow the selected UI language");
+assert.equal(source.split('setLanguage(hi ? "en" : "hi")').length - 1, 0, "All global language toggles must use the shared handler");
+
+// Critical interface controls must provide Hindi/English labels, not English-only fixed strings.
+for (const fragment of [
+  'aria-label={t("मेन्यू","Menu")}',
+  '<b>{t("दिन","Day")}</b>',
+  '<b>{t("रात","Night")}</b>',
+  '<b>{t("सिस्टम","System")}</b>',
+  '<small>{t("हल्की ग्लास थीम","Light glass UI")}</small>',
+  '<small>{t("डार्क ग्लास थीम","Dark glass UI")}</small>',
+  '<small>{t("होम","Home")}</small>',
+  '<small>{t("परीक्षाएँ","Exams")}</small>',
+  '<small>{t("अभ्यास","Practice")}</small>',
+  '<small>{t("मॉक","Mock")}</small>',
+  '<small>{t("और","More")}</small>',
+  '<h3>{t("तुरंत विश्लेषण","Instant Analysis")}</h3>'
+]) {
+  assert.ok(source.includes(fragment), `Missing bilingual UI label: ${fragment}`);
+}
+
 console.log(`Localization regression checks passed: ${Object.keys(hindiOptions).length} Hindi option sets, ${localizationEntries.size} localized questions, bilingual answer-order/security checks, and normalized subject/topic filters.`);
