@@ -28,6 +28,8 @@ assert.deepEqual(validateWeeklyRecoveryRequest(goodRequest), {
 assert.equal(validateWeeklyRecoveryRequest({ ...goodRequest, dry_run: false }).dryRun, false);
 assert.equal(validateWeeklyRecoveryRequest({ ...goodRequest, confirm: "yes" }).ok, false);
 assert.equal(validateWeeklyRecoveryRequest({ ...goodRequest, task_ids: [ids[0], ids[0]] }).ok, false);
+assert.equal(validateWeeklyRecoveryRequest({ ...goodRequest, task_ids: [ids[0], ids[1]] }).ok, false,
+  "Recovery must be one task per request to avoid partial updates during worker races.");
 assert.equal(validateWeeklyRecoveryRequest({ ...goodRequest, task_ids: ["not-a-uuid"] }).ok, false);
 assert.equal(validateWeeklyRecoveryRequest({ ...goodRequest, task_ids: ids.slice(0, MAX_WEEKLY_RECOVERY_BATCH_SIZE + 1) }).ok, false);
 assert.equal(validateWeeklyRecoveryRequest({ ...goodRequest, dry_run: "false" }).ok, false);
