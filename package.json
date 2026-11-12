@@ -16,6 +16,7 @@
     "test:weekly-exam-analysis": "node scripts/test-weekly-exam-analysis.mjs",
     "test:question-topic-signals": "node scripts/test-question-topic-signals.mjs",
     "test:background-task-retry": "node scripts/test-background-task-retry.mjs",
+    "test:failed-weekly-task-recovery": "node scripts/test-failed-weekly-task-recovery.mjs",
     "test:paper-analysis-quiz": "node scripts/test-paper-analysis-quiz.mjs",
     "test:paper-analysis-upload": "node scripts/test-paper-analysis-upload.mjs",
     "test:cbt-mobile-layout": "node scripts/test-cbt-mobile-layout.mjs",
