@@ -23,7 +23,8 @@
     "test:paper-file-picker": "node scripts/test-paper-file-picker.mjs",
     "test:exam-source-sync": "node scripts/test-exam-source-sync.mjs",
     "test:general-practice-track-migration": "node scripts/test-general-practice-track-migration.mjs",
-    "test:exam-question-readiness": "node scripts/test-exam-question-readiness.mjs"
+    "test:exam-question-readiness": "node scripts/test-exam-question-readiness.mjs",
+    "test:weekly-task-recovery": "node scripts/test-weekly-task-recovery.mjs"
   },
   "dependencies": {
     "next": "16.3.8",
