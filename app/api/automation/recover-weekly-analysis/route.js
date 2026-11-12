@@ -10,7 +10,7 @@ export const maxDuration = 30;
 
 function authorized(request) {
   const secret = process.env.CRON_SECRET;
-  return Boolean(secret && request.headers.get("authorization") === `Bearer ${secret}`);
+  return Boolean(secret && request.headers.get("authorization") === "Bearer " + secret);
 }
 
 function dbClient() {
@@ -20,8 +20,9 @@ function dbClient() {
 }
 
 /**
- * Explicitly preview or requeue a small list of failed transient weekly tasks.
- * This endpoint never invokes the worker; the scheduled worker handles queued work.
+ * Explicitly preview or requeue one failed transient weekly task.
+ * A single-row conditional update avoids partial batch recovery when a worker
+ * claims the task concurrently. This endpoint never invokes the worker.
  */
 export async function POST(request) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -39,27 +40,21 @@ export async function POST(request) {
   const db = dbClient();
   if (!db) return NextResponse.json({ error: "Server database credentials are not configured." }, { status: 503 });
 
-  const { data: tasks, error: readError } = await db
+  const requestedId = requestCheck.taskIds[0];
+  const { data: task, error: readError } = await db
     .from("background_manager_tasks")
     .select("id,task_type,status,error_message,payload")
-    .in("id", requestCheck.taskIds);
+    .eq("id", requestedId)
+    .maybeSingle();
 
   if (readError) return NextResponse.json({ error: readError.message }, { status: 500 });
 
-  const taskById = new Map((tasks || []).map((task) => [task.id.toLowerCase(), task]));
-  const eligibility = requestCheck.taskIds.map((id) => {
-    const task = taskById.get(id.toLowerCase());
-    return { id, ...getWeeklyTaskRecoveryEligibility(task) };
-  });
-  const rejected = eligibility.filter((item) => !item.ok);
-
-  // Validate the entire batch before attempting a write; mixed valid/invalid
-  // batches are rejected so an operator can review and retry an exact list.
-  if (rejected.length) {
+  const eligibility = { id: requestedId, ...getWeeklyTaskRecoveryEligibility(task) };
+  if (!eligibility.ok) {
     return NextResponse.json({
       ok: false,
-      error: "No tasks were changed because one or more selected tasks are not eligible.",
-      rejected,
+      error: "The selected task is not eligible for recovery.",
+      rejected: [eligibility],
     }, { status: 409 });
   }
 
@@ -67,30 +62,38 @@ export async function POST(request) {
     return NextResponse.json({
       ok: true,
       dry_run: true,
-      eligible_tasks: eligibility.map(({ id, retryCount }) => ({ id, retry_count: retryCount })),
-      note: "Preview only. No database rows were changed. Set dry_run=false with the same explicit IDs to requeue.",
+      eligible_task: { id: eligibility.id, retry_count: eligibility.retryCount },
+      note: "Preview only. No database rows were changed. Set dry_run=false with the same explicit ID to requeue.",
     });
   }
 
-  // Preserve payload, result, started_at, priority and provider_retry_count.
-  // Only clear terminal state markers and return selected tasks to the queue.
+  // Compare the exact state inspected above. If a worker or another operator
+  // changed it meanwhile, the conditional update affects zero rows.
   const { data: updated, error: updateError } = await db
     .from("background_manager_tasks")
     .update({ status: "queued", completed_at: null, error_message: null })
-    .in("id", requestCheck.taskIds)
-    .eq("task_type", "weekly_exam_analysis")
-    .eq("status", "failed")
-    .select("id");
+    .eq("id", task.id)
+    .eq("task_type", task.task_type)
+    .eq("status", task.status)
+    .eq("error_message", task.error_message)
+    .eq("payload", task.payload)
+    .select("id")
+    .maybeSingle();
 
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
+  if (!updated) {
+    return NextResponse.json({
+      ok: false,
+      dry_run: false,
+      requeued: false,
+      error: "The task changed after preview. Nothing was requeued; inspect it again before retrying.",
+    }, { status: 409 });
+  }
 
-  const requeuedIds = (updated || []).map((task) => task.id);
   return NextResponse.json({
-    ok: requeuedIds.length === requestCheck.taskIds.length,
+    ok: true,
     dry_run: false,
-    requested: requestCheck.taskIds.length,
-    requeued: requeuedIds,
-    not_requeued: requestCheck.taskIds.filter((id) => !requeuedIds.some((saved) => saved.toLowerCase() === id.toLowerCase())),
-    note: "The worker was not invoked. Requeued tasks retain their checkpoints and retry counters and will be handled by the scheduled worker.",
-  }, { status: requeuedIds.length === requestCheck.taskIds.length ? 200 : 409 });
+    requeued: updated.id,
+    note: "The worker was not invoked. The task retains its result checkpoint and retry counter and will be handled by the scheduled worker.",
+  });
 }
