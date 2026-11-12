@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
-const baseURL = (process.env.E2E_BASE_URL || "https://exam-prep-direct-box.vercel.app").replace(/\/+$/, "");
+const rawBaseURL = process.env.E2E_BASE_URL || "https://exam-prep-direct-box.vercel.app";
+const baseURL = rawBaseURL.endsWith("/") ? rawBaseURL.slice(0, -1) : rawBaseURL;
 
 test.use({
   viewport: { width: 390, height: 844 },
