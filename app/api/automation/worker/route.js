@@ -220,7 +220,7 @@ async function stageWeeklyExamQuestions(task, db, context, analysis, pool) {
 
 async function runWeeklyExamAnalysis(task, db) {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { blocked: true, reason: "Neither GEMINI_API_KEY_2 nor GEMINI_API_KEY is configured; weekly analysis and question generation did not run." };
+  if (!apiKey) return { blocked: true, reason: "OPENAI_API_KEY is not configured; weekly analysis and question generation did not run." };
   const examId = task.payload?.exam_id;
   if (!examId) throw new Error("Weekly task is missing exam_id.");
   const target = Math.max(50, Math.min(100, Number(task.payload?.target_new_questions) || 50));
@@ -426,7 +426,7 @@ export async function GET(request) {
         }
       } else {
         deterministic.ai_assessment = null;
-        deterministic.ai_note = "Neither GEMINI_API_KEY_2 nor GEMINI_API_KEY is configured; deterministic task-health findings were retained.";
+        deterministic.ai_note = "OPENAI_API_KEY is not configured; deterministic task-health findings were retained.";
       }
       result = deterministic;
     }
