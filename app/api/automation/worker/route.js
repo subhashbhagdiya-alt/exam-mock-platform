@@ -18,65 +18,70 @@ function dbClient() {
   return url && key ? createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } }) : null;
 }
 
-function extractGeminiText(body) {
-  return (body.candidates?.[0]?.content?.parts || []).map((part) => part.text || "").join("");
+function extractOpenAIText(body) {
+  if (typeof body.output_text === "string") return body.output_text;
+  return (body.output || []).flatMap((item) => item.content || [])
+    .filter((item) => item.type === "output_text" && typeof item.text === "string")
+    .map((item) => item.text).join("");
 }
 
 async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
-  // Free-tier provider only: never fall back to a paid provider or a paid model.
-  const model = "gemini-3.6-flash";
+  const model = process.env.OPENAI_MODEL || "gpt-5-mini";
   const maxAttempts = 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+        headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json", maxOutputTokens }
+          model, input: prompt,
+          text: { format: { type: "json_object" } },
+          max_output_tokens: maxOutputTokens
         }),
-        // Keep one worker invocation short; the durable task queue handles later retries.
-        signal: AbortSignal.timeout(12000)
+        signal: AbortSignal.timeout(20000)
       });
       if (!response.ok) {
-        const failure = new Error(`Gemini API returned HTTP ${response.status}; no paid-provider fallback was attempted.`);
+        let detail = "";
+        try {
+          const failureBody = await response.json();
+          detail = failureBody?.error?.message ? `: ${String(failureBody.error.message).slice(0, 400)}` : "";
+        } catch { /* Keep HTTP status as the actionable error. */ }
+        const failure = new Error(`OpenAI API returned HTTP ${response.status}${detail}.`);
         failure.status = response.status;
         if (response.status === 429) failure.code = "FREE_QUOTA_EXHAUSTED";
-        // Retry transient service errors only. Rate/quota limits are deferred to the
-        // next scheduled worker run instead of consuming the entire function budget.
         if ([500, 502, 503, 504].includes(response.status) && attempt < maxAttempts) {
-          const delay = (500 * (2 ** (attempt - 1))) + Math.floor(Math.random() * 300);
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, 500 * (2 ** (attempt - 1))));
           continue;
         }
         throw failure;
       }
       const body = await response.json();
-      const text = extractGeminiText(body).replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
-      try { return JSON.parse(text); } catch { throw new Error("Gemini response was not valid JSON; no questions were published."); }
+      if (body.status === "incomplete") throw new Error("OpenAI response was incomplete; no questions were staged.");
+      const output = extractOpenAIText(body).replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+      try { return JSON.parse(output); }
+      catch { throw new Error("OpenAI response was not valid JSON; no questions were staged."); }
     } catch (error) {
       const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
       const retryableStatus = [500, 502, 503, 504].includes(error?.status);
       if (attempt < maxAttempts && (timedOut || retryableStatus)) {
-        const delay = (500 * (2 ** (attempt - 1))) + Math.floor(Math.random() * 300);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, 500 * (2 ** (attempt - 1))));
         continue;
       }
       if (timedOut) {
-        const timeoutError = new Error(`Gemini request timed out after ${maxAttempts} bounded attempts; no paid-provider fallback was attempted.`);
+        const timeoutError = new Error(`OpenAI request timed out after ${maxAttempts} bounded attempts.`);
         timeoutError.status = 504;
-        timeoutError.code = "GEMINI_TRANSIENT_FAILURE";
+        timeoutError.code = "OPENAI_TRANSIENT_FAILURE";
         throw timeoutError;
       }
       throw error;
     }
   }
-  throw new Error("Gemini request failed after bounded retries; no paid-provider fallback was attempted.");
+  throw new Error("OpenAI request failed after bounded retries.");
 }
 
 async function generateCandidates(task, db) {
-  const apiKey = (process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY);
-  if (!apiKey) return { blocked: true, reason: "Neither GEMINI_API_KEY_2 nor GEMINI_API_KEY is configured. No AI-generated question was created." };
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return { blocked: true, reason: "OPENAI_API_KEY is not configured. No AI-generated question was created." };
   const { data: exams, error } = await db.from("exams").select("id,name,description").eq("is_active", true).order("name").limit(8);
   if (error) throw error;
   const prompt = `Create 5 high-quality Indian competitive-exam practice MCQs for ExamPrep. Return JSON only: {"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}. Do not label questions PYQ or official. Exams: ${JSON.stringify(exams)}. Task: ${JSON.stringify(task.payload)}.`;
@@ -214,7 +219,7 @@ async function stageWeeklyExamQuestions(task, db, context, analysis, pool) {
 }
 
 async function runWeeklyExamAnalysis(task, db) {
-  const apiKey = (process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY);
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return { blocked: true, reason: "Neither GEMINI_API_KEY_2 nor GEMINI_API_KEY is configured; weekly analysis and question generation did not run." };
   const examId = task.payload?.exam_id;
   if (!examId) throw new Error("Weekly task is missing exam_id.");
@@ -403,7 +408,7 @@ export async function GET(request) {
         automated_changes_made: false,
         note: "This review monitors background task health only. It does not inspect Supabase Auth sign-in logs, prove that an account was hacked, rotate secrets, disable accounts, or change production data."
       };
-      const apiKey = (process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY);
+      const apiKey = process.env.OPENAI_API_KEY;
       if (apiKey) {
         try {
           const assessment = await callModel(apiKey,
@@ -442,9 +447,9 @@ export async function GET(request) {
     await db.from("background_manager_tasks").update({
       status: retryDecision.deferred ? "queued" : "failed",
       ...(retryDecision.payload !== task.payload ? { payload: retryDecision.payload } : {}),
-      // A free-tier 429 is not actionable until quota recovers. Clear the resume-first
+      // An API 429 is deferred to a later worker run. Clear the resume-first
       // timestamp so this task yields to other queued work while preserving result
-      // checkpoints; never switch to a paid provider or discard the saved draft.
+      // checkpoints; preserve the saved draft for a later retry.
       ...(retryDecision.reason === "free_quota" ? {
         started_at: null,
         // Yield behind normal queued work too; otherwise a high-priority quota-
@@ -455,9 +460,9 @@ export async function GET(request) {
       completed_at: retryDecision.deferred ? null : new Date().toISOString()
     }).eq("id", task.id);
     const retryMessage = retryDecision.reason === "free_quota"
-      ? "Free-tier quota is exhausted; the next scheduled worker run will retry. No paid-provider fallback is used."
+      ? "OpenAI API quota or rate limit was reached; the next scheduled worker run will retry."
       : retryDecision.deferred
-        ? `Transient provider error; the next scheduled worker run will retry (${retryDecision.retryCount}/${MAX_TRANSIENT_PROVIDER_RETRIES}). No paid-provider fallback is used.`
+        ? `Transient provider error; the next scheduled worker run will retry (${retryDecision.retryCount}/${MAX_TRANSIENT_PROVIDER_RETRIES}). No provider fallback is configured.`
         : undefined;
     return NextResponse.json({
       ok: retryDecision.deferred,
