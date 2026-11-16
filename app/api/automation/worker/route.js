@@ -26,7 +26,7 @@ function extractOpenAIText(body) {
 }
 
 async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
-  const model = process.env.OPENAI_MODEL || "gpt-5-mini";
+  const model = process.env.OPENAI_MODEL || "gpt-6-luna";
   const maxAttempts = 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
