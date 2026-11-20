@@ -3,6 +3,8 @@ import "./glass-overrides.css";
 import "./icon-finish.css";
 import "./design-system-v1.css";
 import "./exam-compact.css";
+import "./dock-autohide.css";
+import DockAutoHide from "./dock-autohide.jsx";
 
 export const metadata = {
   title: "ExamPrep — Mock Test Platform",
@@ -23,7 +25,10 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <DockAutoHide />
+      </body>
     </html>
   );
 }
