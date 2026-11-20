@@ -1,0 +1,10 @@
+/* Hide the floating mobile dock while the page is scrolling; DockAutoHide sets the attribute.
+   The selector is intentionally more specific than the dock's own !important rules. */
+@media (max-width: 600px) {
+  html[data-dock-hidden="1"] .shell .mobile-bottom-navigation-wrap {
+    transform: translateY(calc(100% + 28px)) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}
