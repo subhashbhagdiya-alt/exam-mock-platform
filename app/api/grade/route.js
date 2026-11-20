@@ -13,8 +13,9 @@ const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUP
 
 // A real submission is ~2 KB (two UUIDs + up to 100 answers); reject anything far larger.
 const MAX_BODY_BYTES = 16 * 1024;
-// Generous enough for a whole college sharing one IP, tight enough to stop scripted abuse.
-const gradeLimiter = createRateLimiter({ limit: 60, windowMs: 10 * 60 * 1000 });
+// High enough for a whole classroom submitting together from one college NAT (one shared IP);
+// it only stops scripted floods. Valid grading also needs a secret session key.
+const gradeLimiter = createRateLimiter({ limit: 300, windowMs: 10 * 60 * 1000 });
 
 export async function POST(request) {
   if (!url || !serverKeys.length) return NextResponse.json({ error: "Grading service is not configured" }, { status: 503 });
