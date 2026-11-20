@@ -4915,3 +4915,36 @@ button{cursor:pointer}
   outline: 2px solid #a78bfa;
   outline-offset: 3px;
 }
+
+
+/* v44 — restore native mobile page scrolling and keep the bottom dock accessible */
+html, body {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: auto !important;
+}
+@media (max-width: 760px) {
+  .shell {
+    min-height: 100dvh !important;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+  }
+  .shell .main {
+    min-height: 100dvh !important;
+    overflow: visible !important;
+  }
+  .shell .content {
+    overflow: visible !important;
+    padding-bottom: calc(110px + env(safe-area-inset-bottom)) !important;
+  }
+  .shell .mobile-bottom-navigation-wrap,
+  .shell .mobile-bottom-navigation-wrap.mobile-bottom-navigation-hidden {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+}
