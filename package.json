@@ -12,6 +12,7 @@
     "test:option-order": "node scripts/test-option-order.mjs",
     "test:question-pool": "node scripts/test-question-pool.mjs",
     "test:grade-submission-validation": "node scripts/test-grade-submission-validation.mjs",
+    "test:hardening": "node scripts/test-hardening.mjs",
     "test:mfa-assurance": "node scripts/test-mfa-assurance.mjs",
     "test:weekly-exam-analysis": "node scripts/test-weekly-exam-analysis.mjs",
     "test:question-topic-signals": "node scripts/test-question-topic-signals.mjs",

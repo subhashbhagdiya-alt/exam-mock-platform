@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isValidGradeSubmission } from "../../../lib/grade-submission-validation.mjs";
+import { createRateLimiter, getClientIp } from "../../../lib/rate-limit.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +11,26 @@ const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUP
   .filter(value => typeof value === "string" && value.trim())
   .map(value => value.trim()))];
 
+// A real submission is ~2 KB (two UUIDs + up to 100 answers); reject anything far larger.
+const MAX_BODY_BYTES = 16 * 1024;
+// High enough for a whole classroom submitting together from one college NAT (one shared IP);
+// it only stops scripted floods. Valid grading also needs a secret session key.
+const gradeLimiter = createRateLimiter({ limit: 300, windowMs: 10 * 60 * 1000 });
+
 export async function POST(request) {
   if (!url || !serverKeys.length) return NextResponse.json({ error: "Grading service is not configured" }, { status: 503 });
+
+  const rate = gradeLimiter(getClientIp(request.headers));
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } }
+    );
+  }
+  if (Number(request.headers.get("content-length") || 0) > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Invalid test submission" }, { status: 413 });
+  }
+
   try {
     const body = await request.json();
     if (!isValidGradeSubmission(body)) {
