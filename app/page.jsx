@@ -864,18 +864,10 @@ export default function HomePage() {
       setMobileBottomNavHidden(false);
     };
     const handleScroll = () => {
-      if (!isMobileViewport()) {
-        revealNavigation();
-        return;
-      }
-
-      setMobileBottomNavHidden(true);
-      setMobileBottomMoreOpen(false);
-      clearShowTimer();
-      showTimer = window.setTimeout(() => {
-        setMobileBottomNavHidden(false);
-        showTimer = null;
-      }, MOBILE_NAV_REVEAL_DELAY_MS);
+      // Keep the mobile dock available during and after scrolling.
+      // Hiding it on every scroll gesture made navigation disappear at scroll stops.
+      revealNavigation();
+      if (isMobileViewport()) setMobileBottomMoreOpen(false);
     };
     const handleViewportChange = () => {
       revealNavigation();
