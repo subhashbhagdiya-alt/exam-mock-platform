@@ -1,0 +1,21 @@
+/* Smoother scrolling on phones (narrow screens only; desktop is unaffected).
+   Two gaps in the existing mobile overrides:
+   1. glass-overrides.css puts `perspective: 1800px !important` and `transform-style: preserve-3d`
+      on .main with no mobile override. A 3D context on the main column pushes every descendant
+      onto a more expensive compositing path while scrolling.
+   2. Backdrop blur is already switched off for .dashboard-content and .boards-content on phones,
+      but not for the other screens (test, result, history, settings, login, instructions...).
+      Re-blurring everything behind every card on every scrolled frame is costly on mid-range phones.
+   Colours, layout and animations are unchanged. The floating dock keeps its blur.
+   To restore the old look on phones, remove the import of this file from layout.jsx. */
+@media (max-width: 760px) {
+  .shell .main {
+    perspective: none !important;
+    transform-style: flat !important;
+  }
+
+  html body .shell *:not(.mobile-bottom-navigation-wrap):not(.mobile-bottom-navigation):not(.mobile-bottom-more-panel) {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
