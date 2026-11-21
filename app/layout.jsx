@@ -4,6 +4,7 @@ import "./icon-finish.css";
 import "./design-system-v1.css";
 import "./exam-compact.css";
 import "./dock-autohide.css";
+import "./mobile-performance.css";
 import DockAutoHide from "./dock-autohide.jsx";
 
 export const metadata = {
