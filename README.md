@@ -32,6 +32,28 @@ npm run dev
 
 Open http://localhost:3000.
 
+## Environment variables
+| Variable | Where it is used |
+| --- | --- |
+| `SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (API routes and browser client) |
+| `SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | User-scoped client for login-bound routes such as `/api/results` |
+| `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY` | **Server only.** Question bank reads, grading RPCs and automation. Never expose it to the browser |
+| `CRON_SECRET` | Bearer secret for the `/api/automation/*` routes; they stay closed if it is not set |
+| `OPENAI_API_KEY`, `OPENAI_MODEL` | Weekly question generation (see above) |
+
+## Testing
+```bash
+npm run lint
+npm run test:hardening   # rate limiter, UUID and option-splitting checks
+npm run build
+```
+Every `test:*` script in `package.json` is a plain Node script. CI (`.github/workflows/ci.yml`) runs lint, all of them, the localization check and a production build on each push and pull request, so add a new test script there too.
+
+## API protections
+- `/api/grade`, `/api/questions` and `/api/results` are rate limited per IP with a small in-memory limiter (`lib/rate-limit.mjs`). The limits are high enough for a whole classroom behind one college network and only stop scripted floods. Each serverless instance keeps its own counters, so this is not a global guarantee; use a shared store such as Upstash if strict limits are needed.
+- API routes log database errors on the server and return generic messages to the browser.
+- Grading runs on the server through the `submit_mock_test` RPC, which is callable only with the server key. The answer key reaches the browser only in the post-test review.
+
 ## Verification
 Question content should be checked against authoritative exam sources before being marked verified. Official exam dates, application windows, and notifications should be rechecked when they are displayed as current information.
 
