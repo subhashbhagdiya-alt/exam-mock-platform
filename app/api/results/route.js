@@ -2,12 +2,26 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateResultQuestionMapping } from "../../../lib/result-validation.mjs";
 import { checkMfaAssurance } from "../../../lib/mfa-assurance.mjs";
+import { createRateLimiter, getClientIp } from "../../../lib/rate-limit.mjs";
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY]
   .filter(value => typeof value === "string" && value.trim())
   .map(value => value.trim()))];
+
+// Each result is re-scored against the answer key, so unlimited submissions could be used to probe
+// answers. High enough for a classroom behind one NAT (one shared IP); it only stops scripted floods.
+const resultsLimiter = createRateLimiter({ limit: 300, windowMs: 10 * 60 * 1000 });
+
+function rateLimitResponse(request) {
+  const rate = resultsLimiter(getClientIp(request.headers));
+  if (rate.allowed) return null;
+  return NextResponse.json(
+    { error: "Too many requests. Please try again shortly." },
+    { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } }
+  );
+}
 
 function getPrivilegedReadClient() {
   if (!supabaseUrl || !serverKeys.length) return null;
@@ -46,7 +60,11 @@ async function cleanResult(body, dataClient, authUserId = null) {
   const { data: exam, error: examError } = await dataClient.from("exams")
     .select("id,name,total_questions,marks_per_question,negative_marks,passing_percentage")
     .eq("id", body.exam_id).eq("is_active", true).maybeSingle();
-  if (examError) throw new Error(examError.message);
+  if (examError) {
+    // Keep database details in server logs; do not echo them to the browser.
+    console.error("results API: exam lookup failed", examError.message);
+    throw new Error("Could not validate this result");
+  }
   if (!exam) throw new Error("Exam not found");
 
   const sourceIds = validateResultQuestionMapping(body.question_ids, body.total_questions);
@@ -54,7 +72,10 @@ async function cleanResult(body, dataClient, authUserId = null) {
   const { data: questions, error: qError } = await dataClient.from("question_bank")
     .select("id,answer_index,exam_id,active,verified")
     .in("id", sourceIds).eq("exam_id", body.exam_id).eq("active", true).eq("verified", true);
-  if (qError) throw new Error(qError.message);
+  if (qError) {
+    console.error("results API: question lookup failed", qError.message);
+    throw new Error("Could not validate this result");
+  }
 
   const byId = new Map((questions || []).map(q => [q.id, q]));
   const localIds = Object.keys(body.question_ids);
@@ -101,6 +122,9 @@ async function cleanResult(body, dataClient, authUserId = null) {
 }
 
 export async function GET(request) {
+  const limited = rateLimitResponse(request);
+  if (limited) return limited;
+
   const { searchParams } = new URL(request.url);
   const sessionKey = searchParams.get("session_key") || "";
   if (!validSessionKey(sessionKey)) return NextResponse.json({ error: "Invalid session key" }, { status: 400 });
@@ -124,16 +148,25 @@ export async function GET(request) {
   const deviceKey = request.headers.get("x-device-key") || "";
   if (!validDeviceKey(deviceKey)) return NextResponse.json({ error: "Trusted device required" }, { status: 403 });
   const { data: isTrusted, error: deviceError } = await client.rpc("verify_trusted_device", { p_device_key: deviceKey });
-  if (deviceError) return NextResponse.json({ error: deviceError.message }, { status: 500 });
+  if (deviceError) {
+    console.error("results API: device check failed", deviceError.message);
+    return NextResponse.json({ error: "Could not verify this device" }, { status: 500 });
+  }
   if (isTrusted !== true) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
 
   const query = client.from("test_results").select(fields).eq("user_id", authUserId).order("created_at", { ascending: false }).limit(50);
   const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("results API: loading results failed", error.message);
+    return NextResponse.json({ error: "Could not load results" }, { status: 500 });
+  }
   return NextResponse.json({ data: data || [] });
 }
 
 export async function POST(request) {
+  const limited = rateLimitResponse(request);
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const sessionKey = body?.session_key;
@@ -160,14 +193,20 @@ export async function POST(request) {
     const deviceKey = body.device_key;
     if (!validDeviceKey(deviceKey)) return NextResponse.json({ error: "Trusted device required" }, { status: 403 });
     const { data: isTrusted, error: deviceError } = await client.rpc("verify_trusted_device", { p_device_key: deviceKey });
-    if (deviceError) return NextResponse.json({ error: deviceError.message }, { status: 500 });
+    if (deviceError) {
+      console.error("results API: device check failed", deviceError.message);
+      return NextResponse.json({ error: "Could not verify this device" }, { status: 500 });
+    }
     if (isTrusted !== true) return NextResponse.json({ error: "This account is bound to another device" }, { status: 403 });
 
     const dataClient = getPrivilegedReadClient();
     if (!dataClient) return NextResponse.json({ error: "Result validation service is not configured" }, { status: 503 });
     const cleaned = await cleanResult(body, dataClient, authUserId);
     const { data, error } = await client.from("test_results").insert(cleaned).select(fields).single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) {
+      console.error("results API: saving result failed", error.message);
+      return NextResponse.json({ error: "Could not save result" }, { status: 400 });
+    }
     return NextResponse.json({ data }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error?.message || "Could not save result" }, { status: 400 });
