@@ -4,12 +4,17 @@ import { createClient } from "@supabase/supabase-js";
 import { buildQuestionCatalog, filterQuestionRows } from "../../../lib/question-categories.mjs";
 import { shuffleOptionOrder } from "../../../lib/option-order.mjs";
 import { dedupeQuestionRows } from "../../../lib/question-pool.mjs";
+import { createRateLimiter, getClientIp } from "../../../lib/rate-limit.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 // Question rows contain answer keys and explanations; all database reads stay on the server.
 const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY]
   .filter(value => typeof value === "string" && value.trim())
   .map(value => value.trim()))];
+
+// Each call reads up to 1,000 verified questions and may create a database test session.
+// The limit is high enough for a whole classroom behind one NAT; it only stops scripted floods.
+const questionLimiter = createRateLimiter({ limit: 400, windowMs: 10 * 60 * 1000 });
 
 function shuffle(items) {
   const copy = [...items];
@@ -64,6 +69,15 @@ function selectBalancedQuestions(rows, limit) {
 
 async function handleQuestionRequest(request, body = null) {
   if (!url || !serverKeys.length) return NextResponse.json({ error: "Question bank server credentials are not configured" }, { status: 503 });
+
+  const rate = questionLimiter(getClientIp(request.headers));
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const exam = String(body?.exam || searchParams.get("exam") || "mpesb");
   const requestedLimit = body?.limit ?? searchParams.get("limit");
@@ -85,7 +99,11 @@ async function handleQuestionRequest(request, body = null) {
     .eq("slug", exam)
     .eq("is_active", true)
     .maybeSingle();
-  if (examError) return NextResponse.json({ error: examError.message }, { status: 500 });
+  if (examError) {
+    // Keep database details in server logs; do not echo them to the browser.
+    console.error("question API: exam lookup failed", examError.message);
+    return NextResponse.json({ error: "Could not load the exam. Please try again." }, { status: 500 });
+  }
   if (!examRow) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
 
   const limit = Math.min(Math.max(Number(requestedLimit || examRow.total_questions || 10), 1), 100);
@@ -97,7 +115,10 @@ async function handleQuestionRequest(request, body = null) {
      .eq("exam_id", examRow.id)
     .order("created_at", { ascending: true })
     .limit(1000);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("question API: question lookup failed", error.message);
+    return NextResponse.json({ error: "Could not load questions. Please try again." }, { status: 500 });
+  }
 
   const allRows = data || [];
   // Keep one canonical verified row for repeated question text within this exam.
