@@ -5,6 +5,7 @@ import { buildQuestionCatalog, filterQuestionRows } from "../../../lib/question-
 import { shuffleOptionOrder } from "../../../lib/option-order.mjs";
 import { dedupeQuestionRows } from "../../../lib/question-pool.mjs";
 import { createRateLimiter, getClientIp } from "../../../lib/rate-limit.mjs";
+import { createTtlCache } from "../../../lib/ttl-cache.mjs";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 // Question rows contain answer keys and explanations; all database reads stay on the server.
@@ -15,6 +16,26 @@ const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUP
 // Each call reads up to 1,000 verified questions and may create a database test session.
 // The limit is high enough for a whole classroom behind one NAT; it only stops scripted floods.
 const questionLimiter = createRateLimiter({ limit: 400, windowMs: 10 * 60 * 1000 });
+
+// Verified question rows change rarely, yet every call used to read up to 1,000 of them. Keeping them
+// for a few seconds lets a classroom that starts tests together share one database read per exam.
+// Only question selection uses these rows; grading always reads the answer key from the database.
+const questionRowsCache = createTtlCache({ ttlMs: 30_000, maxEntries: 20 });
+
+async function loadQuestionRows(client, examId) {
+  const cached = questionRowsCache.get(examId);
+  if (cached) return { data: cached, error: null };
+  const { data, error } = await client
+    .from("question_bank")
+    .select("id,exam_id,subject,topic,question_hi,question_en,options,answer_index,explanation_hi,explanation_en,difficulty,source_type,source_year")
+    .eq("active", true)
+    .eq("verified", true)
+    .eq("exam_id", examId)
+    .order("created_at", { ascending: true })
+    .limit(1000);
+  if (!error) questionRowsCache.set(examId, data || []);
+  return { data, error };
+}
 
 function shuffle(items) {
   const copy = [...items];
@@ -107,14 +128,7 @@ async function handleQuestionRequest(request, body = null) {
   if (!examRow) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
 
   const limit = Math.min(Math.max(Number(requestedLimit || examRow.total_questions || 10), 1), 100);
-  const { data, error } = await client
-    .from("question_bank")
-    .select("id,exam_id,subject,topic,question_hi,question_en,options,answer_index,explanation_hi,explanation_en,difficulty,source_type,source_year")
-    .eq("active", true)
-    .eq("verified", true)
-     .eq("exam_id", examRow.id)
-    .order("created_at", { ascending: true })
-    .limit(1000);
+  const { data, error } = await loadQuestionRows(client, examRow.id);
   if (error) {
     console.error("question API: question lookup failed", error.message);
     return NextResponse.json({ error: "Could not load questions. Please try again." }, { status: 500 });
