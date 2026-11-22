@@ -10,8 +10,8 @@ const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUP
   .filter(value => typeof value === "string" && value.trim())
   .map(value => value.trim()))];
 
-// Each result is re-scored against the answer key, so unlimited submissions could be used to probe
-// answers. High enough for a classroom behind one NAT (one shared IP); it only stops scripted floods.
+// Every submission reads the answer key and writes a row, so unthrottled floods would cost database
+// time and storage. High enough for a classroom behind one NAT (one shared IP); it only stops scripts.
 const resultsLimiter = createRateLimiter({ limit: 300, windowMs: 10 * 60 * 1000 });
 
 function rateLimitResponse(request) {
