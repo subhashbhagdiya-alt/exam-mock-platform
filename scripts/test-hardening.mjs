@@ -4,6 +4,7 @@ import { isValidGradeSubmission } from "../lib/grade-submission-validation.mjs";
 import { validateResultQuestionMapping } from "../lib/result-validation.mjs";
 import { getLocalizedQuestionOptions, mergeQuestionIds } from "../lib/question-pool.mjs";
 import { createRateLimiter, getClientIp } from "../lib/rate-limit.mjs";
+import { createTtlCache } from "../lib/ttl-cache.mjs";
 
 // --- UUID versions: v4 and time-ordered v7 must both be accepted everywhere ---
 const v4 = "11111111-1111-4111-8111-111111111111";
@@ -45,3 +46,23 @@ assert.equal(getClientIp(new Headers({ "x-forwarded-for": "1.2.3.4, 5.6.7.8" }))
 assert.equal(getClientIp(new Headers({ "x-real-ip": "9.9.9.9" })), "9.9.9.9");
 assert.equal(getClientIp(new Headers()), "unknown");
 console.log("Rate limiter tests passed.");
+
+// --- TTL cache ---
+let clock = 0;
+const cache = createTtlCache({ ttlMs: 1000, maxEntries: 2, now: () => clock });
+assert.equal(cache.get("a"), undefined, "empty cache misses");
+cache.set("a", [1]);
+assert.deepEqual(cache.get("a"), [1], "fresh entry is returned");
+clock = 999;
+assert.deepEqual(cache.get("a"), [1], "still fresh just before the ttl");
+clock = 1000;
+assert.equal(cache.get("a"), undefined, "expired at the ttl");
+clock = 0;
+cache.set("a", 1); cache.set("b", 2); cache.set("c", 3);
+assert.equal(cache.get("a"), undefined, "oldest entry evicted beyond maxEntries");
+assert.equal(cache.get("b"), 2);
+assert.equal(cache.get("c"), 3);
+cache.set("b", 20);
+assert.equal(cache.get("b"), 20, "setting a key again replaces and refreshes it");
+assert.deepEqual(createTtlCache({ ttlMs: 10 }).get("missing"), undefined);
+console.log("TTL cache tests passed.");
