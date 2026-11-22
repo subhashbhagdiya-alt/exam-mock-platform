@@ -1,0 +1,17 @@
+/* DockAutoHide sets data-dock-hidden on <html> while the page is scrolling. That attribute is the
+   single source of truth for the mobile dock: hidden while it is set, visible otherwise, whatever
+   the older React "hidden" class says. Selectors are more specific than the dock's !important rules. */
+@media (max-width: 600px) {
+  html[data-dock-hidden="1"] .shell .mobile-bottom-navigation-wrap {
+    transform: translateY(calc(100% + 28px)) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  html:not([data-dock-hidden="1"]) .shell .mobile-bottom-navigation-wrap.mobile-bottom-navigation-hidden {
+    transform: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+}
