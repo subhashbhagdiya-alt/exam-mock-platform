@@ -5,7 +5,9 @@ import "./design-system-v1.css";
 import "./exam-compact.css";
 import "./dock-autohide.css";
 import "./mobile-performance.css";
+import "./home-polish.css";
 import DockAutoHide from "./dock-autohide.jsx";
+import HomeEnhance from "./home-enhance.jsx";
 
 export const metadata = {
   title: "ExamPrep — Mock Test Platform",
@@ -29,6 +31,7 @@ export default function RootLayout({ children }) {
       <body>
         {children}
         <DockAutoHide />
+        <HomeEnhance />
       </body>
     </html>
   );
