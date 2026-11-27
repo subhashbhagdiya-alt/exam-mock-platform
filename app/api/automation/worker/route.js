@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildWeeklyEvidence, dedupeGeneratedQuestions, normalizeQuestionText, takeWeeklyReviewBatch, validateGeneratedQuestion } from "../../../../lib/weekly-exam-analysis.mjs";
 import { classifyWorkerFailure, resetWorkerRetryCount, MAX_TRANSIENT_PROVIDER_RETRIES } from "../../../../lib/background-task-retry.mjs";
+import { callAiJson, getAiConfig, missingAiKeyMessage } from "../../../../lib/ai-provider.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -18,74 +19,24 @@ function dbClient() {
   return url && key ? createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } }) : null;
 }
 
-function extractOpenAIText(body) {
-  if (typeof body.output_text === "string") return body.output_text;
-  return (body.output || []).flatMap((item) => item.content || [])
-    .filter((item) => item.type === "output_text" && typeof item.text === "string")
-    .map((item) => item.text).join("");
+// Free-first provider selection lives in lib/ai-provider.mjs (Gemini free tier, OpenAI only if chosen).
+// The configuration carries this run's time budget so model calls can use what is left of maxDuration.
+function aiForThisRun() {
+  const ai = getAiConfig();
+  return ai ? { ...ai, deadlineAt: Date.now() + (maxDuration - 8) * 1000 } : null;
 }
 
-async function callModel(apiKey, prompt, maxOutputTokens = 16000) {
-  const model = process.env.OPENAI_MODEL || "gpt-6-luna";
-  const maxAttempts = 2;
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      const response = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model, input: prompt,
-          text: { format: { type: "json_object" } },
-          max_output_tokens: maxOutputTokens
-        }),
-        signal: AbortSignal.timeout(20000)
-      });
-      if (!response.ok) {
-        let detail = "";
-        try {
-          const failureBody = await response.json();
-          detail = failureBody?.error?.message ? `: ${String(failureBody.error.message).slice(0, 400)}` : "";
-        } catch { /* Keep HTTP status as the actionable error. */ }
-        const failure = new Error(`OpenAI API returned HTTP ${response.status}${detail}.`);
-        failure.status = response.status;
-        if (response.status === 429) failure.code = "FREE_QUOTA_EXHAUSTED";
-        if ([500, 502, 503, 504].includes(response.status) && attempt < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, 500 * (2 ** (attempt - 1))));
-          continue;
-        }
-        throw failure;
-      }
-      const body = await response.json();
-      if (body.status === "incomplete") throw new Error("OpenAI response was incomplete; no questions were staged.");
-      const output = extractOpenAIText(body).replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
-      try { return JSON.parse(output); }
-      catch { throw new Error("OpenAI response was not valid JSON; no questions were staged."); }
-    } catch (error) {
-      const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
-      const retryableStatus = [500, 502, 503, 504].includes(error?.status);
-      if (attempt < maxAttempts && (timedOut || retryableStatus)) {
-        await new Promise((resolve) => setTimeout(resolve, 500 * (2 ** (attempt - 1))));
-        continue;
-      }
-      if (timedOut) {
-        const timeoutError = new Error(`OpenAI request timed out after ${maxAttempts} bounded attempts.`);
-        timeoutError.status = 504;
-        timeoutError.code = "OPENAI_TRANSIENT_FAILURE";
-        throw timeoutError;
-      }
-      throw error;
-    }
-  }
-  throw new Error("OpenAI request failed after bounded retries.");
+function callModel(ai, prompt, maxOutputTokens = 16000) {
+  return callAiJson(ai, prompt, maxOutputTokens);
 }
 
 async function generateCandidates(task, db) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { blocked: true, reason: "OPENAI_API_KEY is not configured. No AI-generated question was created." };
+  const ai = aiForThisRun();
+  if (!ai) return { blocked: true, reason: missingAiKeyMessage() + " No AI-generated question was created." };
   const { data: exams, error } = await db.from("exams").select("id,name,description").eq("is_active", true).order("name").limit(8);
   if (error) throw error;
   const prompt = `Create 5 high-quality Indian competitive-exam practice MCQs for ExamPrep. Return JSON only: {"questions":[{"subject":"...","topic":"...","question_hi":"...","question_en":"...","options":["...","...","...","..."],"answer_index":0,"explanation_hi":"...","explanation_en":"...","difficulty":"easy|medium|hard"}]}. Do not label questions PYQ or official. Exams: ${JSON.stringify(exams)}. Task: ${JSON.stringify(task.payload)}.`;
-  const parsed = await callModel(apiKey, prompt, 5000);
+  const parsed = await callModel(ai, prompt, 5000);
   const valid = (Array.isArray(parsed.questions) ? parsed.questions : []).filter(validateGeneratedQuestion);
   return { blocked: false, candidates: valid, generated: valid.length, note: "Legacy small-batch candidates." };
 }
@@ -115,7 +66,7 @@ async function loadWeeklyContext(db, examId) {
 }
 
 
-async function generateWeeklyDraft(apiKey, task, context, previousDraft = [], includeAnalysis = true) {
+async function generateWeeklyDraft(ai, task, context, previousDraft = [], includeAnalysis = true) {
   const target = Math.max(50, Math.min(100, Number(task.payload?.target_new_questions) || 50));
   const need = target - previousDraft.length;
   const batchSize = 5;
@@ -142,7 +93,7 @@ async function generateWeeklyDraft(apiKey, task, context, previousDraft = [], in
     "Previously generated questions from this task (do not duplicate): " + previousLine,
     "Do not claim to browse websites. Treat source URLs as metadata, not proof that their contents were inspected. Do not invent citations, paper contents, exact frequencies, official status, or guarantees. When authentic past-paper content is absent, say frequency estimates are weak. All generated questions are curated practice, not PYQs. Check each answer and explanation. Every question needs four distinct options, a 0-based answer_index, Hindi/English versions, and concise explanations. Avoid questions already present in the bank and vary difficulty."
   ].join("\n");
-  const parsed = await callModel(apiKey, prompt, includeAnalysis ? 7000 : 5000);
+  const parsed = await callModel(ai, prompt, includeAnalysis ? 7000 : 5000);
   if (includeAnalysis && (!parsed.analysis || typeof parsed.analysis.trend_summary !== "string" || !Array.isArray(parsed.analysis.topic_breakdown))) {
     throw new Error("Weekly exam-pattern analysis failed schema validation.");
   }
@@ -219,8 +170,8 @@ async function stageWeeklyExamQuestions(task, db, context, analysis, pool) {
 }
 
 async function runWeeklyExamAnalysis(task, db) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { blocked: true, reason: "OPENAI_API_KEY is not configured; weekly analysis and question generation did not run." };
+  const ai = aiForThisRun();
+  if (!ai) return { blocked: true, reason: missingAiKeyMessage() + " Weekly analysis and question generation did not run." };
   const examId = task.payload?.exam_id;
   if (!examId) throw new Error("Weekly task is missing exam_id.");
   const target = Math.max(50, Math.min(100, Number(task.payload?.target_new_questions) || 50));
@@ -233,7 +184,7 @@ async function runWeeklyExamAnalysis(task, db) {
   const savedAnalysis = previousResult.analysis || null;
 
   if (phase === "start") {
-    const draft = await generateWeeklyDraft(apiKey, task, context, [], true);
+    const draft = await generateWeeklyDraft(ai, task, context, [], true);
     const unique = dedupeGeneratedQuestions(draft.questions, existingEnglish, existingHindi);
     if (!unique.length) {
       return {
@@ -299,7 +250,7 @@ async function runWeeklyExamAnalysis(task, db) {
       "Do not label any question official or PYQ. If a fact is uncertain, replace that question with a reliable syllabus-level question.",
       "Exam: " + context.exam.name + ". Candidates: " + JSON.stringify(batch)
     ].join("\n");
-    const reviewed = await callModel(apiKey, reviewPrompt, 6000);
+    const reviewed = await callModel(ai, reviewPrompt, 6000);
     const reviewedQuestions = Array.isArray(reviewed.questions) ? reviewed.questions.filter(validateGeneratedQuestion) : [];
     const uniqueBatch = dedupeGeneratedQuestions(
       reviewedQuestions,
@@ -331,7 +282,7 @@ async function runWeeklyExamAnalysis(task, db) {
 
   if (phase === "needs_more") {
     const emptyCount = Number(previousResult.empty_generation_batches || 0);
-    const draft = await generateWeeklyDraft(apiKey, task, context, reviewedDraft, !savedAnalysis);
+    const draft = await generateWeeklyDraft(ai, task, context, reviewedDraft, !savedAnalysis);
     const uniqueNew = dedupeGeneratedQuestions(
       draft.questions,
       existingEnglish.concat(reviewedDraft.map((q) => q.question_en)),
@@ -408,10 +359,10 @@ export async function GET(request) {
         automated_changes_made: false,
         note: "This review monitors background task health only. It does not inspect Supabase Auth sign-in logs, prove that an account was hacked, rotate secrets, disable accounts, or change production data."
       };
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (apiKey) {
+      const ai = aiForThisRun();
+      if (ai) {
         try {
-          const assessment = await callModel(apiKey,
+          const assessment = await callModel(ai,
             `Summarize this operational task-health snapshot as JSON only: {"severity":"low|medium|high","summary":"...","recommended_checks":["..."]}. Do not claim an account compromise; do not recommend automatic destructive actions. No changes are authorized. Snapshot: ${JSON.stringify(deterministic)}`,
             1200
           );
@@ -426,7 +377,7 @@ export async function GET(request) {
         }
       } else {
         deterministic.ai_assessment = null;
-        deterministic.ai_note = "OPENAI_API_KEY is not configured; deterministic task-health findings were retained.";
+        deterministic.ai_note = missingAiKeyMessage() + " Deterministic task-health findings were retained.";
       }
       result = deterministic;
     }
@@ -460,7 +411,7 @@ export async function GET(request) {
       completed_at: retryDecision.deferred ? null : new Date().toISOString()
     }).eq("id", task.id);
     const retryMessage = retryDecision.reason === "free_quota"
-      ? "OpenAI API quota or rate limit was reached; the next scheduled worker run will retry."
+      ? "The AI provider's quota or rate limit was reached; the next scheduled worker run will retry."
       : retryDecision.deferred
         ? `Transient provider error; the next scheduled worker run will retry (${retryDecision.retryCount}/${MAX_TRANSIENT_PROVIDER_RETRIES}). No provider fallback is configured.`
         : undefined;
