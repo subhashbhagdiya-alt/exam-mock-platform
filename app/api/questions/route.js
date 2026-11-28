@@ -13,28 +13,42 @@ const serverKeys = [...new Set([process.env.SUPABASE_SECRET_KEY, process.env.SUP
   .filter(value => typeof value === "string" && value.trim())
   .map(value => value.trim()))];
 
-// Each call reads up to 1,000 verified questions and may create a database test session.
+// Each call reads the verified questions of one exam and may create a database test session.
 // The limit is high enough for a whole classroom behind one NAT; it only stops scripted floods.
 const questionLimiter = createRateLimiter({ limit: 400, windowMs: 10 * 60 * 1000 });
 
-// Verified question rows change rarely, yet every call used to read up to 1,000 of them. Keeping them
+// Verified question rows change rarely, yet every call used to read all of them. Keeping them
 // for a few seconds lets a classroom that starts tests together share one database read per exam.
 // Only question selection uses these rows; grading always reads the answer key from the database.
 const questionRowsCache = createTtlCache({ ttlMs: 30_000, maxEntries: 20 });
 
+// PostgREST returns at most 1,000 rows per request, so a single .limit(1000) silently dropped the
+// newest questions of any exam that grew past 1,000. Read in pages instead. The hard cap keeps one
+// request bounded in memory; raise it deliberately if an exam ever needs more.
+const QUESTION_PAGE_SIZE = 1000;
+const QUESTION_MAX_ROWS = 5000;
+
 async function loadQuestionRows(client, examId) {
   const cached = questionRowsCache.get(examId);
   if (cached) return { data: cached, error: null };
-  const { data, error } = await client
-    .from("question_bank")
-    .select("id,exam_id,subject,topic,question_hi,question_en,options,answer_index,explanation_hi,explanation_en,difficulty,source_type,source_year")
-    .eq("active", true)
-    .eq("verified", true)
-    .eq("exam_id", examId)
-    .order("created_at", { ascending: true })
-    .limit(1000);
-  if (!error) questionRowsCache.set(examId, data || []);
-  return { data, error };
+  const rows = [];
+  for (let from = 0; from < QUESTION_MAX_ROWS; from += QUESTION_PAGE_SIZE) {
+    const { data, error } = await client
+      .from("question_bank")
+      .select("id,exam_id,subject,topic,question_hi,question_en,options,answer_index,explanation_hi,explanation_en,difficulty,source_type,source_year")
+      .eq("active", true)
+      .eq("verified", true)
+      .eq("exam_id", examId)
+      // Rows added in one batch share a created_at, so id is the tiebreaker that keeps pages stable.
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + QUESTION_PAGE_SIZE - 1);
+    if (error) return { data: null, error };
+    rows.push(...(data || []));
+    if (!data || data.length < QUESTION_PAGE_SIZE) break;
+  }
+  questionRowsCache.set(examId, rows);
+  return { data: rows, error: null };
 }
 
 function shuffle(items) {
